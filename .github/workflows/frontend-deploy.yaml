@@ -1,0 +1,102 @@
+name: Deploy to S3 and CloudFront
+
+on:
+  workflow_dispatch:
+  
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: "ap-south-1"
+  AWS_ACCOUNT_ID: "683213329249"
+  ROLE_TO_ASSUME: "GitHub_identity_provider"
+  NODE_VERSION: "22"
+  S3_BUCKET: "labour-union-s3-bucket"
+  CLOUDFRONT_DISTRIBUTION_ID: "EL67ZX0G8Y17N"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/${{ env.ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: github-actions-role-session
+
+      - name: Create .env.production file
+        run: |
+          cat <<EOF > frontend/.env.production
+          REACT_APP_BACKEND_URL=${{ secrets.REACT_APP_BACKEND_URL }}
+          EOF
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+
+      - name: Cache Node.js modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Clean node_modules and cache
+        run: |
+          rm -rf node_modules
+          npm cache clean --force
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm install --legacy-peer-deps
+
+      - name: Install caniuse-lite package
+        working-directory: frontend
+        run: npm install caniuse-lite --legacy-peer-deps
+
+      - name: Install missing fonts (typeface-poppins)
+        working-directory: frontend
+        run: npm install --legacy-peer-deps typeface-poppins
+
+      - name: Update Browserslist DB
+        working-directory: frontend
+        run: npx update-browserslist-db@latest --legacy-peer-deps
+
+      - name: Build React app
+        working-directory: frontend
+        env:
+          NODE_PATH: ./src
+          CI: false
+        run: npm run build
+
+      - name: Deploy to S3
+        run: |
+          aws s3 sync frontend/build/ s3://${{ env.S3_BUCKET }} --delete
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
