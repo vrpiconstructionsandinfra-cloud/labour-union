@@ -1,0 +1,363 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  SUPER_AGENT
+  AGENT
+  WORKER
+  CUSTOMER_SUPPORT
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  HOLIDAY
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  PAID
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum WalletTransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum PaymentFrequency {
+  WEEKLY
+  MONTHLY
+}
+
+enum InsuranceStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum DisbursementStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id Int @id @default(autoincrement())
+
+  name     String
+  email    String  @unique
+  password String
+  phone    String?
+
+  role   UserRole
+  status UserStatus @default(ACTIVE)
+
+  // Site Relation
+  siteId Int?
+  site   Site? @relation(fields: [siteId], references: [id])
+
+  // Site Creator
+  createdSites Site[] @relation("CreatedBy")
+
+  // Agent -> Worker Relation
+  assignedAgentId Int?
+  assignedAgent   User?  @relation("AgentWorkers", fields: [assignedAgentId], references: [id])
+  workers         User[] @relation("AgentWorkers")
+
+  // Agent Information
+  employeeCode String?   @unique
+  designation  String?
+  joiningDate  DateTime?
+  salary       Float?
+  profileImage String?
+  active       Boolean   @default(true)
+
+  attendance Attendance[] @relation("WorkerAttendance")
+
+  markedAttendance Attendance[] @relation("AgentAttendance")
+
+  requestedLeaves Leave[] @relation("WorkerLeaves")
+
+  approvedLeaves Leave[] @relation("ApprovedLeaves")
+
+  payments Payment[]
+  wallet   Wallet?
+
+  insurance Insurance?
+
+  supportTickets SupportTicket[]
+  handledTickets SupportTicket[] @relation("HandledTickets")
+  ticketComments SupportTicketComment[] @relation("CommentAuthor")
+
+  disbursementsRequested DisbursementRequest[] @relation("AgentDisbursements")
+  disbursementsReceived  DisbursementRequest[] @relation("WorkerDisbursements")
+
+  notifications  Notification[]
+
+  resetToken      String?
+  resetTokenExpiry DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Site {
+  id Int @id @default(autoincrement())
+
+  siteCode    String @unique
+  siteName    String
+  companyName String
+
+  address String
+  city    String
+  state   String
+  pincode String
+
+  contactPerson String
+  contactNumber String
+
+  active Boolean @default(true)
+
+  createdById Int
+  createdBy   User @relation("CreatedBy", fields: [createdById], references: [id])
+
+  users User[]
+  attendances Attendance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Attendance {
+  id Int @id @default(autoincrement())
+
+  workerId Int
+  worker   User @relation("WorkerAttendance", fields: [workerId], references: [id])
+
+  markedById Int
+  markedBy   User @relation("AgentAttendance", fields: [markedById], references: [id])
+
+  date DateTime
+
+  status AttendanceStatus @default(PRESENT)
+
+  statusCode Int? @default(2)
+
+  checkInTime  DateTime?
+  checkOutTime DateTime?
+
+  checkInPhoto  String?
+  checkOutPhoto String?
+
+  siteId Int?
+  site   Site? @relation(fields: [siteId], references: [id])
+
+  dailyPay Float?
+
+  overtimeHours Float @default(0)
+
+  remarks String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([workerId, date])
+}
+
+model Leave {
+  id Int @id @default(autoincrement())
+
+  workerId Int
+  worker   User @relation("WorkerLeaves", fields: [workerId], references: [id])
+
+  approvedById Int?
+  approvedBy   User? @relation("ApprovedLeaves", fields: [approvedById], references: [id])
+
+  fromDate DateTime
+  toDate   DateTime
+
+  reason String
+
+  status LeaveStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Payment {
+  id Int @id @default(autoincrement())
+
+  workerId Int
+  worker   User @relation(fields: [workerId], references: [id])
+
+  weekStart DateTime
+  weekEnd   DateTime
+
+  frequency PaymentFrequency @default(WEEKLY)
+
+  basicAmount    Float
+  overtimeAmount Float @default(0)
+
+  bonus Float @default(0)
+
+  deduction Float @default(0)
+
+  insuranceDeduction Float @default(0)
+
+  netAmount Float
+
+  status PaymentStatus @default(PENDING)
+
+  paidAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Wallet {
+  id Int @id @default(autoincrement())
+
+  workerId Int  @unique
+  worker   User @relation(fields: [workerId], references: [id])
+
+  balance Float @default(0)
+
+  transactions WalletTransaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model WalletTransaction {
+  id Int @id @default(autoincrement())
+
+  walletId Int
+  wallet   Wallet @relation(fields: [walletId], references: [id])
+
+  type WalletTransactionType
+
+  amount Float
+
+  description String?
+
+  createdAt DateTime @default(now())
+}
+
+model Insurance {
+  id Int @id @default(autoincrement())
+
+  workerId Int @unique
+
+  worker User @relation(fields: [workerId], references: [id])
+
+  provider String
+
+  policyNumber String
+
+  coverageAmount Float
+
+  premiumAmount Float
+
+  startDate DateTime
+
+  endDate DateTime
+
+  status InsuranceStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+model SupportTicket {
+  id Int @id @default(autoincrement())
+
+  workerId Int
+  worker   User @relation(fields: [workerId], references: [id])
+
+  subject String
+
+  description String
+
+  priority String @default("MEDIUM")
+
+  status TicketStatus @default(OPEN)
+
+  reply String?
+
+  attachmentUrl String?
+
+  handledById Int?
+  handledBy   User? @relation("HandledTickets", fields: [handledById], references: [id])
+
+  comments SupportTicketComment[]
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+model SupportTicketComment {
+  id Int @id @default(autoincrement())
+
+  ticketId Int
+  ticket   SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  authorId Int
+  author   User @relation("CommentAuthor", fields: [authorId], references: [id])
+
+  message String
+
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        Int       @id @default(autoincrement())
+  userId    Int?
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      UserRole?
+  title     String
+  message   String
+  type      String    @default("INFO")
+  isRead    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+}
+
+model DisbursementRequest {
+  id          Int                @id @default(autoincrement())
+  agentId     Int
+  agent       User               @relation("AgentDisbursements", fields: [agentId], references: [id])
+  workerId    Int
+  worker      User               @relation("WorkerDisbursements", fields: [workerId], references: [id])
+  amount      Float
+  description String?
+  status      DisbursementStatus @default(PENDING)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
+

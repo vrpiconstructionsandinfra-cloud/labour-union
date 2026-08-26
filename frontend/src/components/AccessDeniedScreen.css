@@ -1,0 +1,183 @@
+/* ── Access Denied Screen ───────────────────────────────────────────────────── */
+
+.access-denied-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 40px 20px;
+}
+
+.access-denied-card {
+  background: var(--card-bg, #ffffff);
+  border-radius: 24px;
+  padding: 56px 48px;
+  max-width: 520px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0,0,0,0.04);
+  position: relative;
+  overflow: hidden;
+  animation: fadeSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+.access-denied-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #f59e0b, #ef4444, #8b5cf6);
+}
+
+.access-denied-icon-ring {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 28px;
+  font-size: 40px;
+  animation: wobble 0.6s ease;
+}
+
+@keyframes wobble {
+  0%  { transform: rotate(0deg) scale(1); }
+  15% { transform: rotate(-8deg) scale(1.05); }
+  30% { transform: rotate(8deg) scale(1.05); }
+  45% { transform: rotate(-5deg); }
+  60% { transform: rotate(5deg); }
+  75% { transform: rotate(-2deg); }
+  100%{ transform: rotate(0deg) scale(1); }
+}
+
+.access-denied-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  border-radius: 999px;
+  padding: 4px 12px;
+  margin-bottom: 18px;
+}
+
+.access-denied-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text-primary, #111827);
+  margin: 0 0 12px;
+  letter-spacing: -0.4px;
+}
+
+.access-denied-subtitle {
+  font-size: 15px;
+  color: var(--text-secondary, #6b7280);
+  margin: 0 0 12px;
+  line-height: 1.65;
+}
+
+.access-denied-role-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-subtle, #f3f4f6);
+  color: var(--text-secondary, #374151);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 6px 14px;
+  margin-bottom: 32px;
+}
+
+.access-denied-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.access-denied-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+}
+
+.access-denied-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.45);
+}
+
+.access-denied-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  color: var(--text-secondary, #6b7280);
+  border: 1.5px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.access-denied-btn-secondary:hover {
+  background: var(--bg-subtle, #f9fafb);
+  border-color: #9ca3af;
+  color: var(--text-primary, #374151);
+}
+
+/* Dark mode */
+[data-theme="dark"] .access-denied-card {
+  background: #1e1e2e;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05);
+}
+
+[data-theme="dark"] .access-denied-title {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .access-denied-subtitle {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .access-denied-role-tag {
+  background: #334155;
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .access-denied-btn-secondary {
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .access-denied-btn-secondary:hover {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .access-denied-icon-ring {
+  background: linear-gradient(135deg, #451a03, #78350f);
+}

@@ -1,0 +1,421 @@
+.ticket-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.ticket-modal-container {
+  background: #ffffff;
+  width: 100%;
+  max-width: 720px;
+  max-height: 90vh;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.ticket-modal-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+}
+
+.header-left-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ticket-modal-number {
+  font-size: 16px;
+  font-weight: 800;
+  color: #2563eb;
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.ticket-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.modal-status-banner {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ticket-detail-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 20px;
+}
+
+.ticket-subject-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 10px 0;
+}
+
+.ticket-meta-info {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 16px;
+}
+
+.ticket-meta-info span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ticket-description-box {
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 14px;
+  border: 1px solid #f1f5f9;
+}
+
+.ticket-description-box h4 {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  margin: 0 0 6px 0;
+}
+
+.ticket-description-box p {
+  font-size: 14px;
+  color: #1e293b;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.ticket-attachment-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  font-size: 13px;
+  color: #475569;
+  background: #eff6ff;
+  padding: 10px 14px;
+  border-radius: 8px;
+}
+
+.attachment-link {
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.attachment-link:hover {
+  text-decoration: underline;
+}
+
+.customer-info-card, .agent-controls-card, .comments-thread-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.customer-info-card h4, .agent-controls-card h4, .comments-thread-card h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 14px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.customer-details-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.info-icon {
+  color: #2563eb;
+}
+
+.info-label {
+  display: block;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.info-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.action-buttons-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.status-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.status-btn.btn-open.active { background: #eff6ff; border-color: #2563eb; color: #2563eb; }
+.status-btn.btn-progress.active { background: #f3e8ff; border-color: #9333ea; color: #9333ea; }
+.status-btn.btn-close.active { background: #dcfce7; border-color: #16a34a; color: #16a34a; }
+
+.official-reply-form label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.reply-input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.reply-input-group input {
+  flex: 1;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+}
+
+.reply-input-group button {
+  padding: 0 16px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: 14px;
+}
+
+.comment-bubble {
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+.comment-bubble.worker-comment {
+  background: #f1f5f9;
+}
+
+.comment-bubble.agent-comment {
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+}
+
+.comment-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.author-name {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 12px;
+}
+
+.author-role-badge {
+  font-size: 10px;
+  font-weight: 600;
+  background: #cbd5e1;
+  color: #1e293b;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.comment-time {
+  margin-left: auto;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.comment-body {
+  margin: 0;
+  color: #334155;
+}
+
+.add-comment-form {
+  display: flex;
+  gap: 8px;
+}
+
+.add-comment-form input {
+  flex: 1;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+}
+
+.add-comment-form button {
+  padding: 0 16px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+/* Badges */
+.ticket-priority-badge {
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.ticket-priority-badge.high { background: #fef2f2; color: #ef4444; }
+.ticket-priority-badge.medium { background: #fffbeb; color: #d97706; }
+.ticket-priority-badge.low { background: #f0fdf4; color: #16a34a; }
+
+.ticket-status-badge {
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.ticket-status-badge.open { background: #eff6ff; color: #2563eb; }
+.ticket-status-badge.in-progress { background: #f3e8ff; color: #9333ea; }
+.ticket-status-badge.closed { background: #dcfce7; color: #16a34a; }
+.ticket-status-badge.default { background: #f1f5f9; color: #64748b; }
+
+/* Ticket Detail Modal Dark Mode Overrides */
+[data-theme="dark"] .ticket-modal-container,
+[data-theme="dark"] .ticket-detail-card,
+[data-theme="dark"] .customer-info-card,
+[data-theme="dark"] .agent-controls-card,
+[data-theme="dark"] .comments-thread-card,
+[data-theme="dark"] .ticket-modal-header,
+[data-theme="dark"] .ticket-description-box,
+[data-theme="dark"] .info-item,
+[data-theme="dark"] .comment-bubble,
+body.dark-mode .ticket-modal-container,
+body.dark-mode .ticket-detail-card,
+body.dark-mode .customer-info-card,
+body.dark-mode .agent-controls-card,
+body.dark-mode .comments-thread-card,
+body.dark-mode .ticket-modal-header,
+body.dark-mode .ticket-description-box,
+body.dark-mode .info-item,
+body.dark-mode .comment-bubble {
+  background-color: #1E293B !important;
+  color: #F8FAFC !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .ticket-subject-title,
+[data-theme="dark"] .customer-info-card h4,
+[data-theme="dark"] .agent-controls-card h4,
+[data-theme="dark"] .comments-thread-card h4,
+[data-theme="dark"] .info-value,
+[data-theme="dark"] .author-name,
+body.dark-mode .ticket-subject-title,
+body.dark-mode .customer-info-card h4,
+body.dark-mode .agent-controls-card h4,
+body.dark-mode .comments-thread-card h4,
+body.dark-mode .info-value,
+body.dark-mode .author-name {
+  color: #F8FAFC !important;
+}
+
+[data-theme="dark"] .ticket-meta-info,
+[data-theme="dark"] .ticket-description-box p,
+[data-theme="dark"] .ticket-description-box h4,
+[data-theme="dark"] .info-label,
+[data-theme="dark"] .comment-body,
+body.dark-mode .ticket-meta-info,
+body.dark-mode .ticket-description-box p,
+body.dark-mode .info-label,
+body.dark-mode .comment-body {
+  color: #94A3B8 !important;
+}

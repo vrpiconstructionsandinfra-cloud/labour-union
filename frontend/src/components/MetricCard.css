@@ -1,0 +1,93 @@
+.metric-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.06);
+}
+
+.metric-icon-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.metric-card-workers .metric-icon-box {
+  background-color: var(--color-workers-bg);
+  color: var(--color-workers-icon);
+}
+
+.metric-card-agents .metric-icon-box {
+  background-color: var(--color-agents-bg);
+  color: var(--color-agents-icon);
+}
+
+.metric-card-sites .metric-icon-box {
+  background-color: var(--color-sites-bg);
+  color: var(--color-sites-icon);
+}
+
+.metric-card-active .metric-icon-box {
+  background-color: var(--color-active-bg);
+  color: var(--color-active-icon);
+}
+
+.metric-card-attendance .metric-icon-box {
+  background-color: var(--color-attendance-bg);
+  color: var(--color-attendance-icon);
+}
+
+.metric-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.metric-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+
+.metric-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+.metric-change {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.metric-change.positive {
+  color: var(--color-success);
+}
+
+.metric-change.negative {
+  color: var(--color-danger);
+}
+
+.comparison-text {
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: 2px;
+}

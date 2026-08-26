@@ -1,0 +1,155 @@
+/* ── Session Expired Modal ──────────────────────────────────────────────────── */
+
+.session-expired-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  animation: fadeInOverlay 0.25s ease;
+}
+
+@keyframes fadeInOverlay {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.session-expired-card {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 48px 40px;
+  width: 420px;
+  max-width: calc(100vw - 40px);
+  text-align: center;
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0,0,0,0.04);
+  animation: slideUpCard 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.session-expired-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #f43f5e, #ef4444, #f97316);
+}
+
+@keyframes slideUpCard {
+  from { transform: translateY(40px) scale(0.95); opacity: 0; }
+  to   { transform: translateY(0)    scale(1);    opacity: 1; }
+}
+
+.session-icon-ring {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px;
+  font-size: 32px;
+  animation: pulseRing 1.5s ease-in-out infinite;
+}
+
+@keyframes pulseRing {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
+  50%       { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+}
+
+.session-expired-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 8px;
+  letter-spacing: -0.3px;
+}
+
+.session-expired-subtitle {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0 0 28px;
+  line-height: 1.6;
+}
+
+.session-countdown-bar-wrapper {
+  background: #f3f4f6;
+  border-radius: 999px;
+  height: 6px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.session-countdown-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ef4444, #f97316);
+  transition: width 1s linear;
+}
+
+.session-countdown-text {
+  font-size: 13px;
+  color: #9ca3af;
+  margin-bottom: 28px;
+}
+
+.session-countdown-text strong {
+  color: #ef4444;
+  font-weight: 700;
+}
+
+.session-expired-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 28px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+}
+
+.session-expired-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.45);
+}
+
+.session-expired-btn:active {
+  transform: translateY(0);
+}
+
+/* Dark mode support */
+[data-theme="dark"] .session-expired-card {
+  background: #1e1e2e;
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.05);
+}
+
+[data-theme="dark"] .session-expired-title {
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .session-expired-subtitle {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .session-countdown-bar-wrapper {
+  background: #334155;
+}
+
+[data-theme="dark"] .session-countdown-text {
+  color: #64748b;
+}
+
+[data-theme="dark"] .session-icon-ring {
+  background: linear-gradient(135deg, #450a0a, #7f1d1d);
+}

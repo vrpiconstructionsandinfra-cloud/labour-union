@@ -1,0 +1,9 @@
+.avatar-initials-badge {
+  font-family: var(--font-family, -apple-system, BlinkMacSystemFont, sans-serif);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  transition: transform 0.15s ease;
+}
+
+.avatar-initials-badge:hover {
+  transform: scale(1.05);
+}

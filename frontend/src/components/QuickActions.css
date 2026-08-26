@@ -1,0 +1,96 @@
+.quick-actions-card {
+  height: 100%;
+}
+
+.quick-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.action-row-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.action-row-btn:hover {
+  border-color: var(--border-color);
+  background-color: var(--bg-main);
+  transform: translateX(2px);
+}
+
+.action-row-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.action-icon-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.action-site .action-icon-circle {
+  background-color: #F3E8FF;
+  color: #A855F7;
+}
+
+.action-agent .action-icon-circle {
+  background-color: #EFF6FF;
+  color: #3B82F6;
+}
+
+.action-worker .action-icon-circle {
+  background-color: #FEF3C7;
+  color: #F59E0B;
+}
+
+.action-attendance .action-icon-circle {
+  background-color: #DCFCE7;
+  color: #10B981;
+}
+
+.action-report .action-icon-circle {
+  background-color: #CCFBF1;
+  color: #14B8A6;
+}
+
+.action-text-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.action-title-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.action-desc-text {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.action-chevron {
+  color: var(--text-muted);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.action-row-btn:hover .action-chevron {
+  color: var(--text-primary);
+  transform: translateX(2px);
+}
