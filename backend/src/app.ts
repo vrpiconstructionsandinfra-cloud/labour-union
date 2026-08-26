@@ -73,6 +73,13 @@ const generalLimiter = rateLimit({
 
 app.use("/api", generalLimiter);
 
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    status: "OK",
+    message: "Labour Union backend is healthy",
+  });
+});
+
 app.use("/api", routes);
 
 export default app;
