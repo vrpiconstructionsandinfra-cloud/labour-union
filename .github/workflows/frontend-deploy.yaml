@@ -77,6 +77,10 @@ jobs:
         working-directory: frontend
         run: npm install --legacy-peer-deps typeface-poppins
 
+      - name: Install react-is
+        working-directory: frontend
+        run: npm install react-is --legacy-peer-deps
+
       - name: Build React app
         working-directory: frontend
         env:
