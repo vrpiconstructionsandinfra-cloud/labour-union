@@ -8,6 +8,11 @@ on:
       - main
     paths:
       - 'frontend/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
 
 permissions:
   id-token: write
@@ -29,24 +34,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Debug GitHub OIDC token
-        uses: github/actions-oidc-debugger@v1
-        with:
-          audience: sts.amazonaws.com
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/${{ env.ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: github-actions-role-session
-          audience: sts.amazonaws.com
-
-      - name: Create .env.production file
-        run: |
-          cat <<EOF > frontend/.env.production
-          REACT_APP_BACKEND_URL=${{ secrets.REACT_APP_BACKEND_URL }}
-          EOF
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -54,7 +47,6 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-
 
       - name: Cache Node.js modules
         uses: actions/cache@v4
@@ -83,10 +75,6 @@ jobs:
         working-directory: frontend
         run: npm install --legacy-peer-deps typeface-poppins
 
-      - name: Update Browserslist DB
-        working-directory: frontend
-        run: npx update-browserslist-db@latest --legacy-peer-deps
-
       - name: Build React app
         working-directory: frontend
         env:
@@ -96,7 +84,7 @@ jobs:
 
       - name: Deploy to S3
         run: |
-          aws s3 sync frontend/build/ s3://${{ env.S3_BUCKET }} --delete
+          aws s3 sync frontend/dist/ s3://${{ env.S3_BUCKET }} --delete
 
       - name: Invalidate CloudFront cache
         run: |
