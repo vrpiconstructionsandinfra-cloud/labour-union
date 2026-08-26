@@ -35,6 +35,7 @@ jobs:
           role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/${{ env.ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: github-actions-role-session
+          audience: sts.amazonaws.com
 
       - name: Create .env.production file
         run: |
