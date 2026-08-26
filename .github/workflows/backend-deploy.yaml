@@ -1,0 +1,92 @@
+name: Backend deployment
+
+on:
+  workflow_dispatch:
+  
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+
+env:
+  AWS_REGION : "ap-south-1"
+  AWS_ACCOUNT_ID: "683213329249"
+  REPO_NAME : "labour-union-backend"
+  ECS_UPDATE: "labour-union-backend"
+  ECS_SERVICE: "labour-union-backend-task-definition-service "
+  TASK_DEFINITION: "labour-union-backend-task-definition"
+  CONTAINER_NAME: "labour-union-backend "
+
+permissions:
+  id-token: write   
+  contents: read    
+
+
+jobs:
+  ECS_Deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git clone the repository
+        uses: actions/checkout@v4
+        
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/GitHub_identity_provider
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Create .env file
+        run: |
+          cat <<EOF > backend/.env
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          EMAIL_PASS=${{ secrets.EMAIL_PASS }}
+          EMAIL_USER=${{ secrets.EMAIL_USER }}
+          FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+          JWT_EXPIRES=${{ secrets.JWT_EXPIRES }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          PORT=${{ secrets.PORT }}
+          RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
+          RESEND_FALLBACK_FROM=${{ secrets.RESEND_FALLBACK_FROM }}
+          RESEND_FROM_EMAIL=${{ secrets.RESEND_FROM_EMAIL }}
+          EOF
+
+      - name: Build, tag, and push the image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ env.REPO_NAME }}
+          IMAGE_TAG: v${{ github.run_number }}
+        run: |
+          docker build \
+            -f backend/Dockerfile \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+            backend
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+    
+      - name: Download task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition $TASK_DEFINITION \
+            --query taskDefinition > task-definition.json
+
+      - name: Update image in task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_UPDATE }}
+          wait-for-service-stability: true
