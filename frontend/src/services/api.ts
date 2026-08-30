@@ -1055,3 +1055,70 @@ export const fetchWorkerAttendanceApi = async (workerId: string | number) => {
     }
   }
 };
+
+// 31. Enquiry API Endpoints
+export interface EnquiryItem {
+  id: number;
+  name: string;
+  email?: string | null;
+  phone: string;
+  address?: string | null;
+  designation: 'WORKER' | 'AGENT';
+  status: 'NEW' | 'PENDING' | 'CONTACTED' | 'CONVERTED' | 'RESOLVED' | 'REJECTED';
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const submitEnquiryApi = async (data: {
+  name: string;
+  email?: string;
+  phone: string;
+  address?: string;
+  designation: 'WORKER' | 'AGENT';
+}): Promise<{ success: boolean; message: string; data: EnquiryItem }> => {
+  const res = await fetch('/api/enquiries', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  const json = await res.json();
+  if (!res.ok || !json.success) {
+    throw new Error(json.message || 'Failed to submit enquiry');
+  }
+  return json;
+};
+
+export const fetchEnquiriesApi = async (params?: {
+  designation?: string;
+  status?: string;
+  search?: string;
+}): Promise<EnquiryItem[]> => {
+  const query = new URLSearchParams();
+  if (params?.designation && params.designation !== 'ALL') query.append('designation', params.designation);
+  if (params?.status && params.status !== 'ALL') query.append('status', params.status);
+  if (params?.search && params.search.trim()) query.append('search', params.search.trim());
+
+  const res = await fetchWithAuth(`/api/enquiries?${query.toString()}`);
+  return res.data || [];
+};
+
+export const updateEnquiryStatusApi = async (
+  id: number | string,
+  status: string,
+  notes?: string
+): Promise<EnquiryItem> => {
+  const res = await fetchWithAuth(`/api/enquiries/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status, notes }),
+  });
+  return res.data;
+};
+
+export const deleteEnquiryApi = async (id: number | string): Promise<{ success: boolean; message: string }> => {
+  const res = await fetchWithAuth(`/api/enquiries/${id}`, {
+    method: 'DELETE',
+  });
+  return res;
+};
+

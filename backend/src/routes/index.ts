@@ -15,6 +15,7 @@ import siteAssignmentRoutes from "./siteAssignment.routes";
 import payrollRoutes from "./payroll.routes";
 import notificationRoutes from "./notification.routes";
 import reportRoutes from "./report.routes";
+import enquiryRoutes from "./enquiry.routes";
 
 const router = Router();
 
@@ -34,5 +35,6 @@ router.use("/site-assignment", siteAssignmentRoutes);
 router.use("/payroll", payrollRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/reports", reportRoutes);
+router.use("/enquiries", enquiryRoutes);
 
 export default router;

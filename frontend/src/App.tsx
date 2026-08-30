@@ -19,6 +19,7 @@ import { Footer } from './components/Footer';
 import { SitesPage } from './pages/SitesPage';
 import { AgentsPage } from './pages/AgentsPage';
 import { WorkersPage } from './pages/WorkersPage';
+import { EnquiriesPage } from './pages/EnquiriesPage';
 import { AttendancePage } from './pages/AttendancePage';
 import { LeavePage } from './pages/LeavePage';
 import { PayrollPage } from './pages/PayrollPage';
@@ -318,7 +319,7 @@ function MainAppContent() {
   // Render Page Content based on Active Navigation Tab & Role
   const renderTabContent = () => {
     // ── Role Guard: block tabs the user's role has no permission for ────────
-    const guardedTabs = ['sites', 'agents', 'workers', 'attendance', 'leaves', 'my_leaves', 'payroll', 'wallet', 'insurance', 'tickets', 'reports', 'settings'];
+    const guardedTabs = ['sites', 'agents', 'workers', 'enquiries', 'attendance', 'leaves', 'my_leaves', 'payroll', 'wallet', 'insurance', 'tickets', 'reports', 'settings'];
     if (guardedTabs.includes(activeTab) && !hasPermission(activeTab)) {
       return (
         <AccessDeniedScreen
@@ -364,6 +365,8 @@ function MainAppContent() {
             refreshTrigger={refreshCounter}
           />
         );
+      case 'enquiries':
+        return <EnquiriesPage />;
       case 'attendance':
         return <AttendancePage user={user} onOpenModal={(modal) => setActiveModal(modal)} refreshTrigger={refreshCounter} />;
       case 'leaves':

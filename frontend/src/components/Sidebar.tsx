@@ -17,7 +17,8 @@ import {
   Phone,
   LogOut,
   ChevronRight,
-  QrCode
+  QrCode,
+  FileSpreadsheet
 } from 'lucide-react';
 import { UserAvatar } from './UserAvatar';
 import './Sidebar.css';
@@ -42,8 +43,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   useEffect(() => {
     fetchNotificationsApi()
-      .then((list) => {
-        const unread = list.filter((n) => !n.isRead && n.unread !== false).length;
+      .then((data) => {
+        const unread = (data || []).filter((n: any) => !n.isRead).length;
         setUnreadCount(unread);
       })
       .catch(() => {});
@@ -64,6 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'sites', label: 'Sites', icon: Building2 },
     { id: 'agents', label: 'Agents', icon: Users },
     { id: 'workers', label: 'Workers', icon: UserCheck },
+    { id: 'enquiries', label: 'Enquired', icon: FileSpreadsheet },
     { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
     { id: 'leaves', label: 'Leaves', icon: FileText },
     { id: 'my_leaves', label: 'My Leaves', icon: FileText },

@@ -19,6 +19,7 @@ const siteAssignment_routes_1 = __importDefault(require("./siteAssignment.routes
 const payroll_routes_1 = __importDefault(require("./payroll.routes"));
 const notification_routes_1 = __importDefault(require("./notification.routes"));
 const report_routes_1 = __importDefault(require("./report.routes"));
+const enquiry_routes_1 = __importDefault(require("./enquiry.routes"));
 const router = (0, express_1.Router)();
 router.use("/auth", auth_routes_1.default);
 router.use("/sites", site_routes_1.default);
@@ -36,4 +37,5 @@ router.use("/site-assignment", siteAssignment_routes_1.default);
 router.use("/payroll", payroll_routes_1.default);
 router.use("/notifications", notification_routes_1.default);
 router.use("/reports", report_routes_1.default);
+router.use("/enquiries", enquiry_routes_1.default);
 exports.default = router;
