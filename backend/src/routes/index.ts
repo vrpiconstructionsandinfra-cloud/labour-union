@@ -25,6 +25,7 @@ router.use("/leave", leaveRoutes);
 router.use("/wallet", walletRoutes);
 router.use("/dashboard", dashboardRoutes);
 router.use("/payments", paymentRoutes);
+router.use("/payment", paymentRoutes);
 router.use("/insurance", insuranceRoutes);
 router.use("/support", supportRoutes);
 router.use("/users", userRoutes);

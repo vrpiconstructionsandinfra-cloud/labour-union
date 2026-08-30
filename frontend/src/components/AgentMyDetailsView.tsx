@@ -12,7 +12,10 @@ import {
   Calendar,
   Edit2,
   Save,
-  Loader2
+  Loader2,
+  CreditCard,
+  Landmark,
+  MapPin
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { UserAvatar } from './UserAvatar';
@@ -30,6 +33,9 @@ export const AgentMyDetailsView: React.FC = () => {
   const [editName, setEditName] = useState<string>('');
   const [editPhone, setEditPhone] = useState<string>('');
   const [editEmail, setEditEmail] = useState<string>('');
+  const [editBankAccountNo, setEditBankAccountNo] = useState<string>('');
+  const [editIfscCode, setEditIfscCode] = useState<string>('');
+  const [editAddress, setEditAddress] = useState<string>('');
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
   const agent = user || {
@@ -52,6 +58,9 @@ export const AgentMyDetailsView: React.FC = () => {
   const agentCode = (agent as any).employeeCode || `AGT-${String((agent as any).id || 1002).padStart(4, '0')}`;
   const siteName = (agent as any).siteName || (agent as any).site?.siteName || (agent as any).assignedSite || null;
   const phone = (agent as any).phone || '';
+  const bankAccountNo = (agent as any).bankAccountNo || (agent as any).bankAccountNumber || '';
+  const ifscCode = (agent as any).ifscCode || (agent as any).bankIfsc || '';
+  const address = (agent as any).address || '';
 
   const salaryVal = (agent as any).salary ?? (agent as any).salaryAmount;
   const salaryStr = salaryVal ? `₹${Number(salaryVal).toLocaleString('en-IN')}/month` : 'N/A';
@@ -94,6 +103,9 @@ export const AgentMyDetailsView: React.FC = () => {
     setEditName(agent.name || '');
     setEditPhone(phone || '');
     setEditEmail(agent.email || '');
+    setEditBankAccountNo(bankAccountNo || '');
+    setEditIfscCode(ifscCode || '');
+    setEditAddress(address || '');
     setIsEditModalOpen(true);
   };
 
@@ -105,7 +117,10 @@ export const AgentMyDetailsView: React.FC = () => {
       await updateUserApi((agent as any).id, {
         name: editName,
         phone: editPhone,
-        email: editEmail
+        email: editEmail,
+        bankAccountNo: editBankAccountNo,
+        ifscCode: editIfscCode,
+        address: editAddress
       });
       alert('Profile updated successfully!');
       setIsEditModalOpen(false);
@@ -228,6 +243,51 @@ export const AgentMyDetailsView: React.FC = () => {
               <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px', display: 'block', wordBreak: 'break-all' }}>{agent.email}</span>
             </div>
 
+            <div style={{ backgroundColor: 'var(--bg-main)', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <CreditCard size={12} /> Bank Account Number
+              </span>
+              {bankAccountNo ? (
+                <span style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px', display: 'block', fontFamily: 'monospace' }}>
+                  {bankAccountNo}
+                </span>
+              ) : (
+                <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#D97706', backgroundColor: '#FEF3C7', padding: '2px 8px', borderRadius: '6px', marginTop: '4px', display: 'inline-block' }}>
+                  Not Provided (Click Edit Profile to add)
+                </span>
+              )}
+            </div>
+
+            <div style={{ backgroundColor: 'var(--bg-main)', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Landmark size={12} /> Bank IFSC Code
+              </span>
+              {ifscCode ? (
+                <span style={{ fontSize: '13.5px', fontWeight: 800, color: '#2563EB', marginTop: '4px', display: 'block', fontFamily: 'monospace' }}>
+                  {ifscCode}
+                </span>
+              ) : (
+                <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#D97706', backgroundColor: '#FEF3C7', padding: '2px 8px', borderRadius: '6px', marginTop: '4px', display: 'inline-block' }}>
+                  Not Provided (Click Edit Profile to add)
+                </span>
+              )}
+            </div>
+
+            <div style={{ backgroundColor: 'var(--bg-main)', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <MapPin size={12} /> Agent Address
+              </span>
+              {address ? (
+                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '4px', display: 'block', wordBreak: 'break-word' }}>
+                  {address}
+                </span>
+              ) : (
+                <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#D97706', backgroundColor: '#FEF3C7', padding: '2px 8px', borderRadius: '6px', marginTop: '4px', display: 'inline-block' }}>
+                  Not Provided (Click Edit Profile to add)
+                </span>
+              )}
+            </div>
+
             {!isSupportRole && siteName && (
               <div style={{ backgroundColor: 'var(--bg-main)', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
                 <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -300,7 +360,7 @@ export const AgentMyDetailsView: React.FC = () => {
 
             <div style={{ marginBottom: '20px' }}>
               <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>Edit Profile Details</h3>
-              <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: 0 }}>Update your profile information and save directly to PostgreSQL database.</p>
+              <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: 0 }}>Update your contact details, banking info, and address. Salary and Joining Date are official non-editable records.</p>
             </div>
 
             <form onSubmit={handleSaveProfileSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -334,6 +394,39 @@ export const AgentMyDetailsView: React.FC = () => {
                   onChange={(e) => setEditEmail(e.target.value)}
                   required
                   style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '13px', outline: 'none' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>Bank Account Number</label>
+                <input
+                  type="text"
+                  value={editBankAccountNo}
+                  onChange={(e) => setEditBankAccountNo(e.target.value)}
+                  placeholder="e.g. 309812345678"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '13px', outline: 'none' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>Bank IFSC Code</label>
+                <input
+                  type="text"
+                  value={editIfscCode}
+                  onChange={(e) => setEditIfscCode(e.target.value.toUpperCase())}
+                  placeholder="e.g. SBIN0001234"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '13px', outline: 'none' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>Address</label>
+                <textarea
+                  rows={2}
+                  value={editAddress}
+                  onChange={(e) => setEditAddress(e.target.value)}
+                  placeholder="Enter full address"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '13px', outline: 'none', resize: 'vertical' }}
                 />
               </div>
 

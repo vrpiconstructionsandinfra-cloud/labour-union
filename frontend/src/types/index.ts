@@ -12,6 +12,13 @@ export interface User {
   profileImage?: string;
   siteId?: string;
   assignedAgentId?: string;
+  bankAccountNo?: string;
+  bankAccountNumber?: string;
+  ifscCode?: string;
+  bankIfsc?: string;
+  address?: string;
+  salary?: number;
+  joiningDate?: string;
 }
 
 export interface MetricData {

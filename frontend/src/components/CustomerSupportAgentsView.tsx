@@ -69,9 +69,11 @@ export const CustomerSupportAgentsView: React.FC<CustomerSupportAgentsViewProps>
       const combinedUsers = [...usersData, ...agentsData];
 
       combinedUsers.forEach((a: any) => {
+        if (!a || !a.id) return;
         const code = (a.employeeCode || '').toUpperCase();
         const des = (a.designation || '').toLowerCase();
         const role = (a.role || '').toUpperCase();
+        const aEmail = a.email ? String(a.email).trim().toLowerCase() : '';
 
         const isSupportAgent = (
           code.startsWith('CSA') ||
@@ -80,25 +82,38 @@ export const CustomerSupportAgentsView: React.FC<CustomerSupportAgentsViewProps>
           role === 'SUPPORT_AGENT'
         ) && role !== 'SUPER_AGENT' && role !== 'WORKER' && !code.startsWith('SA-') && !code.startsWith('WRK');
 
-        if (isSupportAgent && !realSupportAgents.some(m => String(m.id) === String(a.id) || (a.email && m.email.toLowerCase() === a.email.toLowerCase()))) {
-          realSupportAgents.push({
-            id: String(a.id),
-            numericId: a.id,
-            name: a.name,
-            employeeCode: a.employeeCode || `CSA-${a.id}`,
-            email: a.email || `${a.name.toLowerCase().replace(/\s+/g, '.')}@union.com`,
-            phone: a.phone || '+91 98765 43210',
-            joinedDate: a.joiningDate ? new Date(a.joiningDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : '01 Jan, 2024',
-            status: a.status || 'Active',
-            avatar: a.avatar || a.profileImage || ''
+        if (isSupportAgent) {
+          const exists = realSupportAgents.some(m => {
+            const mId = String(m.id);
+            const mEmail = m.email ? String(m.email).trim().toLowerCase() : '';
+            return mId === String(a.id) || (aEmail !== '' && mEmail !== '' && mEmail === aEmail);
           });
+
+          if (!exists) {
+            realSupportAgents.push({
+              id: String(a.id),
+              numericId: a.id,
+              name: a.name || 'Support Agent',
+              employeeCode: a.employeeCode || `CSA-${a.id}`,
+              email: a.email || `${(a.name || 'agent').toLowerCase().replace(/\s+/g, '.')}@union.com`,
+              phone: a.phone || '+91 98765 43210',
+              joinedDate: a.joiningDate ? new Date(a.joiningDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : '01 Jan, 2024',
+              status: a.status || (a.active !== false ? 'Active' : 'Inactive'),
+              avatar: a.avatar || a.profileImage || ''
+            });
+          }
         }
       });
 
       setSupportAgents(realSupportAgents);
       setSelectedAgent((prev: any) => {
         if (prev) {
-          const match = realSupportAgents.find((m: any) => String(m.id) === String(prev.id) || m.email.toLowerCase() === prev.email.toLowerCase());
+          const prevEmail = prev.email ? String(prev.email).trim().toLowerCase() : '';
+          const match = realSupportAgents.find((m: any) => {
+            const mId = String(m.id);
+            const mEmail = m.email ? String(m.email).trim().toLowerCase() : '';
+            return mId === String(prev.id) || (prevEmail !== '' && mEmail !== '' && mEmail === prevEmail);
+          });
           if (match) return match;
         }
         return realSupportAgents.length > 0 ? realSupportAgents[0] : null;

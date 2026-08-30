@@ -1,0 +1,17 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_controller_1 = require("../controllers/auth.controller");
+const auth_middleware_1 = require("../middleware/auth.middleware");
+const router = (0, express_1.Router)();
+router.get("/me", auth_middleware_1.authenticate, auth_controller_1.getMe);
+router.post("/register", auth_controller_1.register);
+router.post("/login", auth_controller_1.login);
+router.post("/send-verification-code", auth_controller_1.sendVerificationCode);
+router.post("/verify-code", auth_controller_1.verifyCode);
+router.post("/forgot-password", auth_controller_1.forgotPassword);
+router.post("/reset-password", auth_controller_1.resetPassword);
+router.post("/request-mobile-approval", auth_controller_1.requestMobileApproval);
+router.get("/approval-status/:authRequestId", auth_controller_1.checkApprovalStatus);
+router.post("/approve-login-token", auth_controller_1.approveLoginToken);
+exports.default = router;

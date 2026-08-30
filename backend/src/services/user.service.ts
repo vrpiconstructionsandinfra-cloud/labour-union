@@ -9,7 +9,6 @@ const userSelect = {
   email: true,
   phone: true,
   role: true,
-  status: true,
   siteId: true,
   site: {
     select: {
@@ -32,6 +31,14 @@ const userSelect = {
   salary: true,
   profileImage: true,
   active: true,
+  bankAccountNo: true,
+  ifscCode: true,
+  address: true,
+  registrationAmount: true,
+  paymentMethod: true,
+  razorpayPaymentId: true,
+  razorpayOrderId: true,
+  upiTransactionId: true,
   createdAt: true,
   updatedAt: true,
 };
@@ -264,7 +271,7 @@ export async function getWorkers(reqUser?: { id: number; role: string }) {
  */
 export async function getAgents() {
   return prisma.user.findMany({
-    where: { role: UserRole.AGENT },
+    where: { role: { in: [UserRole.AGENT, UserRole.CUSTOMER_SUPPORT] } },
     orderBy: { createdAt: "desc" },
     select: {
       ...userSelect,

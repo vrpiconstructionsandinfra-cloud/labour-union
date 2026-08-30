@@ -288,7 +288,9 @@ export const fetchAgentsApi = async (): Promise<AgentItem[]> => {
         employeeCode: w.employeeCode || `WRK-${w.id}`,
         designation: w.designation || 'Worker'
       })),
-      avatar: agent.profileImage || agent.avatar || ''
+      avatar: agent.profileImage || agent.avatar || '',
+      status: agent.status || (agent.active ? 'ACTIVE' : 'INACTIVE'),
+      siteId: agent.siteId
     };
   });
 };
@@ -603,7 +605,7 @@ export const fetchLeavesApi = async (): Promise<LeaveRecord[]> => {
 // 12. Register User API Endpoint (Backend Registration)
 export const registerUserApi = async (userData: {
   name: string;
-  email: string;
+  email?: string;
   password: string;
   role: 'SUPER_AGENT' | 'AGENT' | 'WORKER';
   phone?: string;
@@ -612,12 +614,28 @@ export const registerUserApi = async (userData: {
   salary?: number;
   siteId?: number;
   avatar?: string;
+  bankAccountNo?: string;
+  ifscCode?: string;
+  address?: string;
+  registrationAmount?: number;
+  paymentMethod?: string;
+  razorpayPaymentId?: string;
+  razorpayOrderId?: string;
+  upiTransactionId?: string;
 }) => {
   const res = await fetchWithAuth('/api/auth/register', {
     method: 'POST',
     body: JSON.stringify(userData)
   });
   return res.data;
+};
+
+export const createRazorpayOrderApi = async (amount: number) => {
+  const res = await fetchWithAuth('/api/payments/razorpay-order', {
+    method: 'POST',
+    body: JSON.stringify({ amount })
+  });
+  return res;
 };
 
 // 13. Payroll Generation Endpoint (Backend Payroll API)

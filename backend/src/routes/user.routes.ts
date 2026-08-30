@@ -25,7 +25,7 @@ router.use(authenticate);
 // Get all users
 router.get(
   "/",
-  authorize(UserRole.SUPER_AGENT),
+  authorize(UserRole.SUPER_AGENT, UserRole.AGENT),
   findAll
 );
 

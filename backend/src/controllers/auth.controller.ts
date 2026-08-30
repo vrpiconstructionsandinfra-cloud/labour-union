@@ -19,7 +19,15 @@ export const register = async (
       employeeCode,
       salary,
       siteId,
-      avatar
+      avatar,
+      bankAccountNo,
+      ifscCode,
+      address,
+      registrationAmount,
+      paymentMethod,
+      razorpayPaymentId,
+      razorpayOrderId,
+      upiTransactionId
     } = req.body;
 
     const user =
@@ -33,7 +41,17 @@ export const register = async (
         employeeCode,
         salary ? Number(salary) : undefined,
         siteId ? Number(siteId) : undefined,
-        avatar
+        avatar,
+        {
+          bankAccountNo,
+          ifscCode,
+          address,
+          registrationAmount: registrationAmount ? Number(registrationAmount) : undefined,
+          paymentMethod,
+          razorpayPaymentId,
+          razorpayOrderId,
+          upiTransactionId
+        }
       );
 
     if (user && user.email) {
