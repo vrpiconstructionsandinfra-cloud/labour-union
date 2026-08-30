@@ -239,19 +239,36 @@ async function sendSaturdayWeeklyReportEmail(targetEmail) {
       </p>
     </div>
   `;
-    const info = await mail_1.transporter.sendMail({
-        from: `"Labor Union Management" <${process.env.EMAIL_USER || "satishgoudarcr@gmail.com"}>`,
-        to: targetEmail,
+    const attachmentFilename = `Saturday_Weekly_Audit_Report_${new Date().toISOString().split('T')[0]}.csv`;
+    const attachmentBase64 = Buffer.from(csvContent, 'utf-8').toString('base64');
+    let result = await mail_1.resend.emails.send({
+        from: mail_1.PRIMARY_FROM,
+        to: [targetEmail],
         subject,
         html,
         attachments: [
             {
-                filename: `Saturday_Weekly_Audit_Report_${new Date().toISOString().split('T')[0]}.csv`,
-                content: csvContent,
-                contentType: 'text/csv'
+                filename: attachmentFilename,
+                content: attachmentBase64,
             }
         ]
     });
-    console.log(`✅ Weekly Saturday Excel Report email sent successfully to ${targetEmail}! ID: ${info.messageId}`);
-    return { success: true, emailSentTo: targetEmail, messageId: info.messageId };
+    if (result.error) {
+        console.warn(`⚠️ Resend Primary Domain notice for audit report: ${result.error.message}. Retrying via fallback domain...`);
+        result = await mail_1.resend.emails.send({
+            from: mail_1.FALLBACK_FROM,
+            to: [targetEmail],
+            subject,
+            html,
+            attachments: [
+                {
+                    filename: attachmentFilename,
+                    content: attachmentBase64,
+                }
+            ]
+        });
+    }
+    const messageId = result.data?.id || 'resend-delivery-logged';
+    console.log(`✅ Weekly Saturday Excel Report email sent successfully to ${targetEmail}! ID: ${messageId}`);
+    return { success: true, emailSentTo: targetEmail, messageId };
 }

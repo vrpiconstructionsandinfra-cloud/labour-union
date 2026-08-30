@@ -44,8 +44,6 @@ jobs:
         run: |
           cat <<EOF > backend/.env
           DATABASE_URL=${{ secrets.DATABASE_URL }}
-          EMAIL_PASS=${{ secrets.EMAIL_PASS }}
-          EMAIL_USER=${{ secrets.EMAIL_USER }}
           FRONTEND_URL=${{ secrets.FRONTEND_URL }}
           JWT_EXPIRES=${{ secrets.JWT_EXPIRES }}
           JWT_SECRET=${{ secrets.JWT_SECRET }}
@@ -53,6 +51,8 @@ jobs:
           RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
           RESEND_FALLBACK_FROM=${{ secrets.RESEND_FALLBACK_FROM }}
           RESEND_FROM_EMAIL=${{ secrets.RESEND_FROM_EMAIL }}
+          RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }}
+          RAZORPAY_KEY_SECRET=${{ secrets.RAZORPAY_KEY_SECRET }}
           EOF
 
       - name: Build, tag, and push the image to Amazon ECR

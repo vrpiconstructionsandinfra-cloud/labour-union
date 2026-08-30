@@ -3,10 +3,9 @@ import dotenv from "dotenv";
 // Load .env before anything else
 dotenv.config();
 
-console.log("EMAIL_USER:", process.env.EMAIL_USER);
 console.log(
-  "EMAIL_PASS:",
-  process.env.EMAIL_PASS ? "Loaded" : "Missing"
+  "RESEND_API_KEY:",
+  process.env.RESEND_API_KEY ? "Loaded" : "Missing"
 );
 
 import http from "http";

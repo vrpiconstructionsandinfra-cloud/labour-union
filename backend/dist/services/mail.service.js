@@ -8,10 +8,8 @@ exports.sendVerificationCodeEmail = sendVerificationCodeEmail;
 exports.sendAgentCredentialsEmail = sendAgentCredentialsEmail;
 const mail_1 = require("../config/mail");
 const network_util_1 = require("../utils/network.util");
-const PRIMARY_FROM = process.env.RESEND_FROM_EMAIL || "Labor Union <noreply@my-dailywork.com>";
-const FALLBACK_FROM = process.env.RESEND_FALLBACK_FROM || "Labor Union <onboarding@resend.dev>";
 /*
- * Safe Resend Delivery Helper with Automatic Domain Fallback & SMTP Fallback
+ * Safe Resend Delivery Helper with Automatic Domain Fallback
  */
 async function sendResendEmail(options) {
     const { to, subject, html, text } = options;
@@ -19,54 +17,35 @@ async function sendResendEmail(options) {
     try {
         // 1. Try Resend with primary domain (noreply@my-dailywork.com)
         const result = await mail_1.resend.emails.send({
-            from: PRIMARY_FROM,
+            from: mail_1.PRIMARY_FROM,
             to: [to],
             subject,
             html,
             text
         });
         if (result.error) {
-            console.warn(`⚠️ Resend Primary Domain (${PRIMARY_FROM}) notice: ${result.error.message}. Retrying via Resend Fallback Domain (${FALLBACK_FROM})...`);
+            console.warn(`⚠️ Resend Primary Domain (${mail_1.PRIMARY_FROM}) notice: ${result.error.message}. Retrying via Resend Fallback Domain (${mail_1.FALLBACK_FROM})...`);
             // 2. Try Resend with fallback domain (onboarding@resend.dev)
             const fallbackResult = await mail_1.resend.emails.send({
-                from: FALLBACK_FROM,
+                from: mail_1.FALLBACK_FROM,
                 to: [to],
                 subject,
                 html,
                 text
             });
             if (fallbackResult.error) {
-                console.warn(`⚠️ Resend Fallback Domain notice: ${fallbackResult.error.message}. Retrying via Nodemailer SMTP...`);
-                // 3. Fallback to Nodemailer SMTP
-                return await mail_1.transporter.sendMail({
-                    from: `"Labor Union Management" <${process.env.EMAIL_USER || "satishgoudarcr@gmail.com"}>`,
-                    to,
-                    subject,
-                    text: text || "",
-                    html
-                });
+                console.error(`❌ Resend Fallback Domain Error:`, fallbackResult.error.message);
+                return { id: "delivery-error", error: fallbackResult.error.message };
             }
-            console.log(`✅ Resend Email sent successfully via Fallback Domain (${FALLBACK_FROM})! ID: ${fallbackResult.data?.id}`);
+            console.log(`✅ Resend Email sent successfully via Fallback Domain (${mail_1.FALLBACK_FROM})! ID: ${fallbackResult.data?.id}`);
             return fallbackResult.data;
         }
-        console.log(`✅ Resend Email sent successfully via Primary Domain (${PRIMARY_FROM})! ID: ${result.data?.id}`);
+        console.log(`✅ Resend Email sent successfully via Primary Domain (${mail_1.PRIMARY_FROM})! ID: ${result.data?.id}`);
         return result.data;
     }
     catch (err) {
-        console.warn(`⚠️ Resend API Exception: ${err.message}. Retrying via Nodemailer SMTP...`);
-        try {
-            return await mail_1.transporter.sendMail({
-                from: `"Labor Union Management" <${process.env.EMAIL_USER || "satishgoudarcr@gmail.com"}>`,
-                to,
-                subject,
-                text: text || "",
-                html
-            });
-        }
-        catch (smtpErr) {
-            console.error(`❌ Email delivery status:`, smtpErr.message);
-            return { id: "delivery-logged", warning: smtpErr.message };
-        }
+        console.error(`❌ Resend API Exception: ${err.message}`);
+        return { id: "delivery-error", error: err.message };
     }
 }
 /*

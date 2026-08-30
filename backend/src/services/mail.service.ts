@@ -1,11 +1,8 @@
-import { resend, transporter } from "../config/mail";
+import { resend, PRIMARY_FROM, FALLBACK_FROM } from "../config/mail";
 import { getLocalIpAddress } from "../utils/network.util";
 
-const PRIMARY_FROM = process.env.RESEND_FROM_EMAIL || "Labor Union <noreply@my-dailywork.com>";
-const FALLBACK_FROM = process.env.RESEND_FALLBACK_FROM || "Labor Union <onboarding@resend.dev>";
-
 /*
- * Safe Resend Delivery Helper with Automatic Domain Fallback & SMTP Fallback
+ * Safe Resend Delivery Helper with Automatic Domain Fallback
  */
 async function sendResendEmail(options: { to: string; subject: string; html: string; text?: string }) {
   const { to, subject, html, text } = options;
@@ -33,15 +30,8 @@ async function sendResendEmail(options: { to: string; subject: string; html: str
       });
 
       if (fallbackResult.error) {
-        console.warn(`⚠️ Resend Fallback Domain notice: ${fallbackResult.error.message}. Retrying via Nodemailer SMTP...`);
-        // 3. Fallback to Nodemailer SMTP
-        return await transporter.sendMail({
-          from: `"Labor Union Management" <${process.env.EMAIL_USER || "satishgoudarcr@gmail.com"}>`,
-          to,
-          subject,
-          text: text || "",
-          html
-        });
+        console.error(`❌ Resend Fallback Domain Error:`, fallbackResult.error.message);
+        return { id: "delivery-error", error: fallbackResult.error.message };
       }
 
       console.log(`✅ Resend Email sent successfully via Fallback Domain (${FALLBACK_FROM})! ID: ${fallbackResult.data?.id}`);
@@ -51,19 +41,8 @@ async function sendResendEmail(options: { to: string; subject: string; html: str
     console.log(`✅ Resend Email sent successfully via Primary Domain (${PRIMARY_FROM})! ID: ${result.data?.id}`);
     return result.data;
   } catch (err: any) {
-    console.warn(`⚠️ Resend API Exception: ${err.message}. Retrying via Nodemailer SMTP...`);
-    try {
-      return await transporter.sendMail({
-        from: `"Labor Union Management" <${process.env.EMAIL_USER || "satishgoudarcr@gmail.com"}>`,
-        to,
-        subject,
-        text: text || "",
-        html
-      });
-    } catch (smtpErr: any) {
-      console.error(`❌ Email delivery status:`, smtpErr.message);
-      return { id: "delivery-logged", warning: smtpErr.message };
-    }
+    console.error(`❌ Resend API Exception: ${err.message}`);
+    return { id: "delivery-error", error: err.message };
   }
 }
 

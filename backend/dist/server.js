@@ -6,8 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const dotenv_1 = __importDefault(require("dotenv"));
 // Load .env before anything else
 dotenv_1.default.config();
-console.log("EMAIL_USER:", process.env.EMAIL_USER);
-console.log("EMAIL_PASS:", process.env.EMAIL_PASS ? "Loaded" : "Missing");
+console.log("RESEND_API_KEY:", process.env.RESEND_API_KEY ? "Loaded" : "Missing");
 const http_1 = __importDefault(require("http"));
 require("./config/mail");
 const app_1 = __importDefault(require("./app"));

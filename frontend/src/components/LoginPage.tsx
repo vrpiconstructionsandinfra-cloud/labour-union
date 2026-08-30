@@ -34,12 +34,18 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   setDarkMode
 }) => {
   const [isEnquiryModalOpen, setIsEnquiryModalOpen] = useState(false);
-  const [email, setEmail] = useState('satishgoudarcr@gmail.com');
-  const [password, setPassword] = useState('satish@123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(false);
   const [language, setLanguage] = useState('English');
   const [showLangDropdown, setShowLangDropdown] = useState(false);
+
+  // Force empty fields on initial load / refresh to bypass browser autofill
+  useEffect(() => {
+    setEmail('');
+    setPassword('');
+  }, []);
 
   // Forgot Password View Toggle
   const [isForgotView, setIsForgotView] = useState(false);
@@ -408,7 +414,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="login-form">
+            <form onSubmit={handleSubmit} className="login-form" autoComplete="off">
               {waitingForMobileAuth ? (
                 <div className="animate-fade-in" style={{ textAlign: 'center', padding: '8px 0' }}>
                   <div
@@ -504,6 +510,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                       <Mail size={18} className="input-icon" />
                       <input
                         type="email"
+                        id="forgot-email-input"
+                        name="forgot_email_field"
+                        autoComplete="off"
                         required
                         value={forgotEmail}
                         onChange={(e) => {
@@ -559,6 +568,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                       <Mail size={18} className="input-icon" />
                       <input
                         type="email"
+                        id="login-email-input"
+                        name="login_email_unq"
+                        autoComplete="off"
                         value={email}
                         onChange={(e) => {
                           setEmail(e.target.value);
@@ -581,6 +593,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                       <Lock size={18} className="input-icon" />
                       <input
                         type={showPassword ? 'text' : 'password'}
+                        id="login-password-input"
+                        name="login_password_unq"
+                        autoComplete="new-password"
                         value={password}
                         onChange={(e) => {
                           setPassword(e.target.value);
