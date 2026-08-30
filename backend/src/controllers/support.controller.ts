@@ -10,8 +10,17 @@ export async function createSupportTicket(
 ) {
   try {
     const { subject, description, priority, workerId, handledById, agentId, attachmentUrl } = req.body;
-    const targetWorkerId = workerId ? Number(workerId) : req.user!.id;
-    const targetAgentId = handledById || agentId ? Number(handledById || agentId) : undefined;
+    const reqUser = (req as any).user;
+
+    if (reqUser?.role === 'WORKER') {
+      return res.status(403).json({
+        success: false,
+        message: "Support ticket creation is disabled for workers.",
+      });
+    }
+
+    const targetWorkerId = workerId && Number(workerId) > 0 ? Number(workerId) : (agentId ? Number(agentId) : reqUser?.id);
+    const targetAgentId = handledById ? Number(handledById) : undefined;
 
     const ticket = await supportService.createTicket(
       targetWorkerId,

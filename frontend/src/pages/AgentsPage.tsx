@@ -7,6 +7,7 @@ import {
   Eye,
   ArrowLeft,
   User,
+  Calendar,
   X,
   MoreVertical,
   Edit2,
@@ -55,6 +56,7 @@ export const AgentsPage: React.FC<AgentsPageProps> = ({
 
   // Selected Agent State
   const [selectedAgentId, setSelectedAgentId] = useState<string | number | null>(null);
+  const [activeMobileView, setActiveMobileView] = useState<'DIRECTORY' | 'DETAILS'>('DIRECTORY');
 
   // Interactive Dynamic Calendar State (Default Today's Current Date)
   const [calendarDate, setCalendarDate] = useState<Date>(new Date());
@@ -380,10 +382,30 @@ export const AgentsPage: React.FC<AgentsPageProps> = ({
         </button>
       </div>
 
+      {/* Mobile & Tablet Panel View Switcher Bar (Visible on <= 1024px) */}
+      <div className="mobile-view-switcher-bar">
+        <button
+          type="button"
+          className={`mobile-view-tab-btn ${activeMobileView === 'DIRECTORY' ? 'active' : ''}`}
+          onClick={() => setActiveMobileView('DIRECTORY')}
+        >
+          <User size={15} />
+          <span>Agents Directory ({filteredAgents.length})</span>
+        </button>
+        <button
+          type="button"
+          className={`mobile-view-tab-btn ${activeMobileView === 'DETAILS' ? 'active' : ''}`}
+          onClick={() => setActiveMobileView('DETAILS')}
+        >
+          <Calendar size={15} />
+          <span>Agent Details & Calendar</span>
+        </button>
+      </div>
+
       {/* Main Dual-Panel Grid Layout */}
       <div className="agents-dual-panel-grid">
         {/* LEFT COLUMN: Agents Directory & Daily Tables */}
-        <div className="left-panel-column">
+        <div className={`left-panel-column ${activeMobileView === 'DIRECTORY' ? 'mobile-show' : 'mobile-hide'}`}>
           {/* Search & Filter Bar */}
           <div className="agents-filter-bar">
             <div className="search-box-wrapper">
@@ -486,7 +508,10 @@ export const AgentsPage: React.FC<AgentsPageProps> = ({
                         <tr
                           key={agent.id}
                           className={`agent-row ${isSelected ? 'row-selected' : ''}`}
-                          onClick={() => setSelectedAgentId(agent.id)}
+                          onClick={() => {
+                            setSelectedAgentId(agent.id);
+                            setActiveMobileView('DETAILS');
+                          }}
                         >
                           <td className="agent-id-code">
                             {agent.employeeCode || `AGT-${1000 + Number(agent.id)}`}
@@ -850,7 +875,7 @@ export const AgentsPage: React.FC<AgentsPageProps> = ({
         </div>
 
         {/* RIGHT COLUMN: Selected Agent Detail & Work History Calendar Panel */}
-        <div className="right-panel-column">
+        <div className={`right-panel-column ${activeMobileView === 'DETAILS' ? 'mobile-show' : 'mobile-hide'}`}>
           {selectedAgent ? (
             <>
               {/* Breadcrumb & Navigation Bar */}
@@ -864,11 +889,12 @@ export const AgentsPage: React.FC<AgentsPageProps> = ({
                 <button
                   className="back-to-agents-btn"
                   onClick={() => {
+                    setActiveMobileView('DIRECTORY');
                     if (agents.length > 0) setSelectedAgentId(agents[0].id);
                   }}
                 >
                   <ArrowLeft size={14} />
-                  <span>Back to Agents</span>
+                  <span>Back to Directory</span>
                 </button>
               </div>
 

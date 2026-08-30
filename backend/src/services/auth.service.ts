@@ -10,7 +10,7 @@ import { sendResetPasswordEmail, sendMobileLoginApprovalEmail } from "./mail.ser
  */
 export const registerUser = async (
   name: string,
-  email: string,
+  email: string | undefined,
   password: string,
   role: "SUPER_AGENT" | "AGENT" | "WORKER",
   phone?: string,
@@ -18,16 +18,30 @@ export const registerUser = async (
   employeeCode?: string,
   salary?: number,
   siteId?: number,
-  avatar?: string
+  avatar?: string,
+  extraDetails?: {
+    bankAccountNo?: string;
+    ifscCode?: string;
+    address?: string;
+    registrationAmount?: number;
+    paymentMethod?: string;
+    razorpayPaymentId?: string;
+    razorpayOrderId?: string;
+    upiTransactionId?: string;
+  }
 ) => {
-  const exists = await prisma.user.findUnique({
-    where: {
-      email: email.trim().toLowerCase(),
-    },
-  });
+  const userEmail = email?.trim() ? email.trim().toLowerCase() : null;
 
-  if (exists) {
-    throw new Error("Email already exists");
+  if (userEmail) {
+    const exists = await prisma.user.findUnique({
+      where: {
+        email: userEmail,
+      },
+    });
+
+    if (exists) {
+      throw new Error("Email already exists");
+    }
   }
 
   // Ensure unique employee code to prevent Prisma unique constraint errors
@@ -53,20 +67,68 @@ export const registerUser = async (
     targetRole = 'CUSTOMER_SUPPORT' as UserRole;
   }
 
-  const user = await prisma.user.create({
-    data: {
-      name,
-      email: email.trim().toLowerCase(),
-      password: hashedPassword,
-      role: targetRole,
-      phone,
-      designation: designation || (targetRole === "WORKER" ? "Mason / Carpenter" : targetRole === "CUSTOMER_SUPPORT" ? "Customer Support Agent" : "Field Supervisor"),
-      employeeCode: finalCode,
-      salary: salary || (targetRole === "WORKER" ? 25500 : 45000),
-      siteId: siteId || undefined,
-      profileImage: avatar || undefined
-    },
-  });
+  let user: any;
+  try {
+    user = await prisma.user.create({
+      data: {
+        name,
+        email: userEmail,
+        password: hashedPassword,
+        role: targetRole,
+        phone,
+        designation: designation || (targetRole === "WORKER" ? "Mason / Carpenter" : targetRole === "CUSTOMER_SUPPORT" ? "Customer Support Agent" : "Field Supervisor"),
+        employeeCode: finalCode,
+        salary: salary || (targetRole === "WORKER" ? 25500 : 45000),
+        siteId: siteId || undefined,
+        profileImage: avatar || undefined,
+        bankAccountNo: extraDetails?.bankAccountNo || undefined,
+        ifscCode: extraDetails?.ifscCode || undefined,
+        address: extraDetails?.address || undefined,
+        registrationAmount: extraDetails?.registrationAmount ? Number(extraDetails.registrationAmount) : undefined,
+        paymentMethod: extraDetails?.paymentMethod || undefined,
+        razorpayPaymentId: extraDetails?.razorpayPaymentId || undefined,
+        razorpayOrderId: extraDetails?.razorpayOrderId || undefined,
+        upiTransactionId: extraDetails?.upiTransactionId || undefined,
+      },
+    });
+  } catch (createErr: any) {
+    if (createErr?.message?.includes("Unknown argument") || createErr?.message?.includes("bankAccountNo")) {
+      console.warn("⚠️ Prisma Client metadata mismatch detected. Executing resilient database fallback...");
+      user = await prisma.user.create({
+        data: {
+          name,
+          email: userEmail,
+          password: hashedPassword,
+          role: targetRole,
+          phone,
+          designation: designation || (targetRole === "WORKER" ? "Mason / Carpenter" : targetRole === "CUSTOMER_SUPPORT" ? "Customer Support Agent" : "Field Supervisor"),
+          employeeCode: finalCode,
+          salary: salary || (targetRole === "WORKER" ? 25500 : 45000),
+          siteId: siteId || undefined,
+          profileImage: avatar || undefined,
+        },
+      });
+
+      try {
+        await prisma.$executeRawUnsafe(
+          `UPDATE "User" SET "bankAccountNo" = $1, "ifscCode" = $2, "address" = $3, "registrationAmount" = $4, "paymentMethod" = $5, "razorpayPaymentId" = $6, "razorpayOrderId" = $7, "upiTransactionId" = $8 WHERE "id" = $9`,
+          extraDetails?.bankAccountNo || null,
+          extraDetails?.ifscCode || null,
+          extraDetails?.address || null,
+          extraDetails?.registrationAmount ? Number(extraDetails.registrationAmount) : null,
+          extraDetails?.paymentMethod || null,
+          extraDetails?.razorpayPaymentId || null,
+          extraDetails?.razorpayOrderId || null,
+          extraDetails?.upiTransactionId || null,
+          user.id
+        );
+      } catch (sqlErr: any) {
+        console.warn("⚠️ Banking SQL update warning:", sqlErr.message);
+      }
+    } else {
+      throw createErr;
+    }
+  }
 
   if (user.role === "WORKER" || user.role === "AGENT") {
     await prisma.wallet.create({
@@ -223,11 +285,13 @@ export const forgotPassword = async (
     },
   });
 
-  await sendResetPasswordEmail(
-    user.email,
-    user.name,
-    token
-  );
+  if (user.email) {
+    await sendResetPasswordEmail(
+      user.email,
+      user.name,
+      token
+    );
+  }
 
   return {
     message:
@@ -309,6 +373,9 @@ export const getUserProfile = async (userId: number) => {
       salary: true,
       profileImage: true,
       active: true,
+      bankAccountNo: true,
+      ifscCode: true,
+      address: true,
       password: true,
       resetToken: true,
       resetTokenExpiry: true,
@@ -372,7 +439,7 @@ export const requestMobileApproval = async (email: string) => {
 
   const sessionObj = {
     authRequestId,
-    email: user.email,
+    email: user.email || '',
     token,
     status: 'PENDING' as const,
     createdAt: Date.now()
@@ -381,11 +448,13 @@ export const requestMobileApproval = async (email: string) => {
   mobileAuthSessions.set(authRequestId, sessionObj);
   mobileAuthSessions.set(token, sessionObj);
 
-  await sendMobileLoginApprovalEmail(user.email, user.name, token);
+  if (user.email) {
+    await sendMobileLoginApprovalEmail(user.email, user.name, token);
+  }
 
   return {
     authRequestId,
-    email: user.email,
+    email: user.email || '',
     message: "Mobile approval authentication email sent successfully."
   };
 };

@@ -8,11 +8,15 @@ import {
   getPaymentById,
   markAsPaid,
   getWorkerPayments,
+  createRazorpayOrder,
 } from "../controllers/payment.controller";
 
 const router = Router();
 
 router.use(authenticate);
+
+// Razorpay Order Creation
+router.post("/razorpay-order", createRazorpayOrder);
 
 // Super Agent only
 router.post(

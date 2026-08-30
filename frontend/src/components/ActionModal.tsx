@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Search, AlertCircle, Loader2, Bell, Send, CheckCheck, Megaphone, Calendar, DollarSign, Wallet, MessageSquare, Paperclip, UploadCloud, Trash2, Clock, Building2, FileSpreadsheet, Camera, Eye, EyeOff, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { X, Check, Search, AlertCircle, Loader2, Bell, Send, CheckCheck, Megaphone, Calendar, DollarSign, Wallet, MessageSquare, Paperclip, UploadCloud, Trash2, Clock, Building2, FileSpreadsheet, Camera, Eye, EyeOff, RefreshCw, CheckCircle2, Copy, QrCode, CreditCard } from 'lucide-react';
 import {
   registerUserApi,
   updateUserApi,
@@ -28,7 +28,8 @@ import {
   clearAllNotificationsApi,
   deleteNotificationApi,
   sendEmailVerificationCodeApi,
-  verifyEmailCodeApi
+  verifyEmailCodeApi,
+  createRazorpayOrderApi
 } from '../services/api';
 import type { WorkerItem, AgentItem, SiteItem, SupportTicket, TicketComment, NotificationItem } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -105,13 +106,8 @@ export const ActionModal: React.FC<ActionModalProps> = ({
   const [activePhotoCaptureType, setActivePhotoCaptureType] = useState<'SIGN_IN' | 'SIGN_OUT' | null>(null);
   const [bypass8HourCheck, setBypass8HourCheck] = useState<boolean>(false);
 
-  // Email Verification OTP States for Register Worker
-  const [emailCode, setEmailCode] = useState<string>('');
-  const [isCodeSent, setIsCodeSent] = useState<boolean>(false);
+  // Email Verification State for Register Worker/Agent
   const [isEmailVerified, setIsEmailVerified] = useState<boolean>(false);
-  const [isSendingCode, setIsSendingCode] = useState<boolean>(false);
-  const [isVerifyingCode, setIsVerifyingCode] = useState<boolean>(false);
-  const [verificationMsg, setVerificationMsg] = useState<string | null>(null);
 
   const startAttendancePhotoCamera = async (type: 'SIGN_IN' | 'SIGN_OUT') => {
     setActivePhotoCaptureType(type);
@@ -209,6 +205,23 @@ export const ActionModal: React.FC<ActionModalProps> = ({
   const [designation, setDesignation] = useState('');
   const [salary, setSalary] = useState('');
   const [password, setPassword] = useState('');
+
+  // New Agent Registration Bank & Payment States
+  const [bankAccountNo, setBankAccountNo] = useState('');
+  const [ifscCode, setIfscCode] = useState('');
+  const [agentAddress, setAgentAddress] = useState('');
+  const [registrationAmount, setRegistrationAmount] = useState('500');
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'UPI'>('CASH');
+  const [upiTransactionId, setUpiTransactionId] = useState('');
+  const [copiedUpiId, setCopiedUpiId] = useState(false);
+
+  const handleCopyUpiId = () => {
+    try {
+      navigator.clipboard.writeText('laborunion@upi');
+      setCopiedUpiId(true);
+      setTimeout(() => setCopiedUpiId(false), 2000);
+    } catch (e) {}
+  };
 
   // Agent OTP & Temp Password States
   const [showPassword, setShowPassword] = useState(false);
@@ -405,6 +418,12 @@ export const ActionModal: React.FC<ActionModalProps> = ({
         setIsVerifyingOtp(false);
         setOtpSentMessage(null);
         setShowPassword(false);
+        setBankAccountNo('');
+        setIfscCode('');
+        setAgentAddress('');
+        setRegistrationAmount('500');
+        setPaymentMethod('CASH');
+        setUpiTransactionId('');
       }
       setSiteName('');
       setSiteCode('');
@@ -876,8 +895,6 @@ export const ActionModal: React.FC<ActionModalProps> = ({
         return;
       }
       if (!name.trim()) { setErrorMsg('Worker Full Name is required.'); return; }
-      if (!email.trim()) { setErrorMsg('Email Address is required.'); return; }
-      if (!isEmailVerified) { setErrorMsg('Worker email address verification is required before registration. Please send & verify the 6-digit OTP code.'); return; }
       if (!employeeCode.trim()) { setErrorMsg('Employee Code is required.'); return; }
       if (!phone.trim()) { setErrorMsg('Phone Number is required.'); return; }
       if (phone.trim().length < 10) { setErrorMsg('Phone Number must contain at least 10 digits.'); return; }
@@ -888,7 +905,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
       try {
         await registerUserApi({
           name: name.trim(),
-          email: email.trim(),
+          email: email.trim() || undefined,
           password: password,
           role: 'WORKER',
           phone: phone.trim(),
@@ -896,7 +913,13 @@ export const ActionModal: React.FC<ActionModalProps> = ({
           employeeCode: employeeCode.trim(),
           salary: Number(salary) || 25500,
           siteId: selectedSiteId ? Number(selectedSiteId) : undefined,
-          avatar: workerAvatar || undefined
+          avatar: workerAvatar || undefined,
+          bankAccountNo: bankAccountNo.trim() || undefined,
+          ifscCode: ifscCode.trim().toUpperCase() || undefined,
+          address: agentAddress.trim() || undefined,
+          registrationAmount: registrationAmount ? Number(registrationAmount) : 500,
+          paymentMethod: paymentMethod,
+          upiTransactionId: upiTransactionId.trim() || undefined
         });
 
         setIsLoading(false);
@@ -955,31 +978,100 @@ export const ActionModal: React.FC<ActionModalProps> = ({
       if (!password) { setErrorMsg('Password is required.'); return; }
       if (password.length < 6) { setErrorMsg('Password must be at least 6 characters long.'); return; }
 
-      setIsLoading(true);
-      try {
-        await registerUserApi({
-          name: name.trim(),
-          email: email.trim(),
-          password: password,
-          role: 'AGENT',
-          phone: phone.trim(),
-          designation: designation || 'Field Supervisor',
-          employeeCode: employeeCode.trim(),
-          siteId: selectedSiteId ? Number(selectedSiteId) : undefined,
-          avatar: workerAvatar || undefined
-        });
+      const executeAgentRegistration = async (paymentDetails?: { razorpayPaymentId?: string; razorpayOrderId?: string }) => {
+        setIsLoading(true);
+        try {
+          await registerUserApi({
+            name: name.trim(),
+            email: email.trim(),
+            password: password,
+            role: 'AGENT',
+            phone: phone.trim(),
+            designation: designation || 'Field Supervisor',
+            employeeCode: employeeCode.trim(),
+            siteId: selectedSiteId ? Number(selectedSiteId) : undefined,
+            avatar: workerAvatar || undefined,
+            bankAccountNo: bankAccountNo.trim() || undefined,
+            ifscCode: ifscCode.trim() || undefined,
+            address: agentAddress.trim() || undefined,
+            registrationAmount: registrationAmount ? Number(registrationAmount) : 500,
+            paymentMethod: paymentMethod,
+            razorpayPaymentId: paymentDetails?.razorpayPaymentId,
+            razorpayOrderId: paymentDetails?.razorpayOrderId,
+            upiTransactionId: upiTransactionId.trim() || undefined,
+          });
 
-        setIsLoading(false);
-        setSubmitted(true);
-        if (onSuccessRefresh) onSuccessRefresh();
+          setIsLoading(false);
+          setSubmitted(true);
+          if (onSuccessRefresh) onSuccessRefresh();
 
-        setTimeout(() => {
-          setSubmitted(false);
-          onClose();
-        }, 1500);
-      } catch (err: any) {
-        setIsLoading(false);
-        setErrorMsg(err.message || 'Failed to register agent');
+          setTimeout(() => {
+            setSubmitted(false);
+            onClose();
+          }, 1500);
+        } catch (err: any) {
+          setIsLoading(false);
+          setErrorMsg(err.message || 'Failed to register agent');
+        }
+      };
+
+      if (paymentMethod === 'UPI') {
+        setIsLoading(true);
+        try {
+          // Load Razorpay Checkout SDK dynamically if not loaded
+          if (!(window as any).Razorpay) {
+            await new Promise((resolve, reject) => {
+              const script = document.createElement('script');
+              script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+              script.onload = resolve;
+              script.onerror = () => reject(new Error('Failed to load Razorpay SDK'));
+              document.body.appendChild(script);
+            });
+          }
+
+          const orderRes = await createRazorpayOrderApi(Number(registrationAmount) || 500);
+          const orderData = orderRes.data || orderRes;
+
+          const options: any = {
+            key: orderData.keyId || 'rzp_test_TUlG2PT9HSDHcY',
+            amount: orderData.amount || Math.round((Number(registrationAmount) || 500) * 100),
+            currency: orderData.currency || 'INR',
+            name: 'Labor Union Management System',
+            description: 'New Agent Registration Fee',
+            prefill: {
+              name: name.trim(),
+              email: email.trim(),
+              contact: phone.trim()
+            },
+            theme: {
+              color: '#2563EB'
+            },
+            handler: async function (response: any) {
+              await executeAgentRegistration({
+                razorpayPaymentId: response.razorpay_payment_id || `pay_${Date.now()}`,
+                razorpayOrderId: response.razorpay_order_id || orderData.orderId
+              });
+            },
+            modal: {
+              ondismiss: function () {
+                setIsLoading(false);
+                setErrorMsg('Payment cancelled by user. Agent registration requires completed payment.');
+              }
+            }
+          };
+
+          if (orderData.orderId && !orderData.isMock && !String(orderData.orderId).includes('mock') && !String(orderData.orderId).includes('fallback')) {
+            options.order_id = orderData.orderId;
+          }
+
+          const rzp = new (window as any).Razorpay(options);
+          rzp.open();
+        } catch (err: any) {
+          setIsLoading(false);
+          setErrorMsg(err.message || 'Failed to initiate Razorpay UPI payment');
+        }
+      } else {
+        await executeAgentRegistration({});
       }
     } else if (type === 'generate_payroll' || type === 'payroll') {
       setIsLoading(true);
@@ -1018,7 +1110,8 @@ export const ActionModal: React.FC<ActionModalProps> = ({
           subject: ticketSubject.trim() || 'Safety Equipment & PPE Request',
           description: ticketDescription.trim(),
           priority: ticketPriority,
-          workerId: ticketWorkerId && !isNaN(Number(ticketWorkerId)) ? Number(ticketWorkerId) : undefined,
+          agentId: user?.id ? Number(user.id) : undefined,
+          workerId: ticketWorkerId && !isNaN(Number(ticketWorkerId)) && Number(ticketWorkerId) > 0 ? Number(ticketWorkerId) : undefined,
           handledById: ticketAgentId ? Number(ticketAgentId) : undefined,
           attachmentUrl: attachmentDataUrl || undefined
         });
@@ -2050,128 +2143,14 @@ export const ActionModal: React.FC<ActionModalProps> = ({
                 </div>
 
                 <div className="form-group">
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <label style={{ margin: 0 }}>Email Address *</label>
-                    {isEmailVerified ? (
-                      <span style={{ fontSize: '11px', fontWeight: 800, color: '#059669', backgroundColor: '#ECFDF5', padding: '2px 8px', borderRadius: '10px', border: '1px solid #A7F3D0', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        ✓ Email Verified
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          if (!email || !email.trim()) {
-                            setErrorMsg('Please enter worker Email Address first.');
-                            return;
-                          }
-                          setErrorMsg(null);
-                          setVerificationMsg(null);
-                          setIsSendingCode(true);
-                          try {
-                            await sendEmailVerificationCodeApi(email.trim(), name || 'Worker');
-                            setIsSendingCode(false);
-                            setIsCodeSent(true);
-                            setVerificationMsg(`Verification code sent to ${email.trim()}.`);
-                          } catch (err: any) {
-                            setIsSendingCode(false);
-                            setErrorMsg(err.message || 'Failed to send verification code');
-                          }
-                        }}
-                        disabled={isSendingCode || isEmailVerified}
-                        style={{
-                          backgroundColor: '#EFF6FF',
-                          color: '#2563EB',
-                          border: '1px solid #BFDBFE',
-                          borderRadius: '6px',
-                          padding: '3px 10px',
-                          fontSize: '11px',
-                          fontWeight: 800,
-                          cursor: isSendingCode ? 'wait' : 'pointer'
-                        }}
-                      >
-                        {isSendingCode ? 'Sending Code...' : isCodeSent ? 'Resend Code' : 'Send Verification Code'}
-                      </button>
-                    )}
-                  </div>
+                  <label>Email Address (Optional)</label>
                   <input
                     type="email"
-                    required
-                    disabled={isEmailVerified}
                     autoComplete="off"
-                    placeholder="e.g. ramesh.worker@laborunion.com"
+                    placeholder="e.g. ramesh.worker@laborunion.com (Optional)"
                     value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      setIsCodeSent(false);
-                      setIsEmailVerified(false);
-                      setVerificationMsg(null);
-                    }}
+                    onChange={(e) => setEmail(e.target.value)}
                   />
-
-                  {/* Verification OTP Code Box */}
-                  {isCodeSent && !isEmailVerified && (
-                    <div style={{ marginTop: '10px', backgroundColor: '#F8FAFC', padding: '12px', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
-                      <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                        <span>Enter 6-Digit Email Verification Code *</span>
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <input
-                          type="text"
-                          maxLength={6}
-                          placeholder="e.g. 481902"
-                          value={emailCode}
-                          onChange={(e) => setEmailCode(e.target.value)}
-                          style={{
-                            flex: 1,
-                            letterSpacing: '4px',
-                            fontWeight: 800,
-                            textAlign: 'center',
-                            fontSize: '15px',
-                            padding: '6px 12px'
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            if (!emailCode || emailCode.trim().length < 4) {
-                              setErrorMsg('Please enter the 6-digit verification code.');
-                              return;
-                            }
-                            setErrorMsg(null);
-                            setIsVerifyingCode(true);
-                            try {
-                              await verifyEmailCodeApi(email.trim(), emailCode.trim());
-                              setIsVerifyingCode(false);
-                              setIsEmailVerified(true);
-                              setVerificationMsg('✓ Email address verified successfully! You can now complete registration.');
-                            } catch (err: any) {
-                              setIsVerifyingCode(false);
-                              setErrorMsg(err.message || 'Invalid verification code');
-                            }
-                          }}
-                          disabled={isVerifyingCode}
-                          style={{
-                            backgroundColor: '#059669',
-                            color: '#FFFFFF',
-                            border: 'none',
-                            borderRadius: '8px',
-                            padding: '6px 16px',
-                            fontSize: '12px',
-                            fontWeight: 800,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {isVerifyingCode ? 'Verifying...' : 'Verify Code'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {verificationMsg && (
-                    <span style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: isEmailVerified ? '#059669' : '#2563EB', marginTop: '4px' }}>
-                      {verificationMsg}
-                    </span>
-                  )}
                 </div>
 
                 <div className="form-row">
@@ -2223,15 +2202,6 @@ export const ActionModal: React.FC<ActionModalProps> = ({
 
                 <div className="form-row">
                   <div className="form-group flex-1">
-                    <label>Monthly Base Salary (₹)</label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 25500"
-                      value={salary}
-                      onChange={(e) => setSalary(e.target.value)}
-                    />
-                  </div>
-                  <div className="form-group flex-1">
                     <label>Phone Number *</label>
                     <input
                       type="text"
@@ -2242,50 +2212,203 @@ export const ActionModal: React.FC<ActionModalProps> = ({
                       onChange={(e) => setPhone(e.target.value)}
                     />
                   </div>
+
+                  {type !== 'edit_worker' && (
+                    <div className="form-group flex-1">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <label style={{ margin: 0 }}>Password *</label>
+                        <button
+                          type="button"
+                          onClick={() => setPassword(generateWorkerTempPassword())}
+                          title="Generate New Auto Temp Password"
+                          style={{ background: 'none', border: 'none', color: '#2563EB', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                        >
+                          <RefreshCw size={12} /> Refresh Temp
+                        </button>
+                      </div>
+                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          required
+                          minLength={6}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="Enter login password..."
+                          style={{ paddingRight: '38px', width: '100%' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          style={{ position: 'absolute', right: '10px', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                        >
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {type !== 'edit_worker' && (
-                  <div className="form-group flex-1">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                      <label style={{ margin: 0 }}>Password *</label>
-                      <button
-                        type="button"
-                        onClick={() => setPassword(generateWorkerTempPassword())}
-                        title="Generate New Auto Temp Password"
-                        style={{ background: 'none', border: 'none', color: '#2563EB', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
-                      >
-                        <RefreshCw size={12} /> Refresh Temp
-                      </button>
-                    </div>
-                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        required
-                        minLength={6}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Enter login password..."
-                        style={{ paddingRight: '38px', width: '100%' }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        style={{ position: 'absolute', right: '10px', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
-                      >
-                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
-                    <span style={{ fontSize: '11px', color: '#059669', fontWeight: 600, marginTop: '4px', display: 'block' }}>
-                      ⚡ Auto-generated temporary password for new worker. Sent via email on registration.
-                    </span>
+                {/* Banking & Residential Address Section */}
+                <div style={{ backgroundColor: '#F8FAFC', padding: '14px', borderRadius: '12px', border: '1px solid #E2E8F0', marginTop: '10px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#1E293B', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <CreditCard size={15} color="#2563EB" />
+                    <span>Banking & Residential Address</span>
                   </div>
-                )}
+
+                  <div className="form-row" style={{ marginBottom: '10px' }}>
+                    <div className="form-group flex-1">
+                      <label>Bank Account Number</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 98765432101234"
+                        value={bankAccountNo}
+                        onChange={(e) => setBankAccountNo(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group flex-1">
+                      <label>IFSC Code</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. SBIN0001234"
+                        value={ifscCode}
+                        onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Full Residential Address</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Flat 302, MG Road, Landmark, City, State"
+                      value={agentAddress}
+                      onChange={(e) => setAgentAddress(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Worker Registration Fee & Payment Method Section */}
+                <div style={{ backgroundColor: '#EFF6FF', padding: '14px', borderRadius: '12px', border: '1px solid #BFDBFE', marginTop: '10px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#1E40AF', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <DollarSign size={15} color="#2563EB" />
+                    <span>Worker Registration Fee & Payment Method</span>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group flex-1">
+                      <label style={{ color: '#1E3A8A' }}>Registration Amount (INR) *</label>
+                      <input
+                        type="number"
+                        required
+                        value={registrationAmount}
+                        onChange={(e) => setRegistrationAmount(e.target.value)}
+                        placeholder="500"
+                        style={{ fontWeight: 700, color: '#0F172A' }}
+                      />
+                    </div>
+
+                    <div className="form-group flex-1">
+                      <label style={{ color: '#1E3A8A' }}>Payment Method *</label>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod('CASH')}
+                          style={{
+                            flex: 1,
+                            padding: '9px 12px',
+                            borderRadius: '8px',
+                            border: paymentMethod === 'CASH' ? '2px solid #2563EB' : '1px solid #CBD5E1',
+                            backgroundColor: paymentMethod === 'CASH' ? '#FFFFFF' : '#F8FAFC',
+                            color: paymentMethod === 'CASH' ? '#2563EB' : '#64748B',
+                            fontWeight: 800,
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          💵 Cash
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod('UPI')}
+                          style={{
+                            flex: 1,
+                            padding: '9px 12px',
+                            borderRadius: '8px',
+                            border: paymentMethod === 'UPI' ? '2px solid #2563EB' : '1px solid #CBD5E1',
+                            backgroundColor: paymentMethod === 'UPI' ? '#FFFFFF' : '#F8FAFC',
+                            color: paymentMethod === 'UPI' ? '#2563EB' : '#64748B',
+                            fontWeight: 800,
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          📱 UPI / Razorpay
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {paymentMethod === 'UPI' && (
+                    <div style={{ marginTop: '12px', padding: '14px', backgroundColor: '#FFFFFF', borderRadius: '10px', border: '1px solid #DBEAFE', textAlign: 'center' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 800, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Scan & Pay via UPI App (Google Pay / PhonePe / Paytm / BHIM)
+                      </div>
+                      <div style={{ margin: '10px auto', width: '130px', height: '130px', padding: '6px', backgroundColor: '#FFF', border: '2px dashed #2563EB', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(
+                            `upi://pay?pa=laborunion@upi&pn=Labor%20Union%20Management&am=${registrationAmount || 500}&cu=INR`
+                          )}`}
+                          alt="UPI QR Code"
+                          style={{ width: '100%', height: '100%', borderRadius: '6px' }}
+                        />
+                      </div>
+                      <div style={{ fontSize: '12px', fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                        <span>UPI VPA: <strong>laborunion@upi</strong></span>
+                        <button
+                          type="button"
+                          onClick={handleCopyUpiId}
+                          style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#2563EB', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 800, cursor: 'pointer' }}
+                        >
+                          {copiedUpiId ? '✓ Copied' : 'Copy UPI ID'}
+                        </button>
+                      </div>
+
+                      <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '10px', backgroundColor: '#ECFDF5', color: '#047857', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>GPay</span>
+                        <span style={{ fontSize: '10px', backgroundColor: '#EFF6FF', color: '#1D4ED8', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>PhonePe</span>
+                        <span style={{ fontSize: '10px', backgroundColor: '#F0F9FF', color: '#0284C7', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>Paytm</span>
+                        <span style={{ fontSize: '10px', backgroundColor: '#FFF7ED', color: '#C2410C', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>BHIM UPI</span>
+                      </div>
+
+                      <div style={{ marginTop: '12px', textAlign: 'left' }}>
+                        <label style={{ fontSize: '11.5px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '4px' }}>
+                          Enter UPI Transaction ID / UTR No. (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 423891028491 or UTR-98765"
+                          value={upiTransactionId}
+                          onChange={(e) => setUpiTransactionId(e.target.value)}
+                          style={{ width: '100%', fontSize: '12px', padding: '8px 12px', borderRadius: '6px', border: '1px solid #CBD5E1' }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <div className="modal-footer mt-12">
                   <button type="button" className="btn-cancel" onClick={onClose} disabled={isLoading}>
                     Cancel
                   </button>
-                  <button type="submit" className="btn-submit" disabled={isLoading || !isEmailVerified} title={!isEmailVerified ? "Worker email verification required before registration" : ""}>
+                  <button type="submit" className="btn-submit" disabled={isLoading}>
                     {isLoading ? (
                       <span className="btn-loading-content">
                         <Loader2 size={16} className="spinner" /> {type === 'edit_worker' ? 'Updating...' : 'Registering...'}
@@ -2521,6 +2644,219 @@ export const ActionModal: React.FC<ActionModalProps> = ({
                       </button>
                     </div>
                   </div>
+                </div>
+
+                {/* Banking & Personal Address Details */}
+                <div style={{ marginTop: '16px', marginBottom: '16px', padding: '14px', borderRadius: '10px', background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Building2 size={16} style={{ color: '#2563EB' }} />
+                    <span>Banking & Residential Address</span>
+                  </div>
+
+                  <div className="form-row" style={{ marginBottom: '12px' }}>
+                    <div className="form-group flex-1" style={{ margin: 0 }}>
+                      <label>Bank Account Number</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 98765432101234"
+                        value={bankAccountNo}
+                        onChange={(e) => setBankAccountNo(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group flex-1" style={{ margin: 0 }}>
+                      <label>IFSC Code</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. SBIN0001234"
+                        value={ifscCode}
+                        onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label>Full Residential Address</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Flat 302, MG Road, Landmark, City, State"
+                      value={agentAddress}
+                      onChange={(e) => setAgentAddress(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Registration Fee & Payment Method Section */}
+                <div style={{ marginBottom: '18px', padding: '14px', borderRadius: '10px', background: 'rgba(37, 99, 235, 0.04)', border: '1px solid rgba(37, 99, 235, 0.15)' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#2563EB', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <DollarSign size={16} />
+                    <span>Agent Registration Fee & Payment Method</span>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group flex-1">
+                      <label>Registration Amount (INR) *</label>
+                      <input
+                        type="number"
+                        required
+                        min={1}
+                        placeholder="e.g. 500"
+                        value={registrationAmount}
+                        onChange={(e) => setRegistrationAmount(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group flex-1">
+                      <label>Payment Method *</label>
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod('CASH')}
+                          style={{
+                            flex: 1,
+                            padding: '10px',
+                            borderRadius: '8px',
+                            border: paymentMethod === 'CASH' ? '2px solid #2563EB' : '1px solid var(--border-color)',
+                            backgroundColor: paymentMethod === 'CASH' ? '#EFF6FF' : 'var(--bg-card)',
+                            color: paymentMethod === 'CASH' ? '#2563EB' : 'var(--text-primary)',
+                            fontWeight: 700,
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          💵 Cash
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMethod('UPI')}
+                          style={{
+                            flex: 1,
+                            padding: '10px',
+                            borderRadius: '8px',
+                            border: paymentMethod === 'UPI' ? '2px solid #059669' : '1px solid var(--border-color)',
+                            backgroundColor: paymentMethod === 'UPI' ? '#ECFDF5' : 'var(--bg-card)',
+                            color: paymentMethod === 'UPI' ? '#059669' : 'var(--text-primary)',
+                            fontWeight: 700,
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          📱 UPI / Razorpay
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dynamic UPI QR Code Panel (Visible when UPI is selected) */}
+                  {paymentMethod === 'UPI' && (
+                    <div style={{
+                      marginTop: '14px',
+                      padding: '16px',
+                      borderRadius: '12px',
+                      background: 'linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%)',
+                      border: '1.5px dashed #059669',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13.5px', fontWeight: 800, color: '#047857', marginBottom: '10px' }}>
+                        <QrCode size={18} />
+                        <span>Scan & Pay via UPI QR Code</span>
+                      </div>
+
+                      {/* Interactive QR Code Image */}
+                      <div style={{
+                        padding: '10px',
+                        background: '#FFFFFF',
+                        borderRadius: '12px',
+                        boxShadow: '0 4px 12px rgba(5, 150, 105, 0.15)',
+                        border: '1px solid #A7F3D0',
+                        marginBottom: '10px'
+                      }}>
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`upi://pay?pa=laborunion@upi&pn=Labor%20Union%20Management&am=${registrationAmount || 500}&cu=INR`)}`}
+                          alt="UPI Payment QR Code"
+                          style={{ width: '160px', height: '160px', display: 'block', borderRadius: '6px' }}
+                        />
+                      </div>
+
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: '#065F46', marginBottom: '6px' }}>
+                        Amount to Pay: <span style={{ fontSize: '16px', color: '#047857', fontWeight: 900 }}>₹{registrationAmount || 500}</span>
+                      </div>
+
+                      {/* Official UPI ID / VPA Row with Copy Button */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        background: '#FFFFFF',
+                        padding: '6px 14px',
+                        borderRadius: '20px',
+                        border: '1px solid #A7F3D0',
+                        marginBottom: '12px'
+                      }}>
+                        <span style={{ fontSize: '12px', color: '#4B5563' }}>UPI ID:</span>
+                        <strong style={{ fontSize: '13px', color: '#047857', fontFamily: 'monospace' }}>laborunion@upi</strong>
+                        <button
+                          type="button"
+                          onClick={handleCopyUpiId}
+                          style={{
+                            background: copiedUpiId ? '#059669' : '#ECFDF5',
+                            color: copiedUpiId ? '#FFFFFF' : '#059669',
+                            border: '1px solid #059669',
+                            borderRadius: '12px',
+                            padding: '3px 8px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <Copy size={11} /> {copiedUpiId ? 'Copied!' : 'Copy'}
+                        </button>
+                      </div>
+
+                      {/* Supported App Badges */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '11px', color: '#065F46', fontWeight: 600, marginBottom: '14px' }}>
+                        <span style={{ background: '#FFFFFF', padding: '3px 8px', borderRadius: '12px', border: '1px solid #D1FAE5' }}>📱 Google Pay</span>
+                        <span style={{ background: '#FFFFFF', padding: '3px 8px', borderRadius: '12px', border: '1px solid #D1FAE5' }}>🟣 PhonePe</span>
+                        <span style={{ background: '#FFFFFF', padding: '3px 8px', borderRadius: '12px', border: '1px solid #D1FAE5' }}>💙 Paytm</span>
+                        <span style={{ background: '#FFFFFF', padding: '3px 8px', borderRadius: '12px', border: '1px solid #D1FAE5' }}>🇮🇳 BHIM UPI</span>
+                      </div>
+
+                      {/* Enter UPI Transaction ID / UTR Field */}
+                      <div className="form-group" style={{ width: '100%', margin: 0, textAlign: 'left' }}>
+                        <label style={{ color: '#047857', fontWeight: 700, fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+                          <CheckCheck size={14} /> Enter UPI Transaction ID / UTR No. (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 12-digit UTR No. (e.g. 423456789012)"
+                          value={upiTransactionId}
+                          onChange={(e) => setUpiTransactionId(e.target.value)}
+                          style={{
+                            background: '#FFFFFF',
+                            border: '1px solid #A7F3D0',
+                            borderRadius: '8px',
+                            padding: '9px 12px',
+                            fontSize: '13px',
+                            color: '#065F46',
+                            fontWeight: 600,
+                            width: '100%'
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="modal-footer mt-12">

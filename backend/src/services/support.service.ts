@@ -97,7 +97,7 @@ export async function getAllTickets(reqUser?: { id: number; role: string }) {
     where.workerId = reqUser.id;
   }
 
-  return prisma.supportTicket.findMany({
+  const tickets = await prisma.supportTicket.findMany({
     where,
     include: {
       worker: true,
@@ -116,6 +116,12 @@ export async function getAllTickets(reqUser?: { id: number; role: string }) {
       createdAt: "desc",
     },
   });
+
+  return tickets.map((t: any) => ({
+    ...t,
+    creatorName: t.worker?.name || t.handledBy?.name || "User",
+    creatorRole: t.worker?.role || "WORKER",
+  }));
 }
 
 /*
@@ -526,7 +532,7 @@ export async function getSupportAnalytics(reqUser?: { id: number; role: string }
     return {
       id: t.id,
       ticketNumber: `#TKT-${t.id}`,
-      customerName: t.worker?.name || null,
+      customerName: t.worker?.name || t.handledBy?.name || "User",
       subject: t.subject,
       action: actionText,
       timeAgo,
@@ -551,7 +557,7 @@ export async function getSupportAnalytics(reqUser?: { id: number; role: string }
       id: t.id,
       ticketNumber: `#TKT-${t.id}`,
       subject: t.subject,
-      customerName: t.worker?.name || null,
+      customerName: t.worker?.name || t.handledBy?.name || "User",
       customerPhone: t.worker?.phone || null,
       customerEmail: t.worker?.email || null,
       priority: t.priority || "MEDIUM",
