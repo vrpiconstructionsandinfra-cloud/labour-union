@@ -12,13 +12,15 @@ if (!connectionString) {
 const pool = new Pool({
   connectionString,
   max: 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 1000,
+  connectionTimeoutMillis: 15000,
+  keepAlive: true,
   ssl: connectionString.includes("render.com") || connectionString.includes("sslmode=require") ? { rejectUnauthorized: false } : undefined,
 });
 
 pool.on("error", (err) => {
-  console.warn("Database pool idle connection error handled:", err.message);
+  // Gracefully log background idle connection teardowns without crashing
+  console.warn("Database pool idle connection reset handled:", err.message);
 });
 
 const adapter = new PrismaPg(pool);

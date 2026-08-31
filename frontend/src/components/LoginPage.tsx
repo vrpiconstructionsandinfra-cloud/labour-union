@@ -1,22 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Users,
-  BarChart3,
-  ShieldCheck,
-  Smartphone,
   Mail,
   Lock,
   Eye,
   EyeOff,
-  Sun,
-  Moon,
-  Globe,
-  ChevronDown,
   AlertCircle,
   CheckCircle2,
   Loader2,
+  Headset,
   ArrowLeft,
-  Headset
+  Smartphone,
+  Rocket
 } from 'lucide-react';
 import { loginApi, forgotPasswordApi, requestMobileApprovalApi, checkApprovalStatusApi, validateLoginForm, type ValidationErrors } from '../services/api';
 import { EnquiryModal } from './EnquiryModal';
@@ -24,24 +18,20 @@ import './LoginPage.css';
 
 interface LoginPageProps {
   onLoginSuccess: (token: string, user: any) => void;
-  darkMode: boolean;
-  setDarkMode: (val: boolean | ((prev: boolean) => boolean)) => void;
+  darkMode?: boolean;
+  setDarkMode?: (val: boolean | ((prev: boolean) => boolean)) => void;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({
-  onLoginSuccess,
-  darkMode,
-  setDarkMode
+  onLoginSuccess
 }) => {
   const [isEnquiryModalOpen, setIsEnquiryModalOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [language, setLanguage] = useState('English');
-  const [showLangDropdown, setShowLangDropdown] = useState(false);
 
-  // Force empty fields on initial load / refresh to bypass browser autofill
+  // Force empty fields on load
   useEffect(() => {
     setEmail('');
     setPassword('');
@@ -98,88 +88,94 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     return () => clearInterval(id);
   }, [lockoutUntil, isLockedOut]);
 
-  const formatCountdown = (seconds: number) => {
-    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-    const s = (seconds % 60).toString().padStart(2, '0');
-    return `${m}:${s}`;
-  };
+  // Mobile Polling Hook
+  useEffect(() => {
+    let pollTimer: any = null;
+    if (waitingForMobileAuth && authRequestId) {
+      pollTimer = setInterval(async () => {
+        try {
+          const res = await checkApprovalStatusApi(authRequestId);
+          if (res.approved && res.token && res.user) {
+            clearInterval(pollTimer);
+            setWaitingForMobileAuth(false);
+            setToastSuccess('✔ Mobile approval received! Logging in...');
 
-  // Polling for mobile approval completion
-  React.useEffect(() => {
-    if (!waitingForMobileAuth || !authRequestId) return;
+            sessionStorage.setItem('token', res.token);
+            sessionStorage.setItem('user', JSON.stringify(res.user));
+            sessionStorage.removeItem('login_attempts');
+            sessionStorage.removeItem('login_lockout_until');
 
-    const interval = setInterval(async () => {
-      try {
-        const res = await checkApprovalStatusApi(authRequestId);
-        if (res.status === 'APPROVED' && res.token && res.user) {
-          clearInterval(interval);
-          setToastSuccess('✔ Mobile Approval Confirmed! Signing into Windows automatically...');
-          sessionStorage.setItem('token', res.token);
-          sessionStorage.setItem('user', JSON.stringify(res.user));
-          setTimeout(() => {
-            onLoginSuccess(res.token, res.user);
-          }, 800);
+            setTimeout(() => {
+              onLoginSuccess(res.token, res.user);
+            }, 800);
+          } else if (res.status === 'EXPIRED') {
+            clearInterval(pollTimer);
+            setWaitingForMobileAuth(false);
+            setServerError('Mobile approval link expired. Please try signing in again.');
+          }
+        } catch {
+          // Keep polling silently
         }
-      } catch (err) {
-        console.error('Error checking approval status:', err);
-      }
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [waitingForMobileAuth, authRequestId, onLoginSuccess]);
-
-  const handleTriggerMobileApproval = async (targetEmail: string) => {
-    if (!targetEmail || !/\S+@\S+\.\S+/.test(targetEmail)) {
-      setErrors({ email: 'Please enter a valid registered email address' });
-      return;
+      }, 2500);
     }
 
+    return () => {
+      if (pollTimer) clearInterval(pollTimer);
+    };
+  }, [waitingForMobileAuth, authRequestId, onLoginSuccess]);
+
+  const formatCountdown = (totalSec: number) => {
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  // Trigger Mobile Approval Flow
+  const handleTriggerMobileApproval = async (targetEmail: string) => {
     setIsLoading(true);
     setServerError(null);
     setToastSuccess(null);
-
     try {
-      const res = await requestMobileApprovalApi(targetEmail.trim());
+      const res = await requestMobileApprovalApi(targetEmail);
       setIsLoading(false);
-      setAuthRequestId(res.authRequestId);
-      setMobileTargetEmail(res.email);
+      setAuthRequestId(res.requestId);
+      setMobileTargetEmail(targetEmail);
       setWaitingForMobileAuth(true);
+      setToastSuccess('Approval email dispatched! Please tap the approval button on your phone.');
     } catch (err: any) {
       setIsLoading(false);
-      setServerError(err.message || 'Failed to send mobile authentication email');
+      setServerError(err.message || 'Failed to dispatch mobile approval email');
     }
   };
 
+  // Submit Handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setServerError(null);
     setToastSuccess(null);
 
+    if (isLockedOut) {
+      setServerError(`Account temporarily locked. Please wait ${formatCountdown(lockoutSecondsLeft)}.`);
+      return;
+    }
+
     if (isForgotView) {
-      if (!forgotEmail || !/\S+@\S+\.\S+/.test(forgotEmail)) {
-        setErrors({ email: 'Please enter a valid registered email address' });
+      if (!forgotEmail || !forgotEmail.trim()) {
+        setErrors({ email: 'Please enter your registered email' });
         return;
       }
-
       setIsLoading(true);
       try {
-        const res = await forgotPasswordApi(forgotEmail.trim());
+        await forgotPasswordApi(forgotEmail.trim());
         setIsLoading(false);
-        setToastSuccess(res.message || '✔ Password reset link sent! Check your email inbox on your mobile device or browser.');
+        setToastSuccess('Password reset link sent to your registered email!');
       } catch (err: any) {
         setIsLoading(false);
-        setServerError(err.message || 'Failed to send password reset email');
+        setServerError(err.message || 'Unable to send password reset email');
       }
       return;
     }
 
-    // Step 1: Check lockout
-    if (isLockedOut) {
-      setServerError(`Too many failed attempts. Please wait ${formatCountdown(lockoutSecondsLeft)}.`);
-      return;
-    }
-
-    // Step 2: Frontend Validation
     const validationErrors = validateLoginForm(email, password);
     setErrors(validationErrors);
 
@@ -187,7 +183,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       return;
     }
 
-    // Step 3: Trigger POST /api/auth/login
     setIsLoading(true);
 
     try {
@@ -201,7 +196,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         return;
       }
 
-      // Step 4: Success — clear lockout counters
       sessionStorage.setItem('token', data.token);
       sessionStorage.setItem('user', JSON.stringify(data.user));
       sessionStorage.removeItem('login_attempts');
@@ -218,7 +212,21 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
     } catch (err: any) {
       setIsLoading(false);
-      // Step 5: Handle failed login — increment attempt counter
+      const errMsg = err.message || 'Invalid credentials';
+      const isTransientError =
+        errMsg.toLowerCase().includes('database') ||
+        errMsg.toLowerCase().includes('connection') ||
+        errMsg.toLowerCase().includes('busy') ||
+        errMsg.toLowerCase().includes('resuming') ||
+        errMsg.toLowerCase().includes('server') ||
+        errMsg.toLowerCase().includes('502') ||
+        errMsg.toLowerCase().includes('network');
+
+      if (isTransientError) {
+        setServerError(errMsg);
+        return;
+      }
+
       const newAttempts = failedAttempts + 1;
       setFailedAttempts(newAttempts);
       sessionStorage.setItem('login_attempts', String(newAttempts));
@@ -230,548 +238,299 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         setServerError('Too many failed attempts. Your account is locked for 15 minutes.');
       } else {
         const attemptsLeft = MAX_ATTEMPTS - newAttempts;
-        setServerError(`${err.message || 'Invalid credentials'} — ${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} remaining.`);
+        setServerError(`${errMsg} — ${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} remaining.`);
       }
     }
   };
 
   return (
-    <div className="login-container">
-      {/* Left Hero Panel */}
-      <div className="login-hero-panel">
-        <div className="hero-overlay-gradient"></div>
-        <div className="hero-bg-image"></div>
-        <div className="hero-dot-pattern top-dots"></div>
-        <div className="hero-dot-pattern bottom-dots"></div>
+    <div className="wave-login-wrapper">
+      <div className="wave-login-card">
+        {/* LEFT HERO PANEL (DESKTOP & TOP OF MOBILE) */}
+        <div className="wave-hero-panel">
+          {/* Subtle Glows */}
+          <div className="hero-glow-circle-1" />
+          <div className="hero-glow-circle-2" />
 
-        <div className="hero-content">
-          {/* Brand Header */}
-          <div className="hero-brand">
-            <div className="brand-logo-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M16 21V19C16 17.9391 15.5786 16.9217 14.8284 16.1716C14.0783 15.4214 13.0609 15 12 15C10.9391 15 9.92172 15.4214 9.17157 16.1716C8.42143 16.9217 8 17.9391 8 19V21" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M12 11C13.6569 11 15 9.65685 15 8C15 6.34315 13.6569 5 12 5C10.3431 5 9 6.34315 9 8C9 9.65685 10.3431 11 12 11Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M22 21V19C21.9993 18.1137 21.7044 17.2528 21.1614 16.5523C20.6184 15.8519 19.8581 15.3516 19 15.13" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M17 5.13C17.8631 5.35049 18.6282 5.85244 19.1733 6.55589C19.7185 7.25934 20.0145 8.12353 20.0145 9.0145C20.0145 9.90547 19.7185 10.7697 19.1733 11.4731C18.6282 12.1766 17.8631 12.6785 17 12.9" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M2 21V19C2.0007 18.1137 2.29562 17.2528 2.83863 16.5523C3.38164 15.8519 4.14187 15.3516 5 15.13" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M7 5.13C6.13692 5.35049 5.37177 5.85244 4.82665 6.55589C4.28153 7.25934 3.98555 8.12353 3.98555 9.0145C3.98555 9.90547 4.28153 10.7697 4.82665 11.4731C5.37177 12.1766 6.13692 12.6785 7 12.9" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <div className="brand-title-wrap">
-              <h2>Labor Union</h2>
-              <p>Management System</p>
-            </div>
+          {/* Layered Organic Clouds / Waves Divider */}
+          <div className="wave-clouds-divider">
+            <svg viewBox="0 0 100 600" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M0 0C30 50 80 80 50 150C20 220 90 280 60 360C30 440 85 500 45 600H100V0H0Z" fill="rgba(255, 255, 255, 0.25)"/>
+              <path d="M30 0C60 60 95 120 70 200C45 280 95 340 70 420C45 500 90 540 65 600H100V0H30Z" fill="rgba(255, 255, 255, 0.55)"/>
+              <path d="M55 0C80 70 100 130 85 220C70 310 100 370 85 460C70 550 95 570 80 600H100V0H55Z" fill="#FFFFFF"/>
+            </svg>
           </div>
 
-          {/* Main Headline */}
-          <div className="hero-headline-wrap">
-            <h1>
-              Empowering Workers.<br />
-              <span className="headline-blue">Building Stronger Unions.</span>
-            </h1>
-            <p className="hero-subtitle">
-              A complete platform to manage sites, agents, workers, attendance, payroll, leaves, and more efficiently.
+          {/* Top Title */}
+          <div className="wave-hero-top">
+            <span className="wave-hero-welcome">Welcome to</span>
+          </div>
+
+          {/* Center Brand Badge */}
+          <div className="wave-hero-center">
+            <div className="wave-brand-circle">
+              <Rocket size={46} color="#1d6bf3" />
+            </div>
+            <h1 className="wave-brand-title">Labor Union</h1>
+            <p className="wave-hero-desc">
+              A complete platform to manage working sites, field agents, workers, attendance, and payroll efficiently. Join our community and embark on a seamless journey with us!
             </p>
           </div>
 
-          {/* Feature List */}
-          <div className="hero-features-list">
-            <div className="feature-item">
-              <div className="feature-icon-box">
-                <Users size={18} />
-              </div>
-              <div className="feature-text">
-                <h4>Role Based Access</h4>
-                <p>Super Agent, Agent & Worker</p>
-              </div>
-            </div>
-
-            <div className="feature-item">
-              <div className="feature-icon-box">
-                <BarChart3 size={18} />
-              </div>
-              <div className="feature-text">
-                <h4>Real-time Dashboard</h4>
-                <p>Get insights and analytics in real-time</p>
-              </div>
-            </div>
-
-            <div className="feature-item">
-              <div className="feature-icon-box">
-                <ShieldCheck size={18} />
-              </div>
-              <div className="feature-text">
-                <h4>Secure & Reliable</h4>
-                <p>Enterprise grade security with JWT</p>
-              </div>
-            </div>
-
-            <div className="feature-item">
-              <div className="feature-icon-box">
-                <Smartphone size={18} />
-              </div>
-              <div className="feature-text">
-                <h4>Responsive Design</h4>
-                <p>Works perfectly on all devices</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Right Form Panel */}
-      <div className="login-form-panel">
-        {/* Top Controls Header */}
-        <div className="login-top-controls">
-          {/* Dark / Light Toggle Pill */}
-          <div
-            className="theme-toggle-pill"
-            onClick={() => setDarkMode(prev => !prev)}
-            title="Toggle theme"
-          >
-            <Sun size={15} className={!darkMode ? 'active-icon' : ''} />
-            <Moon size={15} className={darkMode ? 'active-icon' : ''} />
-          </div>
-
-          {/* Language Selector */}
-          <div className="language-selector-wrap">
-            <button
-              className="lang-btn"
-              onClick={() => setShowLangDropdown(prev => !prev)}
-            >
-              <Globe size={16} />
-              <span>{language}</span>
-              <ChevronDown size={14} />
-            </button>
-            {showLangDropdown && (
-              <div className="lang-dropdown">
-                <button onClick={() => { setLanguage('English'); setShowLangDropdown(false); }}>English</button>
-                <button onClick={() => { setLanguage('Spanish'); setShowLangDropdown(false); }}>Español</button>
-                <button onClick={() => { setLanguage('Hindi'); setShowLangDropdown(false); }}>हिन्दी</button>
-              </div>
-            )}
+          {/* Bottom Footer Links */}
+          <div className="wave-hero-footer">
+            <span>TERMS OF SERVICE</span>
+            <span className="dot-sep">|</span>
+            <span>PRIVACY POLICY</span>
           </div>
         </div>
 
-        {/* Center Login Card */}
-        <div className="login-card-container">
-          <div className="login-card">
-            {/* Top Card Icon */}
-            <div className="card-top-icon-circle">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M16 21V19C16 17.9391 15.5786 16.9217 14.8284 16.1716C14.0783 15.4214 13.0609 15 12 15C10.9391 15 9.92172 15.4214 9.17157 16.1716C8.42143 16.9217 8 17.9391 8 19V21" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M12 11C13.6569 11 15 9.65685 15 8C15 6.34315 13.6569 5 12 5C10.3431 5 9 6.34315 9 8C9 9.65685 10.3431 11 12 11Z" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M22 21V19C21.9993 18.1137 21.7044 17.2528 21.1614 16.5523C20.6184 15.8519 19.8581 15.3516 19 15.13" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M17 5.13C17.8631 5.35049 18.6282 5.85244 19.1733 6.55589C19.7185 7.25934 20.0145 8.12353 20.0145 9.0145C20.0145 9.90547 19.7185 10.7697 19.1733 11.4731C18.6282 12.1766 17.8631 12.6785 17 12.9" stroke="#2563EB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-
-            <h2 className="card-heading">{isForgotView ? 'Reset Password' : 'Welcome Back!'}</h2>
-            <p className="card-subheading">
+        {/* RIGHT AUTHENTICATION FORM PANEL */}
+        <div className="wave-form-panel">
+          <div className="wave-form-header">
+            <h2 className="wave-form-title">
+              {isForgotView ? 'Reset Password' : 'Sign in to your account'}
+            </h2>
+            <p className="wave-form-sub">
               {isForgotView
                 ? 'Enter your registered email address to receive reset instructions'
-                : 'Sign in to your account to continue'}
+                : 'Enter your credentials below to access your dashboard'}
             </p>
+          </div>
 
-            {/* Server Toast Error Banner */}
-            {serverError && (
-              <div className="toast-banner toast-error animate-fade-in" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
-                  <AlertCircle size={18} className="toast-icon" />
-                  <span>{serverError}</span>
+          {/* Toast Error Alert */}
+          {serverError && (
+            <div className="wave-toast-banner wave-toast-error">
+              <AlertCircle size={18} />
+              <span>{serverError}</span>
+            </div>
+          )}
+
+          {/* Toast Success Alert */}
+          {toastSuccess && (
+            <div className="wave-toast-banner wave-toast-success">
+              <CheckCircle2 size={18} />
+              <span>{toastSuccess}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} autoComplete="off">
+            {waitingForMobileAuth ? (
+              <div style={{ textAlign: 'center', padding: '12px 0' }}>
+                <div
+                  style={{
+                    width: '64px',
+                    height: '64px',
+                    borderRadius: '50%',
+                    backgroundColor: '#EFF6FF',
+                    color: '#1d6bf3',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    margin: '0 auto 16px auto',
+                    border: '2px solid #BFDBFE'
+                  }}
+                >
+                  <Smartphone size={32} />
                 </div>
-                {serverError.includes('Customer Support Portal') && (
+                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', marginBottom: '6px' }}>
+                  Mobile Approval Dispatched
+                </h3>
+                <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '20px' }}>
+                  We sent an authentication email to <strong style={{ color: '#1d6bf3' }}>{mobileTargetEmail}</strong>. Tap the approval button on your phone to sign in automatically!
+                </p>
+                <div style={{ display: 'flex', gap: '10px' }}>
                   <button
                     type="button"
-                    onClick={() => { window.location.href = '/support/login'; }}
-                    style={{
-                      marginTop: '4px',
-                      padding: '8px 14px',
-                      backgroundColor: '#1E40AF',
-                      color: '#FFFFFF',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '12.5px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      boxShadow: '0 2px 4px rgba(30, 64, 175, 0.2)'
-                    }}
+                    className="wave-submit-btn"
+                    style={{ background: '#EFF6FF', color: '#1d6bf3', border: '1.5px solid #BFDBFE' }}
+                    onClick={() => handleTriggerMobileApproval(mobileTargetEmail)}
                   >
-                    <Headset size={15} /> Go to Customer Support Portal Login →
+                    Resend Email
                   </button>
-                )}
-              </div>
-            )}
-
-            {/* Toast Success Banner */}
-            {toastSuccess && (
-              <div className="toast-banner toast-success animate-fade-in">
-                <CheckCircle2 size={18} className="toast-icon" />
-                <span>{toastSuccess}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="login-form" autoComplete="off">
-              {waitingForMobileAuth ? (
-                <div className="animate-fade-in" style={{ textAlign: 'center', padding: '8px 0' }}>
-                  <div
-                    style={{
-                      width: '64px',
-                      height: '64px',
-                      borderRadius: '50%',
-                      backgroundColor: '#EEF2FF',
-                      color: '#2563EB',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      margin: '0 auto 16px auto',
-                      border: '2px solid #BFDBFE'
-                    }}
+                  <button
+                    type="button"
+                    className="wave-submit-btn"
+                    style={{ background: '#F1F5F9', color: '#475569', border: '1.5px solid #CBD5E1' }}
+                    onClick={() => setWaitingForMobileAuth(false)}
                   >
-                    <Smartphone size={32} />
-                  </div>
-
-                  <h3 style={{ fontSize: '19px', fontWeight: 700, color: '#0F172A', marginBottom: '4px' }}>
-                    Mobile Email Approval Sent
-                  </h3>
-
-                  <p style={{ fontSize: '13.5px', color: '#64748B', marginBottom: '16px' }}>
-                    We sent an authentication email to <strong style={{ color: '#2563EB' }}>{mobileTargetEmail}</strong>
-                  </p>
-
-                  <div
-                    style={{
-                      backgroundColor: '#F8FAFC',
-                      border: '1px solid #E2E8F0',
-                      borderRadius: '10px',
-                      padding: '14px 16px',
-                      textAlign: 'left',
-                      fontSize: '13px',
-                      color: '#334155',
-                      marginBottom: '20px'
-                    }}
-                  >
-                    <div style={{ fontWeight: 700, marginBottom: '8px', color: '#0F172A' }}>Instructions for Mobile Device:</div>
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
-                      <span style={{ fontWeight: 700, color: '#2563EB' }}>1.</span>
-                      <span>Open your email inbox on your mobile phone / tablet.</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
-                      <span style={{ fontWeight: 700, color: '#2563EB' }}>2.</span>
-                      <span>Tap the green <strong style={{ color: '#059669' }}>"APPROVE LOGIN ON WINDOWS"</strong> button.</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <span style={{ fontWeight: 700, color: '#2563EB' }}>3.</span>
-                      <span>This Windows browser will automatically sign in instantly!</span>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '20px' }}>
-                    <Loader2 size={16} className="spinner" style={{ color: '#2563EB' }} />
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#2563EB' }}>
-                      Awaiting Mobile Approval...
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                      type="button"
-                      className="secondary-btn"
-                      style={{ flex: 1, padding: '10px', fontSize: '13px' }}
-                      onClick={() => handleTriggerMobileApproval(mobileTargetEmail)}
-                      disabled={isLoading}
-                    >
-                      Resend Email
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary-btn"
-                      style={{ flex: 1, padding: '10px', fontSize: '13px' }}
-                      onClick={() => {
-                        setWaitingForMobileAuth(false);
-                        setIsForgotView(false);
-                        setAuthRequestId(null);
-                        setServerError(null);
-                        setToastSuccess(null);
+                    Back
+                  </button>
+                </div>
+              </div>
+            ) : isForgotView ? (
+              <>
+                <div className="wave-input-group">
+                  <label className="wave-label">Registered Email</label>
+                  <div className={`wave-input-wrapper ${errors.email ? 'has-error' : ''}`}>
+                    <Mail size={18} className="wave-field-icon" />
+                    <input
+                      type="email"
+                      className="wave-input"
+                      value={forgotEmail}
+                      onChange={(e) => {
+                        setForgotEmail(e.target.value);
+                        if (errors.email) setErrors({ ...errors, email: undefined });
                       }}
-                    >
-                      Cancel / Back
-                    </button>
+                      placeholder="Enter registered email"
+                      required
+                    />
                   </div>
+                  {errors.email && <div className="wave-error-msg"><AlertCircle size={12} /> {errors.email}</div>}
                 </div>
-              ) : isForgotView ? (
-                <>
-                  <div className="input-group">
-                    <label>Registered Email Address</label>
-                    <div className={`input-field-wrap ${errors.email ? 'has-error' : ''}`}>
-                      <Mail size={18} className="input-icon" />
-                      <input
-                        type="email"
-                        id="forgot-email-input"
-                        name="forgot_email_field"
-                        autoComplete="off"
-                        required
-                        value={forgotEmail}
-                        onChange={(e) => {
-                          setForgotEmail(e.target.value);
-                          if (errors.email) setErrors({ ...errors, email: undefined });
-                        }}
-                        placeholder="e.g. agent@laborunion.com"
-                      />
-                    </div>
-                    {errors.email && (
-                      <span className="field-error-text">
-                        <AlertCircle size={12} /> {errors.email}
-                      </span>
-                    )}
-                  </div>
 
-                  <button
-                    type="submit"
-                    className="sign-in-btn mt-12"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <span className="btn-loading-content">
-                        <Loader2 size={18} className="spinner" />
-                        Sending Mobile Approval Email...
-                      </span>
-                    ) : (
-                      'Send Mobile Login Approval Email'
-                    )}
-                  </button>
+                <button
+                  type="submit"
+                  className="wave-submit-btn"
+                  disabled={isLoading}
+                >
+                  {isLoading ? <Loader2 size={18} className="spinner" /> : 'Send Password Reset Link'}
+                </button>
 
+                <div style={{ textAlign: 'center', marginTop: '16px' }}>
                   <button
                     type="button"
-                    className="social-btn mt-12"
-                    style={{ width: '100%', justifyContent: 'center', gap: '8px' }}
+                    className="wave-enquiry-link"
                     onClick={() => {
                       setIsForgotView(false);
                       setServerError(null);
                       setToastSuccess(null);
-                      setErrors({});
                     }}
                   >
-                    <ArrowLeft size={16} />
-                    <span>Back to Sign In</span>
+                    <ArrowLeft size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} />
+                    Back to Sign In
                   </button>
-                </>
-              ) : (
-                <>
-                  {/* Email Input */}
-                  <div className="input-group">
-                    <label>Email Address</label>
-                    <div className={`input-field-wrap ${errors.email ? 'has-error' : ''}`}>
-                      <Mail size={18} className="input-icon" />
-                      <input
-                        type="email"
-                        id="login-email-input"
-                        name="login_email_unq"
-                        autoComplete="off"
-                        value={email}
-                        onChange={(e) => {
-                          setEmail(e.target.value);
-                          if (errors.email) setErrors({ ...errors, email: undefined });
-                        }}
-                        placeholder="admin@test.com"
-                      />
-                    </div>
-                    {errors.email && (
-                      <span className="field-error-text">
-                        <AlertCircle size={12} /> {errors.email}
-                      </span>
-                    )}
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Email Field */}
+                <div className="wave-input-group">
+                  <label className="wave-label">Email</label>
+                  <div className={`wave-input-wrapper ${errors.email ? 'has-error' : ''}`}>
+                    <Mail size={18} className="wave-field-icon" />
+                    <input
+                      type="email"
+                      className="wave-input"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (errors.email) setErrors({ ...errors, email: undefined });
+                      }}
+                      placeholder="Enter email"
+                      autoComplete="off"
+                    />
                   </div>
+                  {errors.email && <div className="wave-error-msg"><AlertCircle size={12} /> {errors.email}</div>}
+                </div>
 
-                  {/* Password Input */}
-                  <div className="input-group">
-                    <label>Password</label>
-                    <div className={`input-field-wrap ${errors.password ? 'has-error' : ''}`}>
-                      <Lock size={18} className="input-icon" />
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        id="login-password-input"
-                        name="login_password_unq"
-                        autoComplete="new-password"
-                        value={password}
-                        onChange={(e) => {
-                          setPassword(e.target.value);
-                          if (errors.password) setErrors({ ...errors, password: undefined });
-                        }}
-                        placeholder="••••••••"
-                      />
-                      <button
-                        type="button"
-                        className="password-toggle-btn"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                      </button>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
-                      <a
-                        href="#forgot"
-                        className="forgot-pass-link"
-                        style={{ fontSize: '13px', fontWeight: 600, color: '#2563EB', textDecoration: 'none' }}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setIsForgotView(true);
-                          setForgotEmail(email);
-                          setServerError(null);
-                          setToastSuccess(null);
-                          setErrors({});
-                        }}
-                      >
-                        Forgot Password?
-                      </a>
-                    </div>
-
-                    {errors.password && (
-                      <span className="field-error-text">
-                        <AlertCircle size={12} /> {errors.password}
-                      </span>
-                    )}
+                {/* Password Field */}
+                <div className="wave-input-group">
+                  <label className="wave-label">Password</label>
+                  <div className={`wave-input-wrapper ${errors.password ? 'has-error' : ''}`}>
+                    <Lock size={18} className="wave-field-icon" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      className="wave-input"
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (errors.password) setErrors({ ...errors, password: undefined });
+                      }}
+                      placeholder="Enter Password"
+                      autoComplete="new-password"
+                    />
+                    <button
+                      type="button"
+                      className="wave-toggle-btn"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
+                  {errors.password && <div className="wave-error-msg"><AlertCircle size={12} /> {errors.password}</div>}
+                </div>
 
-                  {/* Remember Me Checkbox */}
-                  <div className="remember-me-row">
-                    <label className="checkbox-container">
-                      <input
-                        type="checkbox"
-                        checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
-                      />
-                      <span className="checkmark"></span>
-                      <span className="checkbox-text">Remember me</span>
-                    </label>
-                  </div>
+                {/* Controls Row */}
+                <div className="wave-controls-row">
+                  <label className="wave-checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                    />
+                    <span>Remember me</span>
+                  </label>
 
-                  {/* Brute-force Lockout Banner */}
-                  {isLockedOut && (
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '10px',
-                      background: 'linear-gradient(135deg, #fef2f2, #fee2e2)',
-                      border: '1.5px solid #fca5a5',
-                      borderRadius: '10px',
-                      padding: '14px 16px',
-                      marginBottom: '16px',
-                    }}>
-                      <span style={{ fontSize: '20px', lineHeight: 1 }}>🔒</span>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#991b1b' }}>
-                          Too Many Failed Attempts
-                        </p>
-                        <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#b91c1c', lineHeight: 1.5 }}>
-                          Login is temporarily locked. Please try again in{' '}
-                          <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{formatCountdown(lockoutSecondsLeft)}</strong>.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Primary Sign In Button */}
-                  <button
-                    type="submit"
-                    id="login-submit-btn"
-                    className="sign-in-btn"
-                    disabled={isLoading || isLockedOut}
-                    style={isLockedOut ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+                  <a
+                    href="#forgot"
+                    className="wave-forgot-link"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setIsForgotView(true);
+                      setForgotEmail(email);
+                      setServerError(null);
+                      setToastSuccess(null);
+                    }}
                   >
-                    {isLoading ? (
-                      <span className="btn-loading-content">
-                        <Loader2 size={18} className="spinner" />
-                        Authenticating...
-                      </span>
-                    ) : isLockedOut ? (
-                      `Locked — ${formatCountdown(lockoutSecondsLeft)}`
-                    ) : (
-                      'Sign In'
-                    )}
+                    Forgot Password?
+                  </a>
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  className="wave-submit-btn"
+                  disabled={isLoading || isLockedOut}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 size={18} className="spinner" />
+                      <span>Authenticating...</span>
+                    </>
+                  ) : isLockedOut ? (
+                    `Locked — ${formatCountdown(lockoutSecondsLeft)}`
+                  ) : (
+                    'Sign In'
+                  )}
+                </button>
+
+                {/* Support Portal Direct Button */}
+                <div style={{ marginTop: '16px' }}>
+                  <button
+                    type="button"
+                    className="wave-support-redirect-btn"
+                    onClick={() => { window.location.href = '/support/login'; }}
+                  >
+                    <Headset size={16} />
+                    <span>Customer Support Portal Login</span>
                   </button>
+                </div>
 
-
-                  {/* Bottom Enquiry Link */}
-                  <div className="register-link-row">
-                    <span>Don't have an account? </span>
-                    <button
-                      type="button"
-                      className="register-link"
-                      onClick={() => setIsEnquiryModalOpen(true)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        padding: 0,
-                        cursor: 'pointer',
-                        font: 'inherit',
-                        color: 'var(--color-primary, #2563eb)',
-                        fontWeight: 700,
-                        textDecoration: 'underline'
-                      }}
-                    >
-                      Enquiry now
-                    </button>
-                  </div>
-
-                  {/* Customer Support Portal Navigation Button */}
-                  <div style={{ marginTop: '16px', textAlign: 'center' }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        window.location.href = '/support/login';
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '11px 16px',
-                        backgroundColor: '#eff6ff',
-                        color: '#2563eb',
-                        border: '1.5px solid #bfdbfe',
-                        borderRadius: '12px',
-                        fontSize: '13.5px',
-                        fontWeight: 600,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        boxShadow: '0 2px 6px rgba(37, 99, 235, 0.08)'
-                      }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.backgroundColor = '#dbeafe';
-                        e.currentTarget.style.borderColor = '#93c5fd';
-                      }}
-                      onMouseOut={(e) => {
-                        e.currentTarget.style.backgroundColor = '#eff6ff';
-                        e.currentTarget.style.borderColor = '#bfdbfe';
-                      }}
-                    >
-                      <Headset size={18} color="#2563eb" />
-                      <span>Customer Support Portal Login</span>
-                    </button>
-                  </div>
-                </>
-              )}
-            </form>
-          </div>
-
-          {/* Footer Copyright */}
-          <footer className="login-footer">
-            <p>© 2025 Labor Union Management System. All rights reserved.</p>
-          </footer>
+                {/* Enquiry / Registration Row */}
+                <div className="wave-enquiry-row">
+                  <span>Don't have an account? </span>
+                  <button
+                    type="button"
+                    className="wave-enquiry-link"
+                    onClick={() => setIsEnquiryModalOpen(true)}
+                  >
+                    Enquiry now
+                  </button>
+                </div>
+              </>
+            )}
+          </form>
         </div>
       </div>
 
-      {/* Public Enquiry Now Modal */}
-      <EnquiryModal
-        isOpen={isEnquiryModalOpen}
-        onClose={() => setIsEnquiryModalOpen(false)}
-      />
+      {/* Enquiry Form Modal */}
+      {isEnquiryModalOpen && (
+        <EnquiryModal
+          isOpen={isEnquiryModalOpen}
+          onClose={() => setIsEnquiryModalOpen(false)}
+        />
+      )}
     </div>
   );
 };

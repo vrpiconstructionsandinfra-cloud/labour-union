@@ -419,16 +419,47 @@
   color: #1d4ed8;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1023px) {
   .support-login-container {
     flex-direction: column;
+    height: auto;
+    min-height: 100vh;
   }
 
   .support-login-left {
-    padding: 32px 24px;
+    padding: 32px 24px 20px 24px;
+    flex: none;
   }
 
   .support-agent-illustration {
     display: none;
+  }
+
+  .support-login-right {
+    padding: 24px 20px 40px 20px;
+  }
+}
+
+@media (max-width: 639px) {
+  .support-login-left {
+    display: none;
+  }
+
+  .support-login-right {
+    padding: 16px 12px;
+  }
+
+  .support-login-card {
+    padding: 24px 16px;
+    border-radius: 16px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  }
+
+  .support-card-header h2 {
+    font-size: 20px;
+  }
+
+  .support-card-header p {
+    font-size: 12.5px;
   }
 }

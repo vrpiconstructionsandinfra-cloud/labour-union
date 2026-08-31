@@ -1,0 +1,29 @@
+.responsive-layout-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-main, #f8fafc);
+  color: var(--text-primary, #0f172a);
+}
+
+.responsive-main-content {
+  flex: 1;
+  width: 100%;
+  padding: var(--content-padding-desktop, 28px 32px);
+  transition: padding 0.2s ease;
+}
+
+.responsive-container {
+  width: 100%;
+  max-width: var(--container-max-width, 1600px);
+  margin: 0 auto;
+}
+
+/* Device Classes */
+.responsive-layout-wrapper.is-tablet .responsive-main-content {
+  padding: var(--content-padding-tablet, 20px 24px);
+}
+
+.responsive-layout-wrapper.is-mobile .responsive-main-content {
+  padding: var(--content-padding-mobile, 14px 16px);
+}

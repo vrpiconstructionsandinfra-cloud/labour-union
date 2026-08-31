@@ -1,0 +1,276 @@
+/* ==========================================================================
+   Labor Union Management - Global Responsive Design Architecture
+   Breakpoints:
+     - Mobile:        < 640px (320px - 639px)
+     - Tablet:        640px - 1023px
+     - Laptop:        1024px - 1439px
+     - Large Desktop: >= 1440px
+   ========================================================================== */
+
+:root {
+  --container-max-width: 1600px;
+  --touch-target-min: 44px;
+  --header-height: 70px;
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 78px;
+  --content-padding-desktop: 28px 32px;
+  --content-padding-tablet: 20px 24px;
+  --content-padding-mobile: 14px 16px;
+}
+
+/* Global Viewport Safety */
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Responsive Table Container */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 1rem;
+}
+
+.table-responsive::-webkit-scrollbar {
+  height: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+  background: var(--bg-main, #f1f5f9);
+  border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Auto-fitting Responsive Metric Cards Grid */
+.responsive-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  width: 100%;
+}
+
+/* Touch Friendly Tap Targets */
+.touch-target {
+  min-height: var(--touch-target-min);
+  min-width: var(--touch-target-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Fluid Text Utilities */
+.text-fluid-h1 {
+  font-size: clamp(1.4rem, 2vw + 1rem, 2.2rem);
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.text-fluid-h2 {
+  font-size: clamp(1.2rem, 1.5vw + 0.8rem, 1.75rem);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.text-fluid-body {
+  font-size: clamp(0.875rem, 0.5vw + 0.75rem, 1rem);
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   1. MOBILE BREAKPOINT (< 640px)
+   ========================================================================== */
+@media screen and (max-width: 639px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+
+  .show-on-mobile {
+    display: block !important;
+  }
+
+  .flex-mobile-col {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .mobile-full-width {
+    width: 100% !important;
+  }
+
+  .mobile-text-center {
+    text-align: center !important;
+  }
+
+  /* Padding Adjustments */
+  .responsive-main-content,
+  .support-main-content,
+  .dashboard-container,
+  .page-container {
+    padding: var(--content-padding-mobile) !important;
+  }
+
+  /* Grids to single column */
+  .responsive-metrics-grid,
+  .stats-grid,
+  .dashboard-grid,
+  .sfa-metrics-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Form & Modal Scaling */
+  .action-modal-box,
+  .modal-dialog,
+  .sfa-modal-box {
+    width: 95% !important;
+    max-width: 95% !important;
+    margin: 12px auto !important;
+    padding: 16px !important;
+  }
+
+  /* Filter toolbar wrap */
+  .sfa-toolbar,
+  .tab-filters,
+  .dashboard-sub-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .sfa-filter-tabs {
+    overflow-x: auto;
+    padding-bottom: 4px;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sfa-tab-btn {
+    white-space: nowrap !important;
+    flex-shrink: 0;
+  }
+
+  .sfa-search-box {
+    min-width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* ==========================================================================
+   2. TABLET BREAKPOINT (640px - 1023px)
+   ========================================================================== */
+@media screen and (min-width: 640px) and (max-width: 1023px) {
+  .hide-on-tablet {
+    display: none !important;
+  }
+
+  .show-on-tablet {
+    display: block !important;
+  }
+
+  .responsive-main-content,
+  .support-main-content,
+  .dashboard-container,
+  .page-container {
+    padding: var(--content-padding-tablet) !important;
+  }
+
+  .responsive-metrics-grid,
+  .stats-grid,
+  .sfa-metrics-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 14px !important;
+  }
+
+  .sfa-search-box {
+    min-width: 240px !important;
+  }
+}
+
+/* ==========================================================================
+   3. LAPTOP BREAKPOINT (1024px - 1439px)
+   ========================================================================== */
+@media screen and (min-width: 1024px) and (max-width: 1439px) {
+  .responsive-main-content,
+  .support-main-content,
+  .dashboard-container,
+  .page-container {
+    padding: var(--content-padding-desktop);
+  }
+
+  .responsive-metrics-grid,
+  .stats-grid,
+  .sfa-metrics-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+  }
+}
+
+/* ==========================================================================
+   4. LARGE DESKTOP BREAKPOINT (>= 1440px)
+   ========================================================================== */
+@media screen and (min-width: 1440px) {
+  .responsive-container,
+  .support-main-content,
+  .dashboard-container {
+    max-width: var(--container-max-width);
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .responsive-metrics-grid,
+  .stats-grid,
+  .sfa-metrics-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+  }
+}
+
+/* Mobile Slide-out Drawer Base Styles */
+.mobile-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  justify-content: flex-start;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.mobile-drawer-content {
+  width: 280px;
+  max-width: 85vw;
+  height: 100vh;
+  background-color: var(--bg-card, #ffffff);
+  box-shadow: 10px 0 25px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  animation: slideInLeft 0.25s ease-out;
+  overflow-y: auto;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}

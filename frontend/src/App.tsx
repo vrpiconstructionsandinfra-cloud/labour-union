@@ -14,6 +14,7 @@ import { QuickActions } from './components/QuickActions';
 import { RecentLeavesTable } from './components/RecentLeavesTable';
 import { ActionModal } from './components/ActionModal';
 import { Footer } from './components/Footer';
+import './styles/responsive.css';
 
 // Sub-module Pages
 import { SitesPage } from './pages/SitesPage';

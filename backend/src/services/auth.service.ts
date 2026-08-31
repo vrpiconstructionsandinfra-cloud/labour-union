@@ -185,25 +185,42 @@ export const loginUser = async (
     updatedAt: true,
   };
 
-  try {
-    user = await prisma.user.findUnique({
-      where: { email: cleanEmail },
-      select: loginSelect,
-    });
-  } catch (err: any) {
-    if (
-      err.message?.includes("Connection terminated") ||
-      err.message?.includes("closed") ||
-      err.message?.includes("ECONNRESET")
-    ) {
-      console.warn("Retrying user login query after transient pool disconnect...");
+  let lastErr: any = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
       user = await prisma.user.findUnique({
         where: { email: cleanEmail },
         select: loginSelect,
       });
-    } else {
-      throw err;
+      lastErr = null;
+      break;
+    } catch (err: any) {
+      lastErr = err;
+      if (
+        attempt < 3 &&
+        (err.message?.includes("Connection terminated") ||
+         err.message?.includes("closed") ||
+         err.message?.includes("ECONNRESET") ||
+         err.message?.includes("connection"))
+      ) {
+        console.warn(`Transient pool disconnect on login attempt ${attempt}. Retrying in ${attempt * 300}ms...`);
+        await new Promise((r) => setTimeout(r, attempt * 300));
+      } else {
+        break;
+      }
     }
+  }
+
+  if (lastErr && !user) {
+    if (
+      lastErr.message?.includes("Connection terminated") ||
+      lastErr.message?.includes("closed") ||
+      lastErr.message?.includes("ECONNRESET") ||
+      lastErr.message?.includes("connection")
+    ) {
+      throw new Error("Database server is currently busy or resuming. Please try signing in again.");
+    }
+    throw lastErr;
   }
 
   if (!user) {
