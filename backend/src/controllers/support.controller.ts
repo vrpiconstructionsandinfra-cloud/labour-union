@@ -275,4 +275,235 @@ export async function getSupportAnalytics(
       message: error.message,
     });
   }
-}
+}
+
+/*
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Customer Support: Field Agent, Basket, Site & Messaging Controller Handlers
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+/*
+ * List all Field Agents for Support Portal
+ */
+export async function getFieldAgents(req: Request, res: Response) {
+  try {
+    const supportUserId = req.user!.id;
+    const agents = await supportService.getFieldAgentsForSupport(supportUserId);
+
+    res.json({
+      success: true,
+      data: agents,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch field agents",
+    });
+  }
+}
+
+/*
+ * Assign Agent to Support Agent Basket
+ */
+export async function assignAgentBasket(req: Request, res: Response) {
+  try {
+    const supportUserId = req.user!.id;
+    const agentId = Number(req.params.agentId);
+
+    const updated = await supportService.assignAgentToSupportBasket(supportUserId, agentId);
+
+    res.json({
+      success: true,
+      message: "Agent added to your basket successfully",
+      data: updated,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to assign agent to basket",
+    });
+  }
+}
+
+/*
+ * Unassign Agent from Support Agent Basket
+ */
+export async function unassignAgentBasket(req: Request, res: Response) {
+  try {
+    const agentId = Number(req.params.agentId);
+    const updated = await supportService.unassignAgentFromSupportBasket(agentId);
+
+    res.json({
+      success: true,
+      message: "Agent removed from basket successfully",
+      data: updated,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to unassign agent from basket",
+    });
+  }
+}
+
+/*
+ * Assign Working Site with Duration (Days)
+ */
+export async function assignSiteDuration(req: Request, res: Response) {
+  try {
+    const supportUserId = req.user!.id;
+    const agentId = Number(req.params.agentId);
+    const { siteId, durationDays, startDate } = req.body;
+
+    if (!siteId) {
+      return res.status(400).json({
+        success: false,
+        message: "Please select a valid working site",
+      });
+    }
+
+    const assignment = await supportService.assignSiteWithDuration(
+      supportUserId,
+      agentId,
+      Number(siteId),
+      Number(durationDays) || 7,
+      startDate
+    );
+
+    res.json({
+      success: true,
+      message: "Site assigned to agent successfully",
+      data: assignment,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to assign site",
+    });
+  }
+}
+
+/*
+ * Update Site Status (Active, In Progress, Completed / Work Done, On Hold)
+ */
+export async function updateSiteStatus(req: Request, res: Response) {
+  try {
+    const siteId = Number(req.params.siteId);
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: "Site status is required",
+      });
+    }
+
+    const updatedSite = await supportService.updateSiteStatusBySupport(siteId, status);
+
+    res.json({
+      success: true,
+      message: "Site status updated successfully",
+      data: updatedSite,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to update site status",
+    });
+  }
+}
+
+/*
+ * Get Messages with Field Agent
+ */
+export async function getAgentMessages(req: Request, res: Response) {
+  try {
+    const agentId = Number(req.params.agentId);
+    const messages = await supportService.getSupportAgentMessages(agentId);
+
+    res.json({
+      success: true,
+      data: messages,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch messages",
+    });
+  }
+}
+
+/*
+ * Send Message to Field Agent (Chat / Equipment Request / Emergency)
+ */
+export async function sendAgentMessage(req: Request, res: Response) {
+  try {
+    const senderId = req.user!.id;
+    const { supportAgentId, fieldAgentId, message, messageType, ticketId } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Message content cannot be empty",
+      });
+    }
+
+    const savedMessage = await supportService.sendSupportAgentMessage({
+      supportAgentId: Number(supportAgentId) || senderId,
+      fieldAgentId: Number(fieldAgentId),
+      senderId,
+      message: message.trim(),
+      messageType: messageType || "TEXT",
+      ticketId: ticketId ? Number(ticketId) : undefined,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Message sent successfully",
+      data: savedMessage,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to send message",
+    });
+  }
+}
+
+/*
+ * Raise Emergency Support Ticket from Chat
+ */
+export async function raiseTicketFromChat(req: Request, res: Response) {
+  try {
+    const supportUserId = req.user!.id;
+    const { fieldAgentId, subject, description, priority } = req.body;
+
+    if (!fieldAgentId || !subject || !description) {
+      return res.status(400).json({
+        success: false,
+        message: "Field Agent ID, Subject, and Description are required",
+      });
+    }
+
+    const ticket = await supportService.raiseTicketFromSupportChat({
+      supportAgentId: supportUserId,
+      fieldAgentId: Number(fieldAgentId),
+      subject: subject.trim(),
+      description: description.trim(),
+      priority: priority || "HIGH",
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Support ticket raised successfully from chat",
+      data: ticket,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to raise support ticket",
+    });
+  }
+}
+

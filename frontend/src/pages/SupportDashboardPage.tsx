@@ -20,11 +20,13 @@ import { TicketDetailModal } from '../components/TicketDetailModal';
 import { SupportPage } from './SupportPage';
 import { LeavePage } from './LeavePage';
 import { AgentMyDetailsView } from '../components/AgentMyDetailsView';
+import { SupportFieldAgentsView } from '../components/SupportFieldAgentsView';
 import { ActionModal } from '../components/ActionModal';
 import { UserAvatar } from '../components/UserAvatar';
 import {
   Headset,
   LayoutDashboard,
+  Users,
   User,
   Lock,
   KeyRound,
@@ -174,6 +176,7 @@ export const SupportDashboardPage: React.FC = () => {
   const [selectedTicketModal, setSelectedTicketModal] = useState<any | null>(null);
   const [isCreateTicketModalOpen, setIsCreateTicketModalOpen] = useState(false);
   const [isApplyLeaveModalOpen, setIsApplyLeaveModalOpen] = useState(false);
+  const [isAddAgentModalOpen, setIsAddAgentModalOpen] = useState(false);
 
   // Standalone tab state data
   const [usersList, setUsersList] = useState<any[]>([]);
@@ -451,6 +454,14 @@ export const SupportDashboardPage: React.FC = () => {
 
   // Render standalone view based on activeTab
   const renderTabContent = () => {
+    if (activeTab === 'field_agents') {
+      return (
+        <div className="tab-standalone-page animate-fade-in" style={{ padding: 0, backgroundColor: 'transparent', border: 'none', boxShadow: 'none' }}>
+          <SupportFieldAgentsView onOpenRegisterModal={() => setIsAddAgentModalOpen(true)} />
+        </div>
+      );
+    }
+
     if (activeTab === 'my_details') {
       return (
         <div className="tab-standalone-page animate-fade-in" style={{ padding: 0, backgroundColor: 'transparent', border: 'none', boxShadow: 'none' }}>
@@ -1168,6 +1179,14 @@ export const SupportDashboardPage: React.FC = () => {
           </button>
 
           <button
+            className={`nav-item ${activeTab === 'field_agents' ? 'active' : ''}`}
+            onClick={() => setActiveTab('field_agents')}
+          >
+            <Users size={18} />
+            {!sidebarCollapsed && <span>Field Agents</span>}
+          </button>
+
+          <button
             className={`nav-item ${activeTab === 'my_tickets' ? 'active' : ''}`}
             onClick={() => setActiveTab('my_tickets')}
           >
@@ -1706,6 +1725,14 @@ export const SupportDashboardPage: React.FC = () => {
           isOpen={isApplyLeaveModalOpen}
           onClose={() => setIsApplyLeaveModalOpen(false)}
           type="apply_leave"
+          onSuccessRefresh={loadAnalytics}
+        />
+
+        {/* Register Agent Modal */}
+        <ActionModal
+          isOpen={isAddAgentModalOpen}
+          onClose={() => setIsAddAgentModalOpen(false)}
+          type="add_agent"
           onSuccessRefresh={loadAnalytics}
         />
 

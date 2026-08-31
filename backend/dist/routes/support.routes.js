@@ -4,8 +4,20 @@ const express_1 = require("express");
 const support_controller_1 = require("../controllers/support.controller");
 const auth_middleware_1 = require("../middleware/auth.middleware");
 const role_middleware_1 = require("../middleware/role.middleware");
+const client_1 = require("@prisma/client");
 const router = (0, express_1.Router)();
 router.use(auth_middleware_1.authenticate);
+/*
+ * Customer Support: Field Agent & Site Management Routes
+ */
+router.get("/field-agents", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.CUSTOMER_SUPPORT, client_1.UserRole.AGENT), support_controller_1.getFieldAgents);
+router.patch("/field-agents/:agentId/assign-basket", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.CUSTOMER_SUPPORT), support_controller_1.assignAgentBasket);
+router.patch("/field-agents/:agentId/unassign-basket", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.CUSTOMER_SUPPORT), support_controller_1.unassignAgentBasket);
+router.post("/field-agents/:agentId/assign-site", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.CUSTOMER_SUPPORT), support_controller_1.assignSiteDuration);
+router.patch("/sites/:siteId/status", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.CUSTOMER_SUPPORT, client_1.UserRole.AGENT), support_controller_1.updateSiteStatus);
+router.get("/messages/:agentId", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.CUSTOMER_SUPPORT, client_1.UserRole.AGENT), support_controller_1.getAgentMessages);
+router.post("/messages", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.CUSTOMER_SUPPORT, client_1.UserRole.AGENT), support_controller_1.sendAgentMessage);
+router.post("/messages/raise-ticket", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.CUSTOMER_SUPPORT, client_1.UserRole.AGENT), support_controller_1.raiseTicketFromChat);
 /*
  * Worker Routes
  */

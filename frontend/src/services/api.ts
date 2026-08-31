@@ -1122,3 +1122,148 @@ export const deleteEnquiryApi = async (id: number | string): Promise<{ success: 
   return res;
 };
 
+// 32. Customer Support: Field Agent & Site Management API Endpoints
+export interface SupportFieldAgentItem {
+  id: number;
+  name: string;
+  employeeCode: string;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  status: string;
+  active: boolean;
+  profileImage?: string | null;
+  joiningDate?: string | null;
+  managedBySupportId?: number | null;
+  isInMyBasket: boolean;
+  managedBySupport?: {
+    id: number;
+    name: string;
+    employeeCode: string;
+    email?: string | null;
+  } | null;
+  currentSite?: {
+    id: number;
+    siteName: string;
+    siteCode: string;
+    companyName: string;
+    status: string;
+    address?: string | null;
+    city?: string | null;
+    state?: string | null;
+  } | null;
+  activeAssignment?: {
+    id: number;
+    siteId: number;
+    siteName?: string;
+    durationDays?: number | null;
+    remainingDays?: number | null;
+    startDate?: string | null;
+    endDate?: string | null;
+    status: string;
+    assignedBy: string;
+  } | null;
+  workersCount: number;
+  workers: Array<{
+    id: number;
+    name: string;
+    employeeCode: string;
+    phone?: string | null;
+    email?: string | null;
+    status: string;
+    profileImage?: string | null;
+    todayAttendance: string;
+  }>;
+}
+
+export interface SupportAgentMessageItem {
+  id: number;
+  supportAgentId: number;
+  fieldAgentId: number;
+  senderId: number;
+  message: string;
+  messageType: 'TEXT' | 'EQUIPMENT_REQUEST' | 'EMERGENCY' | 'TICKET_RAISED';
+  ticketId?: number | null;
+  createdAt: string;
+  sender?: {
+    id: number;
+    name: string;
+    role: string;
+    profileImage?: string | null;
+  };
+}
+
+export const fetchSupportFieldAgentsApi = async (): Promise<SupportFieldAgentItem[]> => {
+  const res = await fetchWithAuth('/api/support/field-agents');
+  return res.data || [];
+};
+
+export const assignAgentToBasketApi = async (agentId: number | string): Promise<{ success: boolean; message: string; data: any }> => {
+  const res = await fetchWithAuth(`/api/support/field-agents/${agentId}/assign-basket`, {
+    method: 'PATCH',
+  });
+  return res;
+};
+
+export const unassignAgentFromBasketApi = async (agentId: number | string): Promise<{ success: boolean; message: string; data: any }> => {
+  const res = await fetchWithAuth(`/api/support/field-agents/${agentId}/unassign-basket`, {
+    method: 'PATCH',
+  });
+  return res;
+};
+
+export const assignSiteToAgentApi = async (
+  agentId: number | string,
+  data: { siteId: number | string; durationDays: number; startDate?: string }
+): Promise<{ success: boolean; message: string; data: any }> => {
+  const res = await fetchWithAuth(`/api/support/field-agents/${agentId}/assign-site`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  return res;
+};
+
+export const updateSiteStatusApi = async (
+  siteId: number | string,
+  status: string
+): Promise<{ success: boolean; message: string; data: any }> => {
+  const res = await fetchWithAuth(`/api/support/sites/${siteId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+  return res;
+};
+
+export const fetchSupportMessagesApi = async (agentId: number | string): Promise<SupportAgentMessageItem[]> => {
+  const res = await fetchWithAuth(`/api/support/messages/${agentId}`);
+  return res.data || [];
+};
+
+export const sendSupportMessageApi = async (data: {
+  supportAgentId?: number;
+  fieldAgentId: number | string;
+  message: string;
+  messageType?: string;
+  ticketId?: number;
+}): Promise<SupportAgentMessageItem> => {
+  const res = await fetchWithAuth('/api/support/messages', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  return res.data;
+};
+
+export const raiseTicketFromChatApi = async (data: {
+  fieldAgentId: number | string;
+  subject: string;
+  description: string;
+  priority?: string;
+}): Promise<{ success: boolean; message: string; data: any }> => {
+  const res = await fetchWithAuth('/api/support/messages/raise-ticket', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  return res;
+};
+
+

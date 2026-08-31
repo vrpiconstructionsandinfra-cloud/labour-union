@@ -108,6 +108,20 @@ model User {
   razorpayOrderId    String?
   upiTransactionId   String?
 
+  // Support Agent Basket (Agent claimed by Support Agent)
+  managedBySupportId Int?
+  managedBySupport   User?  @relation("SupportAgentBasket", fields: [managedBySupportId], references: [id])
+  supportBasketAgents User[] @relation("SupportAgentBasket")
+
+  // Site Assignments
+  siteAssignments SiteAssignment[] @relation("AgentSiteAssignments")
+  assignedSites   SiteAssignment[] @relation("AssignedBySupport")
+
+  // Support Agent to Field Agent Messages
+  sentSupportMessages  SupportAgentMessage[] @relation("SentSupportMessages")
+  supportAgentChats    SupportAgentMessage[] @relation("SupportAgentConversations")
+  fieldAgentChats      SupportAgentMessage[] @relation("FieldAgentConversations")
+
   attendance Attendance[] @relation("WorkerAttendance")
 
   markedAttendance Attendance[] @relation("AgentAttendance")
@@ -152,6 +166,7 @@ model Site {
   contactPerson String
   contactNumber String
 
+  status String @default("ACTIVE")
   active Boolean @default(true)
 
   createdById Int
@@ -159,6 +174,7 @@ model Site {
 
   users User[]
   attendances Attendance[]
+  siteAssignments SiteAssignment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -397,5 +413,36 @@ model Enquiry {
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 }
+
+model SiteAssignment {
+  id           Int       @id @default(autoincrement())
+  siteId       Int
+  site         Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  agentId      Int
+  agent        User      @relation("AgentSiteAssignments", fields: [agentId], references: [id], onDelete: Cascade)
+  assignedById Int?
+  assignedBy   User?     @relation("AssignedBySupport", fields: [assignedById], references: [id])
+  durationDays Int?
+  startDate    DateTime  @default(now())
+  endDate      DateTime?
+  status       String    @default("ACTIVE")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model SupportAgentMessage {
+  id             Int      @id @default(autoincrement())
+  supportAgentId Int
+  supportAgent   User     @relation("SupportAgentConversations", fields: [supportAgentId], references: [id], onDelete: Cascade)
+  fieldAgentId   Int
+  fieldAgent     User     @relation("FieldAgentConversations", fields: [fieldAgentId], references: [id], onDelete: Cascade)
+  senderId       Int
+  sender         User     @relation("SentSupportMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  message        String
+  messageType    String   @default("TEXT")
+  ticketId       Int?
+  createdAt      DateTime @default(now())
+}
+
 
 

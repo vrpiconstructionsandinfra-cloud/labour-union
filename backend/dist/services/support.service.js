@@ -13,6 +13,14 @@ exports.closeTicket = closeTicket;
 exports.getTicketComments = getTicketComments;
 exports.addTicketComment = addTicketComment;
 exports.getSupportAnalytics = getSupportAnalytics;
+exports.getFieldAgentsForSupport = getFieldAgentsForSupport;
+exports.assignAgentToSupportBasket = assignAgentToSupportBasket;
+exports.unassignAgentFromSupportBasket = unassignAgentFromSupportBasket;
+exports.assignSiteWithDuration = assignSiteWithDuration;
+exports.updateSiteStatusBySupport = updateSiteStatusBySupport;
+exports.getSupportAgentMessages = getSupportAgentMessages;
+exports.sendSupportAgentMessage = sendSupportAgentMessage;
+exports.raiseTicketFromSupportChat = raiseTicketFromSupportChat;
 const prisma_1 = __importDefault(require("../config/prisma"));
 const client_1 = require("@prisma/client");
 const socket_1 = require("../socket/socket");
@@ -541,4 +549,304 @@ async function getSupportAnalytics(reqUser) {
             customerSatisfaction: "4.6 / 5",
         },
     };
+}
+/*
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Customer Support: Field Agent & Site Management Methods
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+/*
+ * List all Field Agents for Support Portal with site assignments, duration, workers count, and basket status
+ */
+async function getFieldAgentsForSupport(supportUserId) {
+    const agents = await prisma_1.default.user.findMany({
+        where: {
+            role: client_1.UserRole.AGENT,
+        },
+        include: {
+            site: true,
+            workers: {
+                select: {
+                    id: true,
+                    name: true,
+                    employeeCode: true,
+                    phone: true,
+                    email: true,
+                    status: true,
+                    profileImage: true,
+                    attendance: {
+                        take: 1,
+                        orderBy: { date: "desc" },
+                        select: { date: true, status: true, checkInTime: true }
+                    }
+                },
+            },
+            managedBySupport: {
+                select: {
+                    id: true,
+                    name: true,
+                    employeeCode: true,
+                    email: true,
+                },
+            },
+            siteAssignments: {
+                orderBy: { createdAt: "desc" },
+                include: {
+                    site: true,
+                    assignedBy: {
+                        select: {
+                            id: true,
+                            name: true,
+                            employeeCode: true,
+                        }
+                    }
+                }
+            }
+        },
+        orderBy: {
+            name: "asc",
+        },
+    });
+    const now = new Date();
+    return agents.map((agent) => {
+        const activeAssignment = agent.siteAssignments.find((sa) => sa.status === "ACTIVE" || sa.status === "IN_PROGRESS") || agent.siteAssignments[0] || null;
+        let remainingDays = null;
+        if (activeAssignment?.startDate && activeAssignment?.durationDays) {
+            const start = new Date(activeAssignment.startDate);
+            const elapsedDays = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+            remainingDays = Math.max(0, activeAssignment.durationDays - elapsedDays);
+        }
+        return {
+            id: agent.id,
+            name: agent.name,
+            employeeCode: agent.employeeCode || `AGT-${agent.id}`,
+            email: agent.email,
+            phone: agent.phone,
+            address: agent.address,
+            status: agent.status,
+            active: agent.active,
+            profileImage: agent.profileImage,
+            joiningDate: agent.joiningDate,
+            managedBySupportId: agent.managedBySupportId,
+            isInMyBasket: agent.managedBySupportId === supportUserId,
+            managedBySupport: agent.managedBySupport,
+            currentSite: agent.site ? {
+                id: agent.site.id,
+                siteName: agent.site.siteName,
+                siteCode: agent.site.siteCode,
+                companyName: agent.site.companyName,
+                status: agent.site.status || "ACTIVE",
+                address: agent.site.address,
+                city: agent.site.city,
+                state: agent.site.state,
+            } : null,
+            activeAssignment: activeAssignment ? {
+                id: activeAssignment.id,
+                siteId: activeAssignment.siteId,
+                siteName: activeAssignment.site?.siteName,
+                durationDays: activeAssignment.durationDays,
+                remainingDays,
+                startDate: activeAssignment.startDate,
+                endDate: activeAssignment.endDate,
+                status: activeAssignment.status,
+                assignedBy: activeAssignment.assignedBy?.name || "Support Team",
+            } : null,
+            workersCount: agent.workers.length,
+            workers: agent.workers.map(w => ({
+                id: w.id,
+                name: w.name,
+                employeeCode: w.employeeCode || `WRK-${w.id}`,
+                phone: w.phone,
+                email: w.email,
+                status: w.status,
+                profileImage: w.profileImage,
+                todayAttendance: w.attendance[0]?.status || "ABSENT",
+            })),
+        };
+    });
+}
+/*
+ * Claim/Assign Agent into Support Agent's Basket
+ */
+async function assignAgentToSupportBasket(supportUserId, agentId) {
+    const agent = await prisma_1.default.user.findUnique({ where: { id: agentId } });
+    if (!agent || agent.role !== client_1.UserRole.AGENT) {
+        throw new Error("Field Agent not found");
+    }
+    const updated = await prisma_1.default.user.update({
+        where: { id: agentId },
+        data: { managedBySupportId: supportUserId },
+        include: {
+            managedBySupport: {
+                select: { id: true, name: true, employeeCode: true }
+            }
+        }
+    });
+    return updated;
+}
+/*
+ * Release/Unassign Agent from Basket
+ */
+async function unassignAgentFromSupportBasket(agentId) {
+    const agent = await prisma_1.default.user.findUnique({ where: { id: agentId } });
+    if (!agent || agent.role !== client_1.UserRole.AGENT) {
+        throw new Error("Field Agent not found");
+    }
+    const updated = await prisma_1.default.user.update({
+        where: { id: agentId },
+        data: { managedBySupportId: null },
+    });
+    return updated;
+}
+/*
+ * Assign Working Site to an Agent with Duration (Days)
+ */
+async function assignSiteWithDuration(supportUserId, agentId, siteId, durationDays, startDate) {
+    const agent = await prisma_1.default.user.findUnique({ where: { id: agentId } });
+    if (!agent || agent.role !== client_1.UserRole.AGENT) {
+        throw new Error("Field Agent not found");
+    }
+    const site = await prisma_1.default.site.findUnique({ where: { id: siteId } });
+    if (!site) {
+        throw new Error("Site not found");
+    }
+    const start = startDate ? new Date(startDate) : new Date();
+    const end = new Date(start);
+    end.setDate(end.getDate() + (Number(durationDays) || 1));
+    // Mark previous active assignments as COMPLETED
+    await prisma_1.default.siteAssignment.updateMany({
+        where: { agentId, status: "ACTIVE" },
+        data: { status: "COMPLETED" },
+    });
+    // Create new Site Assignment
+    const assignment = await prisma_1.default.siteAssignment.create({
+        data: {
+            siteId,
+            agentId,
+            assignedById: supportUserId,
+            durationDays: Number(durationDays),
+            startDate: start,
+            endDate: end,
+            status: "ACTIVE",
+        },
+        include: {
+            site: true,
+            agent: true,
+        }
+    });
+    // Update Agent's current siteId
+    await prisma_1.default.user.update({
+        where: { id: agentId },
+        data: { siteId },
+    });
+    // Send Notification to Field Agent
+    (0, notification_service_1.createNotification)({
+        userId: agentId,
+        title: `New Site Assigned: ${site.siteName}`,
+        message: `You have been assigned to ${site.siteName} for ${durationDays} days starting ${start.toLocaleDateString()}.`,
+        type: "SITE_ASSIGNED",
+    }).catch(() => { });
+    return assignment;
+}
+/*
+ * Update Site Status (ACTIVE, IN_PROGRESS, COMPLETED / Work Done, ON_HOLD)
+ */
+async function updateSiteStatusBySupport(siteId, status) {
+    const site = await prisma_1.default.site.findUnique({ where: { id: siteId } });
+    if (!site) {
+        throw new Error("Site not found");
+    }
+    const updatedSite = await prisma_1.default.site.update({
+        where: { id: siteId },
+        data: { status },
+    });
+    if (status === "COMPLETED") {
+        await prisma_1.default.siteAssignment.updateMany({
+            where: { siteId, status: "ACTIVE" },
+            data: { status: "COMPLETED" },
+        });
+    }
+    return updatedSite;
+}
+/*
+ * Support Agent <-> Field Agent Chat: Get Messages
+ */
+async function getSupportAgentMessages(fieldAgentId) {
+    return prisma_1.default.supportAgentMessage.findMany({
+        where: {
+            fieldAgentId,
+        },
+        include: {
+            sender: {
+                select: {
+                    id: true,
+                    name: true,
+                    role: true,
+                    profileImage: true,
+                }
+            }
+        },
+        orderBy: {
+            createdAt: "asc",
+        },
+    });
+}
+/*
+ * Support Agent <-> Field Agent Chat: Send Message / Equipment Request / Emergency
+ */
+async function sendSupportAgentMessage(data) {
+    const messageRecord = await prisma_1.default.supportAgentMessage.create({
+        data: {
+            supportAgentId: data.supportAgentId,
+            fieldAgentId: data.fieldAgentId,
+            senderId: data.senderId,
+            message: data.message,
+            messageType: data.messageType || "TEXT",
+            ticketId: data.ticketId || null,
+        },
+        include: {
+            sender: {
+                select: {
+                    id: true,
+                    name: true,
+                    role: true,
+                    profileImage: true,
+                }
+            }
+        }
+    });
+    return messageRecord;
+}
+/*
+ * Raise Support Ticket directly from Support-Agent Chat
+ */
+async function raiseTicketFromSupportChat(data) {
+    const fieldAgent = await prisma_1.default.user.findUnique({ where: { id: data.fieldAgentId } });
+    if (!fieldAgent)
+        throw new Error("Field Agent not found");
+    const ticket = await prisma_1.default.supportTicket.create({
+        data: {
+            workerId: data.fieldAgentId,
+            subject: data.subject,
+            description: data.description,
+            priority: data.priority || "HIGH",
+            status: client_1.TicketStatus.OPEN,
+            handledById: data.supportAgentId,
+        },
+        include: {
+            worker: true,
+            handledBy: true,
+        }
+    });
+    (0, socket_1.emitTicketUpdate)(ticket);
+    // Also log an automated ticket notification in the chat
+    await sendSupportAgentMessage({
+        supportAgentId: data.supportAgentId,
+        fieldAgentId: data.fieldAgentId,
+        senderId: data.supportAgentId,
+        message: `🚨 Emergency Ticket Raised: #${ticket.id} — "${data.subject}" (Priority: ${data.priority || 'HIGH'})`,
+        messageType: "TICKET_RAISED",
+        ticketId: ticket.id,
+    });
+    return ticket;
 }
