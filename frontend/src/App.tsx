@@ -8,12 +8,11 @@ import { ApproveLoginPage } from './components/ApproveLoginPage';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { MetricCard } from './components/MetricCard';
-import { AttendanceOverviewChart } from './components/AttendanceOverviewChart';
-import { WorkersBySiteChart } from './components/WorkersBySiteChart';
+import { TodayAgentAttendanceTable } from './components/TodayAgentAttendanceTable';
 import { QuickActions } from './components/QuickActions';
-import { RecentLeavesTable } from './components/RecentLeavesTable';
 import { ActionModal } from './components/ActionModal';
 import { Footer } from './components/Footer';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import './styles/responsive.css';
 
 // Sub-module Pages
@@ -49,17 +48,12 @@ import { MarkAttendanceModal } from './components/MarkAttendanceModal';
 import { Calendar, ChevronDown, LogOut } from 'lucide-react';
 import {
   fetchDashboardStatsApi,
-  fetchSitesApi,
-  fetchLeavesApi,
   fetchPayrollsApi,
   fetchWorkersApi
 } from './services/api';
 import type {
   MetricData,
-  AttendanceDataPoint,
-  SiteWorkerDistribution,
   QuickActionItem,
-  LeaveRecord,
   WorkerItem
 } from './types';
 
@@ -117,9 +111,6 @@ function MainAppContent() {
 
   // Live Backend State
   const [metrics, setMetrics] = useState<MetricData[]>([]);
-  const [attendanceData, setAttendanceData] = useState<AttendanceDataPoint[]>([]);
-  const [siteDistribution, setSiteDistribution] = useState<SiteWorkerDistribution[]>([]);
-  const [recentLeaves, setRecentLeaves] = useState<LeaveRecord[]>([]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
@@ -162,39 +153,7 @@ function MainAppContent() {
           ];
           setMetrics(backendMetrics);
         }
-
-        if (data.attendance) {
-          setAttendanceData(
-            data.attendance.map((a: any) => ({
-              date: a.day || a.date,
-              present: a.present || 100,
-              absent: a.absent || 10
-            }))
-          );
-        }
       })
-      .catch(() => {});
-
-    fetchSitesApi()
-      .then((sites) => {
-        const colors = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4'];
-        const total = sites.reduce((sum, s) => sum + (s.totalWorkers || 0), 0);
-        const dist: SiteWorkerDistribution[] = sites.map((s, idx) => {
-          const count = s.totalWorkers || 0;
-          const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
-          return {
-            name: s.siteName,
-            count: count,
-            percentage: percentage,
-            color: colors[idx % colors.length]
-          };
-        });
-        setSiteDistribution(dist);
-      })
-      .catch(() => {});
-
-    fetchLeavesApi()
-      .then(setRecentLeaves)
       .catch(() => {});
 
     Promise.all([
@@ -460,7 +419,7 @@ function MainAppContent() {
 
                 <button
                   className="date-picker-btn"
-                  style={{ backgroundColor: '#FEE2E2', color: '#DC2626', borderColor: '#FCA5A5' }}
+                  style={{ backgroundColor: '#FFF7ED', color: '#EA580C', borderColor: '#FED7AA' }}
                   onClick={logout}
                   title="Sign Out to Login Page"
                 >
@@ -487,12 +446,8 @@ function MainAppContent() {
               ))}
             </div>
 
-            <div className="middle-grid">
-              <AttendanceOverviewChart data={attendanceData} />
-              <WorkersBySiteChart
-                data={siteDistribution}
-                onViewAll={() => setActiveTab('sites')}
-              />
+            <div className="middle-grid" style={{ gridTemplateColumns: '2.4fr 1fr', gap: '20px' }}>
+              <TodayAgentAttendanceTable onViewAllAgents={() => setActiveTab('agents')} />
               <QuickActions
                 actions={SYSTEM_QUICK_ACTIONS.filter(action => {
                   if (role === 'SUPER_AGENT') {
@@ -507,13 +462,6 @@ function MainAppContent() {
                     setActiveModal(actionKey);
                   }
                 }}
-              />
-            </div>
-
-            <div className="bottom-grid" style={{ gridTemplateColumns: '1fr' }}>
-              <RecentLeavesTable
-                leaves={recentLeaves}
-                onViewAll={() => setActiveTab('leaves')}
               />
             </div>
           </>
@@ -564,6 +512,15 @@ function MainAppContent() {
         </main>
 
         <Footer setActiveTab={setActiveTab} onOpenModal={(type) => setActiveModal(type)} />
+        <MobileBottomNav
+          activeTab={activeTab}
+          setActiveTab={(tab) => {
+            setActiveTab(tab);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onOpenCreate={() => setActiveModal('CREATE_WORKER')}
+          onOpenMobileDrawer={() => setSidebarCollapsed(false)}
+        />
       </div>
 
       <ActionModal

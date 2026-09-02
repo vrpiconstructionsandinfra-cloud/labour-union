@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Loader2, UserPlus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, UserPlus, Phone, MapPin, DollarSign, Eye, Edit, Trash2, UserCheck, Loader2 } from 'lucide-react';
 import { fetchWorkersApi, deleteUserApi, assignWorkerToAgentApi, removeWorkerFromAgentApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import type { WorkerItem } from '../types';
 import { UserAvatar } from '../components/UserAvatar';
 import { WorkerDetailsModal } from '../components/WorkerDetailsModal';
+import {
+  ListHeader,
+  StatusBadge,
+  MobileListCard,
+  ResponsivePagination,
+  ListEmptyState,
+  ListLoadingState
+} from '../components/common';
 import './Pages.css';
 
 interface WorkersPageProps {
@@ -13,25 +21,42 @@ interface WorkersPageProps {
   refreshTrigger?: number;
 }
 
-export const WorkersPage: React.FC<WorkersPageProps> = ({ onOpenModal, onOpenEditWorkerModal, refreshTrigger }) => {
+const SKILL_OPTIONS = [
+  { key: 'ALL', label: 'All Trades' },
+  { key: 'Mason', label: 'Mason' },
+  { key: 'Electrician', label: 'Electrician' },
+  { key: 'Welder', label: 'Welder' },
+  { key: 'Helper', label: 'Helper' },
+  { key: 'Carpenter', label: 'Carpenter' },
+  { key: 'Plumber', label: 'Plumber' }
+];
+
+export const WorkersPage: React.FC<WorkersPageProps> = ({
+  onOpenModal,
+  onOpenEditWorkerModal,
+  refreshTrigger
+}) => {
   const { user, role } = useAuth();
   const [workers, setWorkers] = useState<WorkerItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [skillFilter, setSkillFilter] = useState('All Skill Types');
+  const [skillFilter, setSkillFilter] = useState('ALL');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [assigningWorkerId, setAssigningWorkerId] = useState<string | null>(null);
   const [selectedWorkerForDetails, setSelectedWorkerForDetails] = useState<WorkerItem | null>(null);
 
-  // Pagination & Limit State
+  // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const isSuperAgent = role === 'SUPER_AGENT';
 
   const loadWorkers = () => {
+    setIsLoading(true);
     fetchWorkersApi()
       .then((data) => setWorkers(data))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
   };
 
   useEffect(() => {
@@ -84,15 +109,18 @@ export const WorkersPage: React.FC<WorkersPageProps> = ({ onOpenModal, onOpenEdi
     }
   };
 
-  const filtered = workers.filter(w => {
+  const filtered = workers.filter((w) => {
+    const term = searchTerm.toLowerCase();
     const matchesSearch =
-      w.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      w.employeeCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      w.designation.toLowerCase().includes(searchTerm.toLowerCase());
+      w.name.toLowerCase().includes(term) ||
+      (w.employeeCode || '').toLowerCase().includes(term) ||
+      (w.designation || '').toLowerCase().includes(term) ||
+      (w.siteName || '').toLowerCase().includes(term) ||
+      (w.phone || '').includes(term);
 
     const matchesSkill =
-      skillFilter === 'All Skill Types' ||
-      w.designation.toLowerCase().includes(skillFilter.toLowerCase());
+      skillFilter === 'ALL' ||
+      (w.designation || '').toLowerCase().includes(skillFilter.toLowerCase());
 
     return matchesSearch && matchesSkill;
   });
@@ -104,264 +132,302 @@ export const WorkersPage: React.FC<WorkersPageProps> = ({ onOpenModal, onOpenEdi
   const paginatedWorkers = filtered.slice(startIndex, endIndex);
 
   const getPageTitle = () => {
-    if (role === 'AGENT') return 'Workers';
+    if (role === 'AGENT') return 'Workers Directory';
     if (role === 'WORKER') return 'My Team Workers';
     return 'All Union Workers Directory';
   };
 
   const getPageSubtitle = () => {
-    if (role === 'AGENT') return 'Directory of registered labor union workers assigned under your direct field agent supervision.';
-    if (role === 'WORKER') return 'List of labor union workers under your field agent supervisor.';
-    return 'Enterprise directory of all registered labor union workers, assigned agents, and site allocations.';
+    if (role === 'AGENT') return 'Directory of registered labor union workers under your direct field agent supervision.';
+    if (role === 'WORKER') return 'Directory of labor union workers assigned to your site supervisor.';
+    return 'Enterprise roster of registered union workforce, assigned field agents, and site allocations.';
   };
 
   return (
     <div className="page-wrapper animate-fade-in">
-      <div className="page-header">
-        <div>
-          <h2>{getPageTitle()}</h2>
-          <p>{getPageSubtitle()}</p>
-        </div>
-        {!isSuperAgent && (
-          <button className="primary-btn" onClick={() => onOpenModal('add_worker')}>
-            <Plus size={16} />
-            <span>Register New Worker</span>
-          </button>
-        )}
-      </div>
+      {/* Standardized Header */}
+      <ListHeader
+        title={getPageTitle()}
+        subtitle={getPageSubtitle()}
+        badgeCount={totalItems}
+        searchQuery={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Search by worker name, code, designation, site..."
+        filterOptions={SKILL_OPTIONS}
+        activeFilter={skillFilter}
+        onFilterSelect={setSkillFilter}
+        primaryActionLabel={!isSuperAgent ? 'Register New Worker' : undefined}
+        primaryActionIcon={<Plus size={16} />}
+        onPrimaryAction={!isSuperAgent ? () => onOpenModal('add_worker') : undefined}
+      />
 
-      <div className="filter-bar">
-        <div className="search-input-wrap">
-          <Search size={16} />
-          <input
-            type="text"
-            placeholder="Search workers by name, ID code, skill designation..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <select
-          className="select-dropdown"
-          value={skillFilter}
-          onChange={(e) => setSkillFilter(e.target.value)}
-        >
-          <option>All Skill Types</option>
-          <option>Mason</option>
-          <option>Electrician</option>
-          <option>Welder</option>
-          <option>Helper</option>
-        </select>
-      </div>
+      {isLoading ? (
+        <ListLoadingState message="Loading worker directory..." rows={6} />
+      ) : filtered.length === 0 ? (
+        <ListEmptyState
+          isSearchOrFilter={Boolean(searchTerm || skillFilter !== 'ALL')}
+          onClearFilters={() => {
+            setSearchTerm('');
+            setSkillFilter('ALL');
+          }}
+          primaryActionLabel={!isSuperAgent ? 'Register Worker' : undefined}
+          onPrimaryAction={!isSuperAgent ? () => onOpenModal('add_worker') : undefined}
+        />
+      ) : (
+        <>
+          {/* DESKTOP & TABLET DATA TABLE (≥ 768px) */}
+          <div className="table-desktop-view">
+            <div className="table-card">
+              <div className="table-responsive">
+                <table className="custom-table">
+                  <thead>
+                    <tr>
+                      <th>Worker</th>
+                      <th>Employee ID</th>
+                      <th>Contact Info</th>
+                      <th>Designation</th>
+                      <th>Site Allocated</th>
+                      <th>Assigned Agent</th>
+                      <th>Daily Wage</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedWorkers.map((worker) => {
+                      const isAssignedToMe =
+                        worker.assignedAgentId === String(user?.id) ||
+                        (user?.name && worker.agentName === user.name);
 
-      <div className="table-card">
-        <div className="table-responsive">
-          <table className="custom-table">
-            <thead>
-              <tr>
-                <th>Worker</th>
-                <th>Employee ID</th>
-                <th>Contact Info</th>
-                <th>Designation</th>
-                <th>Site Allocated</th>
-                <th>Assigned Agent</th>
-                <th>Daily Wage</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedWorkers.length > 0 ? (
-                paginatedWorkers.map((worker) => (
-                  <tr key={worker.id}>
-                    <td>
-                      <div
-                        className="table-user-cell"
-                        onClick={() => window.open(`/worker-details?id=${worker.id}`, '_blank')}
-                        style={{ cursor: 'pointer' }}
-                        title="Click to view complete worker details in a new tab (Aadhaar, PAN, Bank, PF, Form 16, Passport, Address)"
-                      >
-                        <UserAvatar src={worker.avatar} name={worker.name} />
-                        <div>
-                          <span className="user-name-bold" style={{ color: '#2563EB', textDecoration: 'underline' }}>{worker.name}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td><span className="code-badge">{worker.employeeCode}</span></td>
-                    <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <span className="user-sub-email" style={{ fontWeight: 600, color: '#334155' }}>
-                          ✉️ {worker.email}
-                        </span>
-                        <span style={{ fontSize: '12px', color: '#2563EB', fontWeight: 600 }}>
-                          📞 {worker.phone || '+91 9811111111'}
-                        </span>
-                      </div>
-                    </td>
-                    <td><span className="badge badge-casual">{worker.designation}</span></td>
-                    <td>{worker.siteName}</td>
-                    <td><span className="user-name-bold">{worker.agentName}</span></td>
-                    <td><span className="currency-bold">₹ {worker.dailyWage}/day</span></td>
-                    <td><span className="badge badge-approved">{worker.status}</span></td>
-                    <td>
-                      <div className="action-buttons-group" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <button
-                          className="secondary-btn sm-btn"
-                          style={{ padding: '3px 8px', fontSize: '11px', backgroundColor: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE' }}
-                          onClick={() => window.open(`/worker-details?id=${worker.id}`, '_blank')}
-                          title="Open details in new tab"
-                        >
-                          Details ↗
-                        </button>
+                      return (
+                        <tr key={worker.id}>
+                          <td>
+                            <div
+                              className="table-user-cell"
+                              onClick={() => window.open(`/worker-details?id=${worker.id}`, '_blank')}
+                              style={{ cursor: 'pointer' }}
+                              title="Click to view complete worker profile"
+                            >
+                              <UserAvatar src={worker.avatar} name={worker.name} size={36} />
+                              <div>
+                                <span className="user-name-bold" style={{ color: '#2563EB', textDecoration: 'underline' }}>
+                                  {worker.name}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <span className="code-badge">{worker.employeeCode || 'W-PENDING'}</span>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                              <span style={{ fontSize: '12.5px', color: '#334155', fontWeight: 600 }}>
+                                ✉️ {worker.email}
+                              </span>
+                              <span style={{ fontSize: '12px', color: '#2563EB', fontWeight: 600 }}>
+                                📞 {worker.phone || '+91 9811111111'}
+                              </span>
+                            </div>
+                          </td>
+                          <td>
+                            <span className="badge badge-casual">{worker.designation || 'General'}</span>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                              <MapPin size={13} color="#64748B" />
+                              <span>{worker.siteName || 'Unassigned Site'}</span>
+                            </div>
+                          </td>
+                          <td>
+                            <span className="user-name-bold">{worker.agentName || 'None'}</span>
+                          </td>
+                          <td>
+                            <span className="currency-bold">₹ {worker.dailyWage || 0}/day</span>
+                          </td>
+                          <td>
+                            <StatusBadge status={worker.status || 'ACTIVE'} size="sm" />
+                          </td>
+                          <td>
+                            <div className="action-buttons-group" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                              <button
+                                className="list-btn list-btn-outline touch-target"
+                                style={{ padding: '4px 8px', fontSize: '11.5px', minHeight: '32px' }}
+                                onClick={() => window.open(`/worker-details?id=${worker.id}`, '_blank')}
+                                title="Open full worker details in new tab"
+                              >
+                                <Eye size={13} />
+                                <span>Details ↗</span>
+                              </button>
 
-                        {isSuperAgent ? (
-                          <span style={{ fontSize: '12px', color: '#64748B', fontStyle: 'italic' }}>Read Only</span>
-                        ) : role === 'AGENT' ? (
-                          (() => {
-                            const isAssignedToMe = worker.assignedAgentId === String(user?.id) || (user?.name && worker.agentName === user.name);
-                            return (
-                              <>
-                                {isAssignedToMe ? (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <span className="badge badge-casual" style={{ backgroundColor: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE', fontSize: '11px', fontWeight: 700 }}>
-                                      Assigned to You
-                                    </span>
+                              {isSuperAgent ? (
+                                <span style={{ fontSize: '11.5px', color: '#94A3B8', fontStyle: 'italic' }}>View Only</span>
+                              ) : role === 'AGENT' ? (
+                                <>
+                                  {isAssignedToMe ? (
                                     <button
-                                      className="text-action-btn"
-                                      style={{ color: '#DC2626', fontSize: '12px', fontWeight: 600 }}
+                                      className="list-btn touch-target"
+                                      style={{ padding: '4px 8px', fontSize: '11.5px', minHeight: '32px', backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}
                                       disabled={assigningWorkerId === worker.id}
                                       onClick={() => handleUnassignFromMe(worker)}
-                                      title="Unassign from my account"
                                     >
                                       {assigningWorkerId === worker.id ? <Loader2 size={12} className="spinner" /> : 'Unassign'}
                                     </button>
-                                  </div>
-                                ) : (
+                                  ) : (
+                                    <button
+                                      className="list-btn list-btn-primary touch-target"
+                                      style={{ padding: '4px 8px', fontSize: '11.5px', minHeight: '32px' }}
+                                      disabled={assigningWorkerId === worker.id}
+                                      onClick={() => handleAssignToMe(worker)}
+                                    >
+                                      {assigningWorkerId === worker.id ? (
+                                        <Loader2 size={12} className="spinner" />
+                                      ) : (
+                                        <>
+                                          <UserPlus size={13} />
+                                          <span>Assign</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  )}
+
                                   <button
-                                    className="primary-btn sm-btn"
-                                    style={{ padding: '4px 10px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                                    disabled={assigningWorkerId === worker.id}
-                                    onClick={() => handleAssignToMe(worker)}
+                                    className="list-btn list-btn-outline touch-target"
+                                    style={{ padding: '4px 8px', fontSize: '11.5px', minHeight: '32px' }}
+                                    onClick={() => onOpenEditWorkerModal ? onOpenEditWorkerModal(worker) : onOpenModal('edit_worker')}
                                   >
-                                    {assigningWorkerId === worker.id ? (
-                                      <Loader2 size={12} className="spinner" />
-                                    ) : (
-                                      <>
-                                        <UserPlus size={12} />
-                                        <span>Assign to Me</span>
-                                      </>
-                                    )}
+                                    <Edit size={13} />
+                                    <span>Edit</span>
                                   </button>
-                                )}
-
-                                <button
-                                  className="text-action-btn"
-                                  style={{ color: '#2563EB', fontWeight: 600 }}
-                                  onClick={() => {
-                                    if (onOpenEditWorkerModal) {
-                                      onOpenEditWorkerModal(worker);
-                                    } else {
-                                      onOpenModal('edit_worker');
-                                    }
-                                  }}
-                                >
-                                  Edit
-                                </button>
-                              </>
-                            );
-                          })()
-                        ) : (
-                          <>
-                            <button
-                              className="text-action-btn"
-                              style={{ color: '#2563EB', fontWeight: 600 }}
-                              onClick={() => {
-                                if (onOpenEditWorkerModal) {
-                                  onOpenEditWorkerModal(worker);
-                                } else {
-                                  onOpenModal('edit_worker');
-                                }
-                              }}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              className="text-action-btn"
-                              style={{ color: '#DC2626', fontWeight: 600 }}
-                              disabled={deletingId === worker.id}
-                              onClick={() => handleDeleteWorker(worker.id, worker.name)}
-                            >
-                              {deletingId === worker.id ? (
-                                <Loader2 size={13} className="spinner" />
+                                </>
                               ) : (
-                                'Delete'
+                                <>
+                                  <button
+                                    className="list-btn list-btn-outline touch-target"
+                                    style={{ padding: '4px 8px', fontSize: '11.5px', minHeight: '32px' }}
+                                    onClick={() => onOpenEditWorkerModal ? onOpenEditWorkerModal(worker) : onOpenModal('edit_worker')}
+                                  >
+                                    <Edit size={13} />
+                                    <span>Edit</span>
+                                  </button>
+                                  <button
+                                    className="list-btn touch-target"
+                                    style={{ padding: '4px 8px', fontSize: '11.5px', minHeight: '32px', backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}
+                                    disabled={deletingId === worker.id}
+                                    onClick={() => handleDeleteWorker(worker.id, worker.name)}
+                                  >
+                                    {deletingId === worker.id ? <Loader2 size={12} className="spinner" /> : <Trash2 size={13} />}
+                                  </button>
+                                </>
                               )}
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
-                    {role === 'AGENT'
-                      ? 'No workers currently assigned to your agent account. Click "+ Register New Worker" or assign workers.'
-                      : 'No worker records found.'}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Left / Right Pagination & Limit Selector Bar */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', flexWrap: 'wrap', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500 }}>
-              Showing {totalItems > 0 ? startIndex + 1 : 0} to {endIndex} of {totalItems} workers
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500 }}>Show:</span>
-              <select
-                className="select-dropdown"
-                value={itemsPerPage}
-                onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                style={{ padding: '4px 10px', fontSize: '13px', width: 'auto' }}
-              >
-                <option value={5}>5 per page</option>
-                <option value={10}>10 per page</option>
-                <option value={20}>20 per page</option>
-                <option value={50}>50 per page</option>
-              </select>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <button
-              className="secondary-btn sm-btn"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              style={{ opacity: currentPage === 1 ? 0.5 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-            >
-              <ChevronLeft size={16} />
-              <span>Previous</span>
-            </button>
-            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', padding: '0 8px' }}>
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              className="secondary-btn sm-btn"
-              disabled={currentPage >= totalPages}
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              style={{ opacity: currentPage >= totalPages ? 0.5 : 1, cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-            >
-              <span>Next</span>
-              <ChevronRight size={16} />
-            </button>
+          {/* MOBILE CARDS VIEW (< 768px) */}
+          <div className="card-mobile-view">
+            {paginatedWorkers.map((worker) => {
+              const isAssignedToMe =
+                worker.assignedAgentId === String(user?.id) ||
+                (user?.name && worker.agentName === user.name);
+
+              return (
+                <MobileListCard
+                  key={worker.id}
+                  avatarName={worker.name}
+                  avatarImage={worker.avatar}
+                  title={worker.name}
+                  subtitle={worker.designation || 'Union Worker'}
+                  idBadge={worker.employeeCode || 'W-PEND'}
+                  status={worker.status || 'ACTIVE'}
+                  metaRows={[
+                    {
+                      label: 'Site',
+                      value: worker.siteName || 'Unassigned',
+                      icon: <MapPin size={13} color="#64748B" />
+                    },
+                    {
+                      label: 'Phone',
+                      value: worker.phone || '+91 9811111111',
+                      icon: <Phone size={13} color="#64748B" />
+                    },
+                    {
+                      label: 'Wage',
+                      value: `₹ ${worker.dailyWage || 0}/day`,
+                      icon: <DollarSign size={13} color="#64748B" />
+                    }
+                  ]}
+                  expandableRows={[
+                    { label: 'Email', value: worker.email },
+                    { label: 'Assigned Agent', value: worker.agentName || 'None' }
+                  ]}
+                  primaryAction={{
+                    label: 'View Full Profile',
+                    icon: <Eye size={15} />,
+                    onClick: () => window.open(`/worker-details?id=${worker.id}`, '_blank'),
+                    variant: 'primary'
+                  }}
+                  secondaryActions={[
+                    ...(!isSuperAgent && onOpenEditWorkerModal
+                      ? [
+                          {
+                            label: 'Edit Worker Details',
+                            icon: <Edit size={14} />,
+                            onClick: () => onOpenEditWorkerModal(worker)
+                          }
+                        ]
+                      : []),
+                    ...(role === 'AGENT'
+                      ? isAssignedToMe
+                        ? [
+                            {
+                              label: 'Unassign Worker',
+                              icon: <UserCheck size={14} />,
+                              variant: 'danger' as const,
+                              onClick: () => handleUnassignFromMe(worker)
+                            }
+                          ]
+                        : [
+                            {
+                              label: 'Assign to Me',
+                              icon: <UserPlus size={14} />,
+                              onClick: () => handleAssignToMe(worker)
+                            }
+                          ]
+                      : []),
+                    ...(!isSuperAgent && role !== 'AGENT'
+                      ? [
+                          {
+                            label: 'Delete Worker',
+                            icon: <Trash2 size={14} />,
+                            variant: 'danger' as const,
+                            onClick: () => handleDeleteWorker(worker.id, worker.name)
+                          }
+                        ]
+                      : [])
+                  ]}
+                />
+              );
+            })}
           </div>
-        </div>
-      </div>
+
+          {/* Unified Responsive Pagination */}
+          <ResponsivePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setItemsPerPage}
+          />
+        </>
+      )}
 
       {/* Worker Detailed Profile Modal */}
       <WorkerDetailsModal

@@ -68,7 +68,7 @@ export const ResponsiveNavbar: React.FC<ResponsiveNavbarProps> = ({
               <Users size={20} color="#2563EB" />
             </div>
             <div className="navbar-brand-text">
-              <span className="navbar-brand-title">Labor Union</span>
+              <span className="navbar-brand-title">Labour Union</span>
               <span className="navbar-brand-sub">{title}</span>
             </div>
           </div>

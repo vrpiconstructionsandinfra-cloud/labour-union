@@ -1,0 +1,121 @@
+/* Mobile Bottom Navigation Bar Styles - Matching Image 2 */
+
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100vw;
+    height: 64px;
+    background-color: var(--bg-card, #FFFFFF);
+    border-top: 1px solid var(--border-color, #E2E8F0);
+    box-shadow: 0 -3px 12px rgba(0, 0, 0, 0.05);
+    z-index: 999;
+    padding: 0 8px;
+    box-sizing: border-box;
+    user-select: none;
+  }
+
+  .mobile-nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    padding: 6px 8px;
+    gap: 3px;
+    cursor: pointer;
+    color: var(--text-secondary, #64748B);
+    transition: all 0.15s ease;
+    flex: 1;
+    min-height: 48px;
+  }
+
+  .mobile-nav-btn:hover {
+    color: var(--primary, #EA580C);
+  }
+
+  .mobile-nav-btn.active {
+    color: var(--primary, #EA580C);
+  }
+
+  .mobile-nav-icon {
+    flex-shrink: 0;
+  }
+
+  .mobile-nav-label {
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.1px;
+  }
+
+  /* Center Elevated Action Button */
+  .mobile-nav-center-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    position: relative;
+    top: -8px;
+  }
+
+  .mobile-nav-fab-btn {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #FF6B00 0%, #EA580C 100%);
+    color: #FFFFFF;
+    border: 3px solid var(--bg-card, #FFFFFF);
+    box-shadow: 0 4px 14px rgba(234, 88, 12, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .mobile-nav-fab-btn:active {
+    transform: scale(0.92);
+  }
+
+  .mobile-nav-fab-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--text-secondary, #64748B);
+    margin-top: 2px;
+  }
+}
+
+/* Dark Mode Overrides */
+[data-theme="dark"] .mobile-bottom-nav,
+body.dark-mode .mobile-bottom-nav {
+  background-color: #1E293B;
+  border-top-color: #334155;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .mobile-nav-fab-btn,
+body.dark-mode .mobile-nav-fab-btn {
+  border-color: #1E293B;
+}
+
+[data-theme="dark"] .mobile-nav-btn,
+body.dark-mode .mobile-nav-btn {
+  color: #94A3B8;
+}
+
+[data-theme="dark"] .mobile-nav-btn.active,
+body.dark-mode .mobile-nav-btn.active {
+  color: #F97316;
+}

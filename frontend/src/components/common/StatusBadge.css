@@ -1,0 +1,114 @@
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 9999px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  transition: all 0.15s ease;
+  width: fit-content;
+}
+
+.status-badge.size-sm {
+  padding: 3px 7px;
+  font-size: 10.5px;
+}
+
+.status-badge.size-md {
+  padding: 4px 10px;
+  font-size: 11.5px;
+}
+
+.status-badge.size-lg {
+  padding: 6px 13px;
+  font-size: 13px;
+}
+
+.status-badge-icon {
+  flex-shrink: 0;
+}
+
+/* Functional & Semantic Color Variants Using Brand Tokens */
+.status-badge.badge-success {
+  background-color: var(--badge-green-bg, #ECFDF5);
+  color: var(--badge-green-text, #047857);
+  border: 1px solid var(--badge-green-border, #A7F3D0);
+}
+
+.status-badge.badge-danger {
+  background-color: var(--badge-red-bg, #FEF2F2);
+  color: var(--badge-red-text, #DC2626);
+  border: 1px solid var(--badge-red-border, #FECACA);
+}
+
+.status-badge.badge-warning,
+.status-badge.badge-amber {
+  background-color: var(--badge-amber-bg, #FEF3C7);
+  color: var(--badge-amber-text, #B45309);
+  border: 1px solid var(--badge-amber-border, #FDE68A);
+}
+
+.status-badge.badge-info {
+  background-color: var(--primary-light, #EFF6FF);
+  color: var(--primary, #2563EB);
+  border: 1px solid var(--primary-border, #BFDBFE);
+}
+
+.status-badge.badge-purple {
+  background-color: var(--badge-purple-bg, #F5F3FF);
+  color: var(--badge-purple-text, #7C3AED);
+  border: 1px solid var(--badge-purple-border, #DDD6FE);
+}
+
+.status-badge.badge-neutral {
+  background-color: var(--bg-surface-subtle, #F1F5F9);
+  color: var(--text-secondary, #475569);
+  border: 1px solid var(--border-color, #CBD5E1);
+}
+
+/* Dark Mode Support */
+[data-theme="dark"] .status-badge.badge-success,
+body.dark-mode .status-badge.badge-success {
+  background-color: rgba(4, 120, 87, 0.2);
+  color: #34D399;
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+[data-theme="dark"] .status-badge.badge-danger,
+body.dark-mode .status-badge.badge-danger {
+  background-color: rgba(220, 38, 38, 0.2);
+  color: #F87171;
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+[data-theme="dark"] .status-badge.badge-warning,
+[data-theme="dark"] .status-badge.badge-amber,
+body.dark-mode .status-badge.badge-warning,
+body.dark-mode .status-badge.badge-amber {
+  background-color: rgba(180, 83, 9, 0.2);
+  color: #FBBF24;
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+[data-theme="dark"] .status-badge.badge-info,
+body.dark-mode .status-badge.badge-info {
+  background-color: rgba(37, 99, 235, 0.2);
+  color: #60A5FA;
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+[data-theme="dark"] .status-badge.badge-purple,
+body.dark-mode .status-badge.badge-purple {
+  background-color: rgba(124, 58, 237, 0.2);
+  color: #A78BFA;
+  border-color: rgba(167, 139, 250, 0.3);
+}
+
+[data-theme="dark"] .status-badge.badge-neutral,
+body.dark-mode .status-badge.badge-neutral {
+  background-color: rgba(148, 163, 184, 0.15);
+  color: #94A3B8;
+  border-color: rgba(148, 163, 184, 0.25);
+}

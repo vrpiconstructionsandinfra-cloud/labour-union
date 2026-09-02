@@ -261,91 +261,148 @@ export const AgentSalaryPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Salary Data Table Card */}
-      <div className="salary-table-card">
-        <div className="table-responsive">
-          <table className="salary-data-table">
-            <thead>
-              <tr>
-                <th>Agent Details</th>
-                <th>Role Category</th>
-                <th>Designation & Site</th>
-                <th>Base Salary (₹)</th>
-                <th>Allowances / Bonus (₹)</th>
-                <th>Net Payable (₹)</th>
-                <th>Status</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
+      {/* DESKTOP TABLE VIEW */}
+      <div className="table-desktop-view">
+        <div className="salary-table-card">
+          <div className="table-responsive">
+            <table className="salary-data-table">
+              <thead>
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: '#64748B' }}>
-                    Loading agent salary records from database...
-                  </td>
+                  <th>Agent Details</th>
+                  <th>Role Category</th>
+                  <th>Designation & Site</th>
+                  <th>Base Salary (₹)</th>
+                  <th>Allowances / Bonus (₹)</th>
+                  <th>Net Payable (₹)</th>
+                  <th>Status</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
-              ) : filteredAgents.length === 0 ? (
-                <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: '#94A3B8' }}>
-                    No agent salary records found matching criteria.
-                  </td>
-                </tr>
-              ) : (
-                filteredAgents.map((agent) => (
-                  <tr key={agent.id} className="salary-table-row">
-                    <td>
-                      <div className="agent-user-cell">
-                        <UserAvatar src={agent.avatar} name={agent.name} size={36} />
-                        <div>
-                          <span className="agent-name">{agent.name}</span>
-                          <span className="agent-code">{agent.employeeCode}</span>
-                        </div>
-                      </div>
-                    </td>
-
-                    <td>
-                      {agent.category === 'SUPPORT_AGENT' ? (
-                        <span className="role-pill support-pill"><Headset size={12} /> Support Agent</span>
-                      ) : (
-                        <span className="role-pill field-pill"><UserCheck size={12} /> Field Agent</span>
-                      )}
-                    </td>
-
-                    <td>
-                      <div className="designation-cell">
-                        <span className="des-title">{agent.designation}</span>
-                        <span className="des-site">{agent.siteName}</span>
-                      </div>
-                    </td>
-
-                    <td className="amount-cell base-num">₹{agent.baseSalary.toLocaleString('en-IN')}</td>
-                    <td className="amount-cell bonus-num">+₹{agent.allowances.toLocaleString('en-IN')}</td>
-                    <td className="amount-cell net-num">₹{agent.netSalary.toLocaleString('en-IN')}</td>
-
-                    <td>
-                      {agent.status === 'ACTIVE' ? (
-                        <span className="status-pill active-pill">Active</span>
-                      ) : (
-                        <span className="status-pill inactive-pill">Inactive</span>
-                      )}
-                    </td>
-
-                    <td style={{ textAlign: 'right' }}>
-                      <button
-                        className="edit-salary-btn"
-                        onClick={() => handleOpenEditModal(agent)}
-                        title="Edit Salary & Details"
-                      >
-                        <Edit2 size={14} />
-                        <span>Edit Salary</span>
-                      </button>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: '#64748B' }}>
+                      Loading agent salary records from database...
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : filteredAgents.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: '#94A3B8' }}>
+                      No agent salary records found matching criteria.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredAgents.map((agent) => (
+                    <tr key={agent.id} className="salary-table-row">
+                      <td>
+                        <div className="agent-user-cell">
+                          <UserAvatar src={agent.avatar} name={agent.name} size={36} />
+                          <div>
+                            <span className="agent-name">{agent.name}</span>
+                            <span className="agent-code">{agent.employeeCode}</span>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td>
+                        {agent.category === 'SUPPORT_AGENT' ? (
+                          <span className="role-pill support-pill"><Headset size={12} /> Support Agent</span>
+                        ) : (
+                          <span className="role-pill field-pill"><UserCheck size={12} /> Field Agent</span>
+                        )}
+                      </td>
+
+                      <td>
+                        <div className="designation-cell">
+                          <span className="des-title">{agent.designation}</span>
+                          <span className="des-site">{agent.siteName}</span>
+                        </div>
+                      </td>
+
+                      <td className="amount-cell base-num">₹{agent.baseSalary.toLocaleString('en-IN')}</td>
+                      <td className="amount-cell bonus-num">+₹{agent.allowances.toLocaleString('en-IN')}</td>
+                      <td className="amount-cell net-num">₹{agent.netSalary.toLocaleString('en-IN')}</td>
+
+                      <td>
+                        {agent.status === 'ACTIVE' ? (
+                          <span className="status-pill active-pill">Active</span>
+                        ) : (
+                          <span className="status-pill inactive-pill">Inactive</span>
+                        )}
+                      </td>
+
+                      <td style={{ textAlign: 'right' }}>
+                        <button
+                          className="edit-salary-btn"
+                          onClick={() => handleOpenEditModal(agent)}
+                          title="Edit Salary & Details"
+                        >
+                          <Edit2 size={14} />
+                          <span>Edit Salary</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
+      </div>
+
+      {/* MOBILE CARDS VIEW */}
+      <div className="card-mobile-view">
+        {filteredAgents.map((agent) => (
+          <div
+            key={agent.id}
+            style={{
+              backgroundColor: 'var(--bg-card, #ffffff)',
+              border: '1px solid var(--border-color, #e2e8f0)',
+              borderRadius: '14px',
+              padding: '16px',
+              boxShadow: '0 1px 4px rgba(0, 0, 0, 0.04)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <UserAvatar src={agent.avatar} name={agent.name} size={38} />
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '14.5px', fontWeight: 800 }}>{agent.name}</h4>
+                  <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>{agent.employeeCode}</span>
+                </div>
+              </div>
+              <span className={`status-pill ${agent.status === 'ACTIVE' ? 'active-pill' : 'inactive-pill'}`}>
+                {agent.status}
+              </span>
+            </div>
+
+            <div style={{ backgroundColor: 'var(--bg-main, #f8fafc)', padding: '10px 12px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Role:</span>
+                <span style={{ fontWeight: 600 }}>{agent.designation}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Base / Bonus:</span>
+                <span>₹{agent.baseSalary.toLocaleString('en-IN')} + ₹{agent.allowances.toLocaleString('en-IN')}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed #CBD5E1', paddingTop: '4px', marginTop: '2px' }}>
+                <span style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>Net Monthly:</span>
+                <strong style={{ color: '#059669', fontSize: '14px' }}>₹{agent.netSalary.toLocaleString('en-IN')}</strong>
+              </div>
+            </div>
+
+            <button
+              className="list-btn list-btn-primary touch-target"
+              style={{ width: '100%', justifyContent: 'center', padding: '9px', fontSize: '13px' }}
+              onClick={() => handleOpenEditModal(agent)}
+            >
+              <Edit2 size={14} /> Edit Salary Details
+            </button>
+          </div>
+        ))}
       </div>
 
       {/* Edit Agent Salary & Details Interactive Modal */}

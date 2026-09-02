@@ -18,7 +18,10 @@ import {
   LogOut,
   ChevronRight,
   QrCode,
-  FileSpreadsheet
+  FileSpreadsheet,
+  X,
+  Settings,
+  HelpCircle
 } from 'lucide-react';
 import { UserAvatar } from './UserAvatar';
 import './Sidebar.css';
@@ -67,7 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'workers', label: 'Workers', icon: UserCheck },
     { id: 'enquiries', label: 'Enquired', icon: FileSpreadsheet },
     { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
-    { id: 'leaves', label: 'Leaves', icon: FileText },
+    { id: 'leaves', label: 'Leave Requests', icon: FileText },
     { id: 'my_leaves', label: 'My Leaves', icon: FileText },
     { id: 'wallet', label: 'Wallet', icon: Wallet },
     { id: 'insurance', label: 'Insurance', icon: ShieldCheck },
@@ -77,22 +80,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const allMoreNav = [
-    { id: 'notifications', label: 'Notifications', icon: Bell, badge: unreadCount > 0 ? String(unreadCount) : undefined }
+    { id: 'notifications', label: 'Notifications', icon: Bell, badge: unreadCount > 0 ? String(unreadCount) : undefined },
+    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'help', label: 'Help & Support', icon: HelpCircle }
   ];
 
   // Role Based Navigation Filtering
   const managementNav = allManagementNav.filter(item => hasPermission(item.id));
-  const moreNav = allMoreNav.filter(item => hasPermission(item.id));
+  const moreNav = allMoreNav.filter(item => item.id === 'settings' || item.id === 'help' || hasPermission(item.id));
 
   const handleNavClick = (id: string) => {
     if (id === 'tickets' && role === 'SUPER_AGENT') {
       setActiveTab('support_agents');
+    } else if (id === 'help') {
+      onOpenModal('help');
+    } else if (id === 'notifications') {
+      onOpenModal('notifications');
     } else {
       setActiveTab(id);
     }
-    if (id === 'notifications') {
-      onOpenModal('notifications');
-    }
+
     if (window.innerWidth <= 768 && setSidebarCollapsed) {
       setSidebarCollapsed(true);
     }
@@ -100,10 +107,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
-      {/* Brand Header */}
+      {/* Brand Header (Desktop & Mobile Drawer) */}
       <div className="sidebar-brand">
         <div className="brand-logo">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M16 21V19C16 17.9391 15.5786 16.9217 14.8284 16.1716C14.0783 15.4214 13.0609 15 12 15C10.9391 15 9.92172 15.4214 9.17157 16.1716C8.42143 16.9217 8 17.9391 8 19V21" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M12 11C13.6569 11 15 9.65685 15 8C15 6.34315 13.6569 5 12 5C10.3431 5 9 6.34315 9 8C9 9.65685 10.3431 11 12 11Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M22 21V19C21.9993 18.1137 21.7044 17.2528 21.1614 16.5523C20.6184 15.8519 19.8581 15.3516 19 15.13" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -112,27 +119,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <path d="M7 5.13C6.13692 5.35049 5.37177 5.85244 4.82665 6.55589C4.28153 7.25934 3.98555 8.12353 3.98555 9.0145C3.98555 9.90547 4.28153 10.7697 4.82665 11.4731C5.37177 12.1766 6.13692 12.6785 7 12.9" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
-        {!collapsed && (
+        {(!collapsed || window.innerWidth <= 768) && (
           <div className="brand-text">
-            <h2>Labor Union</h2>
+            <h2>Labour Union</h2>
             <p>Management System</p>
           </div>
         )}
+        <button
+          className="sidebar-mobile-close-btn"
+          onClick={() => setSidebarCollapsed?.(true)}
+          title="Close Navigation Menu"
+        >
+          <X size={18} />
+        </button>
       </div>
 
       {/* Navigation Sections */}
       <div className="sidebar-nav-container">
         {/* MANAGEMENT Section */}
         <div className="nav-section">
-          {!collapsed && <span className="section-title">MANAGEMENT ({role})</span>}
+          {(!collapsed || window.innerWidth <= 768) && <span className="section-title">MANAGEMENT</span>}
           <ul className="nav-list">
             {managementNav.map((item) => {
               const Icon = item.icon;
               const isCustomerSupport = item.id === 'tickets';
               const isChildActive = ['tickets', 'support_agents', 'ticket_calendar', 'support_reports'].includes(activeTab);
               const isActive = activeTab === item.id || (isCustomerSupport && isChildActive);
-
-
 
               return (
                 <li key={item.id}>
@@ -143,9 +155,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   >
                     <div className="nav-item-left">
                       <Icon className="nav-icon" size={18} />
-                      {!collapsed && <span className="nav-label">{item.label}</span>}
+                      {(!collapsed || window.innerWidth <= 768) && <span className="nav-label">{item.label}</span>}
                     </div>
-                    {!collapsed && !item.isDashboard && (
+                    {(!collapsed || window.innerWidth <= 768) && !item.isDashboard && (
                       <ChevronRight className="nav-arrow" size={16} />
                     )}
                   </button>
@@ -155,10 +167,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </ul>
         </div>
 
-        {/* MORE Section */}
+        {/* MORE / SETTINGS Section */}
         {moreNav.length > 0 && (
           <div className="nav-section">
-            {!collapsed && <span className="section-title">MORE</span>}
+            <div className="sidebar-nav-divider"></div>
+            {(!collapsed || window.innerWidth <= 768) && <span className="section-title desktop-only">MORE</span>}
             <ul className="nav-list">
               {moreNav.map((item) => {
                 const Icon = item.icon;
@@ -172,9 +185,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     >
                       <div className="nav-item-left">
                         <Icon className="nav-icon" size={18} />
-                        {!collapsed && <span className="nav-label">{item.label}</span>}
+                        {(!collapsed || window.innerWidth <= 768) && <span className="nav-label">{item.label}</span>}
                       </div>
-                      {!collapsed && (
+                      {(!collapsed || window.innerWidth <= 768) && (
                         <div className="nav-item-right">
                           {item.badge && <span className="nav-badge-red">{item.badge}</span>}
                           <ChevronRight className="nav-arrow" size={16} />
@@ -190,8 +203,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Assigned Agent & Working Site Cards for Worker Role */}
         {!collapsed && role === 'WORKER' && (
-          <div className="sidebar-worker-cards-container">
-            {/* Card 1: Assigned Agent */}
+          <div className="sidebar-worker-cards-container desktop-only">
             <div className="sidebar-info-card">
               <span className="info-card-title">Assigned Agent</span>
               <div className="info-card-body">
@@ -211,7 +223,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
             </div>
 
-            {/* Card 2: Working Site */}
             <div className="sidebar-info-card site-card">
               <span className="info-card-title">Working Site</span>
               <div className="info-card-body">
@@ -229,34 +240,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
 
-      {/* Bottom Profile / Logout Widget */}
-      {!collapsed && (
-        <div className="sidebar-footer-container">
-          {role === 'WORKER' ? (
-            <button className="sidebar-logout-btn" onClick={() => logout()}>
-              <LogOut size={16} />
-              <span>Log Out</span>
-            </button>
-          ) : (
-            <div className="sidebar-profile-card">
-              <UserAvatar
-                src={(user as any)?.profileImage || user?.avatar}
-                name={user?.name || 'User'}
-                className="profile-avatar"
-                size={38}
-              />
-              <div className="profile-info">
-                <span className="profile-name">{user?.name || 'Super Agent'}</span>
-                <span className="profile-email">{user?.email || 'superagent@laborunion.com'}</span>
-                <div className="profile-status">
-                  <span className="status-dot"></span>
-                  <span className="status-text">{role}</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Bottom Sign Out Widget */}
+      <div className="sidebar-footer-container">
+        <button
+          className="sidebar-logout-btn"
+          onClick={() => logout()}
+          title="Sign Out to Login Screen"
+        >
+          <LogOut size={16} />
+          <span>Sign Out</span>
+        </button>
+      </div>
     </aside>
   );
 };

@@ -1,0 +1,132 @@
+/* ==========================================================================
+   Global Brand Color Tokens & Theme Variables
+   Labour Union Management System (Warm Charcoal & Vibrant Sunset Orange)
+   ========================================================================== */
+
+:root {
+  /* Brand Primary (Sunset & Flame Orange) */
+  --primary: #EA580C;
+  --primary-hover: #C2410C;
+  --primary-light: #FFF7ED;
+  --primary-border: #FED7AA;
+  --primary-gradient: linear-gradient(135deg, #FF6B00 0%, #EA580C 100%);
+
+  /* Navigation & Sidebar (Warm Charcoal Slate) */
+  --bg-sidebar: #383B40;
+  --bg-sidebar-hover: rgba(255, 255, 255, 0.08);
+  --bg-sidebar-active: #EA580C;
+  --text-sidebar: #E2E8F0;
+  --text-sidebar-muted: #9CA3AF;
+
+  /* App Backgrounds & Surface Cards */
+  --bg-app: #F8FAFC;
+  --bg-main: #F8FAFC;
+  --bg-card: #FFFFFF;
+  --bg-surface-subtle: #F1F5F9;
+  --border-color: #E2E8F0;
+  --border-light: #F1F5F9;
+
+  /* Typography Colors */
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
+
+  /* Functional & Semantic Badges */
+  /* 1. Green / Success (Active, Present, Resolved) */
+  --badge-green-bg: #DCFCE7;
+  --badge-green-text: #16A34A;
+  --badge-green-border: #BBF7D0;
+
+  /* 2. Amber / Warning (Half Day, On Leave, In Progress) */
+  --badge-amber-bg: #FEF3C7;
+  --badge-amber-text: #D97706;
+  --badge-amber-border: #FDE68A;
+
+  /* 3. Red / Danger (Absent, Inactive, Critical, Urgent) */
+  --badge-red-bg: #FEE2E2;
+  --badge-red-text: #DC2626;
+  --badge-red-border: #FECACA;
+
+  /* 4. Purple / Special (Highlights, Features, Reports) */
+  --badge-purple-bg: #F3E8FF;
+  --badge-purple-text: #9333EA;
+  --badge-purple-border: #E9D5FF;
+
+  /* Elevation Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-dropdown: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  --shadow-popover: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  /* Layout Sizing */
+  --header-height: 70px;
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 80px;
+
+  /* Metric Card Colors */
+  --color-workers-bg: #FEF2F2;
+  --color-workers-icon: #EA580C;
+  --color-agents-bg: #DCFCE7;
+  --color-agents-icon: #16A34A;
+  --color-sites-bg: #F3E8FF;
+  --color-sites-icon: #9333EA;
+  --color-active-bg: #FEF3C7;
+  --color-active-icon: #D97706;
+  --color-attendance-bg: #FEE2E2;
+  --color-attendance-icon: #EF4444;
+
+  --color-success: #16A34A;
+  --color-danger: #DC2626;
+  --color-warning: #D97706;
+}
+
+/* Dark Mode Tokens */
+[data-theme="dark"],
+body.dark-mode {
+  --bg-app: #0F172A;
+  --bg-main: #0F172A;
+  --bg-card: #1E293B;
+  --bg-sidebar: #1E2024;
+  --bg-sidebar-hover: rgba(255, 255, 255, 0.08);
+  --bg-sidebar-active: #EA580C;
+  --bg-surface-subtle: #1E293B;
+
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --text-sidebar: #E2E8F0;
+  --text-sidebar-muted: #9CA3AF;
+
+  --border-color: #334155;
+  --border-light: #1E293B;
+
+  --badge-green-bg: rgba(22, 163, 74, 0.2);
+  --badge-green-text: #4ADE80;
+  --badge-green-border: rgba(74, 222, 128, 0.3);
+
+  --badge-amber-bg: rgba(217, 119, 6, 0.2);
+  --badge-amber-text: #FBBF24;
+  --badge-amber-border: rgba(251, 191, 36, 0.3);
+
+  --badge-red-bg: rgba(220, 38, 38, 0.2);
+  --badge-red-text: #F87171;
+  --badge-red-border: rgba(248, 113, 113, 0.3);
+
+  --badge-purple-bg: rgba(147, 51, 234, 0.2);
+  --badge-purple-text: #C084FC;
+  --badge-purple-border: rgba(192, 132, 252, 0.3);
+
+  --color-workers-bg: rgba(234, 88, 12, 0.15);
+  --color-agents-bg: rgba(22, 163, 74, 0.15);
+  --color-sites-bg: rgba(147, 51, 234, 0.15);
+  --color-active-bg: rgba(217, 119, 6, 0.15);
+  --color-attendance-bg: rgba(239, 68, 68, 0.15);
+
+  --shadow-card: 0 4px 12px -2px rgba(0, 0, 0, 0.3);
+}

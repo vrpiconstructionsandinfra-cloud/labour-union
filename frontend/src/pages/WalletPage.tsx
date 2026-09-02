@@ -442,72 +442,101 @@ export const WalletPage: React.FC<WalletPageProps> = ({ user, onOpenModal }) => 
               <span className="stat-sub">Bank & Wire Transfers</span>
             </div>
           </div>
-
-          <div className="table-card mt-24">
-            <div className="card-header border-b flex-between">
-              <h3 className="card-title">My Personal Transaction History</h3>
-              <span className="code-badge">{user?.employeeCode || `AGT-00${user?.id || '1'}`}</span>
-            </div>
-            <div className="table-responsive">
-              <table className="custom-table">
-                <thead>
-                  <tr>
-                    <th>Transaction ID</th>
-                    <th>Date & Time</th>
-                    <th>Description</th>
-                    <th>Type</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoading ? (
+          {/* TAB 1: DESKTOP TABLE VIEW */}
+          <div className="table-desktop-view">
+            <div className="table-card mt-24">
+              <div className="card-header border-b flex-between">
+                <h3 className="card-title">My Personal Transaction History</h3>
+                <span className="code-badge">{user?.employeeCode || `AGT-00${user?.id || '1'}`}</span>
+              </div>
+              <div className="table-responsive">
+                <table className="custom-table">
+                  <thead>
                     <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '24px' }}>
-                        <Loader2 size={18} className="spinner" style={{ marginRight: '8px' }} /> Loading personal transactions...
-                      </td>
+                      <th>Transaction ID</th>
+                      <th>Date & Time</th>
+                      <th>Description</th>
+                      <th>Type</th>
+                      <th>Amount</th>
+                      <th>Status</th>
                     </tr>
-                  ) : personalHistory.length > 0 ? (
-                    personalHistory.map((tx: any) => (
-                      <tr key={tx.id}>
-                        <td><span className="code-badge">TXN-{tx.id}</span></td>
-                        <td>{new Date(tx.createdAt || Date.now()).toLocaleString()}</td>
-                        <td>
-                          <span className="user-name-bold">{tx.description || 'Weekly Allowance Disbursal'}</span>
-                        </td>
-                        <td>
-                          <span className={`badge ${tx.type === 'CREDIT' ? 'badge-approved' : 'badge-pending'}`}>
-                            {tx.type}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={`currency-bold ${tx.type === 'CREDIT' ? 'text-green' : 'text-purple'}`}>
-                            {tx.type === 'CREDIT' ? '+' : '-'} ₹ {tx.amount.toLocaleString('en-IN')}
-                          </span>
-                        </td>
-                        <td>
-                          <span className="badge badge-approved">COMPLETED</span>
+                  </thead>
+                  <tbody>
+                    {isLoading ? (
+                      <tr>
+                        <td colSpan={6} style={{ textAlign: 'center', padding: '24px' }}>
+                          <Loader2 size={18} className="spinner" style={{ marginRight: '8px' }} /> Loading personal transactions...
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '36px 24px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                          <CreditCard size={28} style={{ color: 'var(--text-muted)', opacity: 0.6 }} />
-                          <span style={{ fontSize: '14px', fontWeight: 500 }}>
-                            No wallet transactions found in the database.
-                          </span>
-                          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                            Transactions will appear here when wage deposits, weekly allowances, or withdrawal payouts occur.
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                    ) : personalHistory.length > 0 ? (
+                      personalHistory.map((tx: any) => (
+                        <tr key={tx.id}>
+                          <td><span className="code-badge">TXN-{tx.id}</span></td>
+                          <td>{new Date(tx.createdAt || Date.now()).toLocaleString()}</td>
+                          <td>
+                            <span className="user-name-bold">{tx.description || 'Weekly Allowance Disbursal'}</span>
+                          </td>
+                          <td>
+                            <span className={`badge ${tx.type === 'CREDIT' ? 'badge-approved' : 'badge-pending'}`}>
+                              {tx.type}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`currency-bold ${tx.type === 'CREDIT' ? 'text-green' : 'text-purple'}`}>
+                              {tx.type === 'CREDIT' ? '+' : '-'} ₹ {tx.amount.toLocaleString('en-IN')}
+                            </span>
+                          </td>
+                          <td>
+                            <span className="badge badge-approved">COMPLETED</span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '36px 24px' }}>
+                          No wallet transactions found in the database.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
+          </div>
+
+          {/* TAB 1: MOBILE CARDS VIEW */}
+          <div className="card-mobile-view" style={{ marginTop: '16px' }}>
+            {personalHistory.map((tx: any) => (
+              <div
+                key={tx.id}
+                style={{
+                  backgroundColor: 'var(--bg-card, #ffffff)',
+                  border: '1px solid var(--border-color, #e2e8f0)',
+                  borderRadius: '14px',
+                  padding: '16px',
+                  boxShadow: '0 1px 4px rgba(0, 0, 0, 0.04)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="code-badge">TXN-{tx.id}</span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '10px', backgroundColor: tx.type === 'CREDIT' ? '#ECFDF5' : '#FEF2F2', color: tx.type === 'CREDIT' ? '#047857' : '#B91C1C' }}>
+                    {tx.type === 'CREDIT' ? '+ Credit' : '- Debit'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--text-primary)' }}>{tx.description || 'Wage Disbursal'}</span>
+                  <strong style={{ fontSize: '15px', color: tx.type === 'CREDIT' ? '#059669' : '#9333EA' }}>
+                    {tx.type === 'CREDIT' ? '+' : '-'} ₹ {tx.amount.toLocaleString('en-IN')}
+                  </strong>
+                </div>
+                <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
+                  {new Date(tx.createdAt || Date.now()).toLocaleString()}
+                </div>
+              </div>
+            ))}
           </div>
         </>
       )}
@@ -552,254 +581,354 @@ export const WalletPage: React.FC<WalletPageProps> = ({ user, onOpenModal }) => 
             </div>
           </div>
 
-          <div className="table-card mt-24">
-            <div className="card-header border-b flex-between" style={{ flexWrap: 'wrap', gap: '12px' }}>
-              <div>
-                <h3 className="card-title">Member Wallet Balances & Recent Activity</h3>
-                <p style={{ fontSize: '12.5px', color: '#64748B', marginTop: '2px' }}>
-                  Systematic directory of field agent treasury wallets and worker wage wallets.
-                </p>
+          {/* TAB 2: DESKTOP TABLE VIEW */}
+          <div className="table-desktop-view">
+            <div className="table-card mt-24">
+              <div className="card-header border-b flex-between" style={{ flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h3 className="card-title">Member Wallet Balances & Recent Activity</h3>
+                  <p style={{ fontSize: '12.5px', color: '#64748B', marginTop: '2px' }}>
+                    Systematic directory of field agent treasury wallets and worker wage wallets.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    type="button"
+                    className={`sm-btn ${roleFilter === 'ALL' ? 'btn-success' : 'secondary-btn'}`}
+                    style={{ padding: '5px 12px', fontSize: '12px', borderRadius: '6px' }}
+                    onClick={() => setRoleFilter('ALL')}
+                  >
+                    All Members ({wallets.length})
+                  </button>
+                  <button
+                    type="button"
+                    className={`sm-btn ${roleFilter === 'AGENTS' ? 'btn-success' : 'secondary-btn'}`}
+                    style={{ padding: '5px 12px', fontSize: '12px', borderRadius: '6px' }}
+                    onClick={() => setRoleFilter('AGENTS')}
+                  >
+                    Field Agents ({wallets.filter(w => w.userRole === 'AGENT').length})
+                  </button>
+                  <button
+                    type="button"
+                    className={`sm-btn ${roleFilter === 'WORKERS' ? 'btn-success' : 'secondary-btn'}`}
+                    style={{ padding: '5px 12px', fontSize: '12px', borderRadius: '6px' }}
+                    onClick={() => setRoleFilter('WORKERS')}
+                  >
+                    Workers ({wallets.filter(w => w.userRole === 'WORKER').length})
+                  </button>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <button
-                  type="button"
-                  className={`sm-btn ${roleFilter === 'ALL' ? 'btn-success' : 'secondary-btn'}`}
-                  style={{ padding: '5px 12px', fontSize: '12px', borderRadius: '6px' }}
-                  onClick={() => setRoleFilter('ALL')}
-                >
-                  All Members ({wallets.length})
-                </button>
-                <button
-                  type="button"
-                  className={`sm-btn ${roleFilter === 'AGENTS' ? 'btn-success' : 'secondary-btn'}`}
-                  style={{ padding: '5px 12px', fontSize: '12px', borderRadius: '6px' }}
-                  onClick={() => setRoleFilter('AGENTS')}
-                >
-                  Field Agents ({wallets.filter(w => w.userRole === 'AGENT').length})
-                </button>
-                <button
-                  type="button"
-                  className={`sm-btn ${roleFilter === 'WORKERS' ? 'btn-success' : 'secondary-btn'}`}
-                  style={{ padding: '5px 12px', fontSize: '12px', borderRadius: '6px' }}
-                  onClick={() => setRoleFilter('WORKERS')}
-                >
-                  Workers ({wallets.filter(w => w.userRole === 'WORKER').length})
-                </button>
-              </div>
-            </div>
 
-            <div className="table-responsive">
-              <table className="custom-table">
-                <thead>
-                  <tr>
-                    <th>Member</th>
-                    <th>Member ID</th>
-                    <th>Assigned Agent / Role</th>
-                    <th>Current Balance</th>
-                    <th>Last Transaction Date</th>
-                    <th>Transaction Type</th>
-                    <th>Last Amount</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoading ? (
+              <div className="table-responsive">
+                <table className="custom-table">
+                  <thead>
                     <tr>
-                      <td colSpan={8} style={{ textAlign: 'center', padding: '24px' }}>
-                        <Loader2 size={18} className="spinner" style={{ marginRight: '8px' }} /> Loading member wallet records...
-                      </td>
+                      <th>Member</th>
+                      <th>Member ID</th>
+                      <th>Assigned Agent / Role</th>
+                      <th>Current Balance</th>
+                      <th>Last Transaction Date</th>
+                      <th>Transaction Type</th>
+                      <th>Last Amount</th>
+                      <th>Action</th>
                     </tr>
-                  ) : filteredWallets.length > 0 ? (
-                    filteredWallets.map((w) => (
-                      <tr key={w.id}>
-                        <td>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                            <span className="user-name-bold">{w.workerName}</span>
-                            <span
-                              style={{
-                                fontSize: '10px',
-                                fontWeight: 700,
-                                padding: '1px 6px',
-                                borderRadius: '4px',
-                                display: 'inline-block',
-                                width: 'fit-content',
-                                backgroundColor: w.userRole === 'AGENT' ? '#EEF2FF' : '#F1F5F9',
-                                color: w.userRole === 'AGENT' ? '#4F46E5' : '#475569',
-                                border: `1px solid ${w.userRole === 'AGENT' ? '#C7D2FE' : '#CBD5E1'}`
-                              }}
-                            >
-                              {w.userRole === 'AGENT' ? 'FIELD AGENT' : 'WORKER'}
-                            </span>
-                          </div>
-                        </td>
-                        <td><span className="code-badge">{w.workerId}</span></td>
-                        <td>
-                          {w.userRole === 'AGENT' ? (
-                            <span style={{ fontSize: '12.5px', color: '#4F46E5', fontWeight: 600 }}>
-                              Self (Supervisor{w.assignedWorkersCount ? ` - ${w.assignedWorkersCount} Workers` : ''})
-                            </span>
-                          ) : (
-                            <span className="user-name-bold" style={{ color: '#2563EB' }}>
-                              {w.agentName || 'Unassigned'}
-                            </span>
-                          )}
-                        </td>
-                        <td><span className="currency-bold text-green">₹ {w.balance.toLocaleString('en-IN')}</span></td>
-                        <td>{w.lastTransactionDate}</td>
-                        <td>
-                          <span className={`badge ${w.lastTransactionType === 'CREDIT' ? 'badge-approved' : 'badge-pending'}`}>
-                            {w.lastTransactionType}
-                          </span>
-                        </td>
-                        <td>₹ {w.lastAmount.toLocaleString('en-IN')}</td>
-                        <td>
-                          {isSuperAgent && w.userRole === 'AGENT' ? (
-                            <button
-                              className="primary-btn sm-btn"
-                              style={{ padding: '4px 8px', fontSize: '11.5px', backgroundColor: '#059669', borderColor: '#059669' }}
-                              onClick={() => {
-                                setTargetAgentId(String(w.rawWorkerId || w.id));
-                                setShowAssignAgentModal(true);
-                              }}
-                            >
-                              Assign Funds
-                            </button>
-                          ) : (
-                            <button className="text-action-btn" onClick={() => onOpenModal('wallet_deposit')}>
-                              Transfer
-                            </button>
-                          )}
+                  </thead>
+                  <tbody>
+                    {isLoading ? (
+                      <tr>
+                        <td colSpan={8} style={{ textAlign: 'center', padding: '24px' }}>
+                          <Loader2 size={18} className="spinner" style={{ marginRight: '8px' }} /> Loading member wallet records...
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
-                        No member wallet records found for this filter.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                    ) : filteredWallets.length > 0 ? (
+                      filteredWallets.map((w) => (
+                        <tr key={w.id}>
+                          <td>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                              <span className="user-name-bold">{w.workerName}</span>
+                              <span
+                                style={{
+                                  fontSize: '10px',
+                                  fontWeight: 700,
+                                  padding: '1px 6px',
+                                  borderRadius: '4px',
+                                  display: 'inline-block',
+                                  width: 'fit-content',
+                                  backgroundColor: w.userRole === 'AGENT' ? '#EEF2FF' : '#F1F5F9',
+                                  color: w.userRole === 'AGENT' ? '#4F46E5' : '#475569',
+                                  border: `1px solid ${w.userRole === 'AGENT' ? '#C7D2FE' : '#CBD5E1'}`
+                                }}
+                              >
+                                {w.userRole === 'AGENT' ? 'FIELD AGENT' : 'WORKER'}
+                              </span>
+                            </div>
+                          </td>
+                          <td><span className="code-badge">{w.workerId}</span></td>
+                          <td>
+                            {w.userRole === 'AGENT' ? (
+                              <span style={{ fontSize: '12.5px', color: '#4F46E5', fontWeight: 600 }}>
+                                Self (Supervisor{w.assignedWorkersCount ? ` - ${w.assignedWorkersCount} Workers` : ''})
+                              </span>
+                            ) : (
+                              <span className="user-name-bold" style={{ color: '#2563EB' }}>
+                                {w.agentName || 'Unassigned'}
+                              </span>
+                            )}
+                          </td>
+                          <td><span className="currency-bold text-green">₹ {w.balance.toLocaleString('en-IN')}</span></td>
+                          <td>{w.lastTransactionDate}</td>
+                          <td>
+                            <span className={`badge ${w.lastTransactionType === 'CREDIT' ? 'badge-approved' : 'badge-pending'}`}>
+                              {w.lastTransactionType}
+                            </span>
+                          </td>
+                          <td>₹ {w.lastAmount.toLocaleString('en-IN')}</td>
+                          <td>
+                            {isSuperAgent && w.userRole === 'AGENT' ? (
+                              <button
+                                className="primary-btn sm-btn"
+                                style={{ padding: '4px 8px', fontSize: '11.5px', backgroundColor: '#059669', borderColor: '#059669' }}
+                                onClick={() => {
+                                  setTargetAgentId(String(w.rawWorkerId || w.id));
+                                  setShowAssignAgentModal(true);
+                                }}
+                              >
+                                Assign Funds
+                              </button>
+                            ) : (
+                              <button className="text-action-btn" onClick={() => onOpenModal('wallet_deposit')}>
+                                Transfer
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
+                          No member wallet records found for this filter.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
+          </div>
+
+          {/* TAB 2: MOBILE CARDS VIEW */}
+          <div className="card-mobile-view" style={{ marginTop: '16px' }}>
+            {filteredWallets.map((w) => (
+              <div
+                key={w.id}
+                style={{
+                  backgroundColor: 'var(--bg-card, #ffffff)',
+                  border: '1px solid var(--border-color, #e2e8f0)',
+                  borderRadius: '14px',
+                  padding: '16px',
+                  boxShadow: '0 1px 4px rgba(0, 0, 0, 0.04)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '14.5px', fontWeight: 800, color: 'var(--text-primary)' }}>{w.workerName}</h4>
+                    <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>{w.workerId}</span>
+                  </div>
+                  <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '2px 7px', borderRadius: '4px', backgroundColor: w.userRole === 'AGENT' ? '#EEF2FF' : '#F1F5F9', color: w.userRole === 'AGENT' ? '#4F46E5' : '#475569' }}>
+                    {w.userRole === 'AGENT' ? 'FIELD AGENT' : 'WORKER'}
+                  </span>
+                </div>
+                <div style={{ backgroundColor: 'var(--bg-main, #f8fafc)', padding: '10px 12px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '12.5px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Available Balance:</span>
+                    <strong style={{ color: '#059669', fontSize: '14px' }}>₹ {w.balance.toLocaleString('en-IN')}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Supervisor:</span>
+                    <span>{w.agentName || 'Self'}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </>
       )}
 
       {/* TAB 3: DISBURSEMENT APPROVAL REQUESTS */}
       {activeTab === 'disbursements' && (
-        <div className="table-card mt-24">
-          <div className="card-header border-b flex-between">
-            <div>
-              <h3 className="card-title">Worker Wallet Disbursement Requests</h3>
-              <p style={{ fontSize: '12.5px', color: '#64748B', marginTop: '2px' }}>
-                {isSuperAgent
-                  ? 'Review, approve, or reject worker wallet payout requests submitted by field agents.'
-                  : 'Track approval status of your worker wallet disbursement requests sent to Super Agent.'}
-              </p>
-            </div>
-            {isAgent && (
-              <button
-                className="primary-btn sm-btn"
-                onClick={() => setShowDisburseReqModal(true)}
-              >
-                <Send size={14} />
-                <span>+ Request Disbursement</span>
-              </button>
-            )}
-          </div>
-          <div className="table-responsive">
-            <table className="custom-table">
-              <thead>
-                <tr>
-                  <th>Request ID</th>
-                  <th>Requesting Agent</th>
-                  <th>Target Worker</th>
-                  <th>Amount</th>
-                  <th>Description</th>
-                  <th>Requested Date</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', padding: '24px' }}>
-                      <Loader2 size={18} className="spinner" style={{ marginRight: '8px' }} /> Loading disbursement requests...
-                    </td>
-                  </tr>
-                ) : disbursementRequests.length > 0 ? (
-                  disbursementRequests.map((req: any) => (
-                    <tr key={req.id}>
-                      <td><span className="code-badge">REQ-{req.id}</span></td>
-                      <td><span className="user-name-bold">{req.agent?.name || 'Field Agent'}</span></td>
-                      <td>
-                        <span className="user-name-bold">{req.worker?.name || 'Worker'}</span>
-                        <span className="user-sub-email">{req.worker?.employeeCode || `WRK-${req.workerId}`}</span>
-                      </td>
-                      <td><span className="currency-bold text-green">₹ {req.amount?.toLocaleString('en-IN')}</span></td>
-                      <td>{req.description || 'Worker Wage Payout'}</td>
-                      <td>{new Date(req.createdAt).toLocaleDateString()}</td>
-                      <td>
-                        <span
-                          className={`badge ${
-                            req.status === 'APPROVED'
-                              ? 'badge-approved'
-                              : req.status === 'REJECTED'
-                              ? 'badge-rejected'
-                              : 'badge-pending'
-                          }`}
-                        >
-                          {req.status}
-                        </span>
-                      </td>
-                      <td>
-                        {isSuperAgent && req.status === 'PENDING' ? (
-                          <div style={{ display: 'flex', gap: '6px' }}>
-                            <button
-                              className="sm-btn btn-success"
-                              style={{ padding: '4px 8px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                              disabled={processingReqId === req.id}
-                              onClick={() => handleApproveDisbursement(req.id)}
-                            >
-                              {processingReqId === req.id ? (
-                                <Loader2 size={12} className="spinner" />
-                              ) : (
-                                <>
-                                  <CheckCircle2 size={12} />
-                                  <span>Approve</span>
-                                </>
-                              )}
-                            </button>
-                            <button
-                              className="text-action-btn"
-                              style={{ color: '#DC2626', fontSize: '12px', fontWeight: 600 }}
-                              disabled={processingReqId === req.id}
-                              onClick={() => handleRejectDisbursement(req.id)}
-                            >
-                              Reject
-                            </button>
-                          </div>
-                        ) : (
-                          <span style={{ fontSize: '12px', color: '#64748B', fontStyle: 'italic' }}>
-                            {req.status === 'PENDING' ? 'Awaiting Approval' : 'Processed'}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '36px 24px' }}>
-                      No wallet disbursement requests found in database.
-                    </td>
-                  </tr>
+        <>
+          {/* TAB 3: DESKTOP TABLE VIEW */}
+          <div className="table-desktop-view">
+            <div className="table-card mt-24">
+              <div className="card-header border-b flex-between">
+                <div>
+                  <h3 className="card-title">Worker Wallet Disbursement Requests</h3>
+                  <p style={{ fontSize: '12.5px', color: '#64748B', marginTop: '2px' }}>
+                    {isSuperAgent
+                      ? 'Review, approve, or reject worker wallet payout requests submitted by field agents.'
+                      : 'Track approval status of your worker wallet disbursement requests sent to Super Agent.'}
+                  </p>
+                </div>
+                {isAgent && (
+                  <button
+                    className="primary-btn sm-btn"
+                    onClick={() => setShowDisburseReqModal(true)}
+                  >
+                    <Send size={14} />
+                    <span>+ Request Disbursement</span>
+                  </button>
                 )}
-              </tbody>
-            </table>
+              </div>
+              <div className="table-responsive">
+                <table className="custom-table">
+                  <thead>
+                    <tr>
+                      <th>Request ID</th>
+                      <th>Requesting Agent</th>
+                      <th>Target Worker</th>
+                      <th>Amount</th>
+                      <th>Description</th>
+                      <th>Requested Date</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isLoading ? (
+                      <tr>
+                        <td colSpan={8} style={{ textAlign: 'center', padding: '24px' }}>
+                          <Loader2 size={18} className="spinner" style={{ marginRight: '8px' }} /> Loading disbursement requests...
+                        </td>
+                      </tr>
+                    ) : disbursementRequests.length > 0 ? (
+                      disbursementRequests.map((req: any) => (
+                        <tr key={req.id}>
+                          <td><span className="code-badge">REQ-{req.id}</span></td>
+                          <td><span className="user-name-bold">{req.agent?.name || 'Field Agent'}</span></td>
+                          <td>
+                            <span className="user-name-bold">{req.worker?.name || 'Worker'}</span>
+                            <span className="user-sub-email">{req.worker?.employeeCode || `WRK-${req.workerId}`}</span>
+                          </td>
+                          <td><span className="currency-bold text-green">₹ {req.amount?.toLocaleString('en-IN')}</span></td>
+                          <td>{req.description || 'Worker Wage Payout'}</td>
+                          <td>{new Date(req.createdAt).toLocaleDateString()}</td>
+                          <td>
+                            <span
+                              className={`badge ${
+                                req.status === 'APPROVED'
+                                  ? 'badge-approved'
+                                  : req.status === 'REJECTED'
+                                  ? 'badge-rejected'
+                                  : 'badge-pending'
+                              }`}
+                            >
+                              {req.status}
+                            </span>
+                          </td>
+                          <td>
+                            {isSuperAgent && req.status === 'PENDING' ? (
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                <button
+                                  className="sm-btn btn-success"
+                                  style={{ padding: '4px 8px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                  disabled={processingReqId === req.id}
+                                  onClick={() => handleApproveDisbursement(req.id)}
+                                >
+                                  {processingReqId === req.id ? (
+                                    <Loader2 size={12} className="spinner" />
+                                  ) : (
+                                    <>
+                                      <CheckCircle2 size={12} />
+                                      <span>Approve</span>
+                                    </>
+                                  )}
+                                </button>
+                                <button
+                                  className="text-action-btn"
+                                  style={{ color: '#DC2626', fontSize: '12px', fontWeight: 600 }}
+                                  disabled={processingReqId === req.id}
+                                  onClick={() => handleRejectDisbursement(req.id)}
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: '12px', color: '#64748B', fontStyle: 'italic' }}>
+                                {req.status === 'PENDING' ? 'Awaiting Approval' : 'Processed'}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '36px 24px' }}>
+                          No wallet disbursement requests found in database.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
-        </div>
+
+          {/* TAB 3: MOBILE CARDS VIEW */}
+          <div className="card-mobile-view" style={{ marginTop: '16px' }}>
+            {disbursementRequests.map((req: any) => (
+              <div
+                key={req.id}
+                style={{
+                  backgroundColor: 'var(--bg-card, #ffffff)',
+                  border: '1px solid var(--border-color, #e2e8f0)',
+                  borderRadius: '14px',
+                  padding: '16px',
+                  boxShadow: '0 1px 4px rgba(0, 0, 0, 0.04)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="code-badge">REQ-{req.id}</span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '10px', backgroundColor: req.status === 'APPROVED' ? '#ECFDF5' : '#FFFBEB', color: req.status === 'APPROVED' ? '#047857' : '#B45309' }}>
+                    {req.status}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '14.5px', fontWeight: 800 }}>{req.worker?.name || 'Worker'}</h4>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Agent: {req.agent?.name || 'Field Agent'}</span>
+                  </div>
+                  <strong style={{ fontSize: '15px', color: '#059669' }}>₹ {req.amount?.toLocaleString('en-IN')}</strong>
+                </div>
+                {isSuperAgent && req.status === 'PENDING' && (
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                    <button
+                      className="primary-btn touch-target"
+                      style={{ flex: 1, padding: '8px', fontSize: '13px', justifyContent: 'center' }}
+                      disabled={processingReqId === req.id}
+                      onClick={() => handleApproveDisbursement(req.id)}
+                    >
+                      <CheckCircle2 size={14} /> Approve Payout
+                    </button>
+                    <button
+                      className="secondary-btn touch-target"
+                      style={{ padding: '8px 12px', fontSize: '13px', color: '#DC2626' }}
+                      disabled={processingReqId === req.id}
+                      onClick={() => handleRejectDisbursement(req.id)}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* AGENT REQUEST DISBURSEMENT APPROVAL MODAL */}

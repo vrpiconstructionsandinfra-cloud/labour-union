@@ -1,0 +1,238 @@
+.list-header-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.list-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.list-title-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.list-title-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.list-page-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary, #0f172a);
+  letter-spacing: -0.02em;
+}
+
+.list-count-badge {
+  background-color: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.list-page-subtitle {
+  margin: 4px 0 0 0;
+  font-size: 13.5px;
+  color: var(--text-secondary, #64748b);
+}
+
+.list-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Action Buttons */
+.list-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.list-btn-primary {
+  background-color: #2563eb;
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.list-btn-primary:hover {
+  background-color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.list-btn-outline {
+  background-color: var(--bg-card, #ffffff);
+  color: var(--text-primary, #334155);
+  border: 1.5px solid var(--border-color, #cbd5e1);
+}
+
+.list-btn-outline:hover {
+  background-color: var(--bg-hover, #f8fafc);
+  border-color: #94a3b8;
+}
+
+/* Search & Toolbar */
+.list-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 14px;
+  padding: 10px 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  flex-wrap: wrap;
+}
+
+.list-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: var(--bg-main, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 10px;
+  padding: 7px 12px;
+  flex: 1;
+  min-width: 240px;
+  transition: border-color 0.15s ease;
+}
+
+.list-search-bar:focus-within {
+  border-color: #2563eb;
+  background-color: #ffffff;
+}
+
+.list-search-icon {
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.list-search-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary, #0f172a);
+  font-family: inherit;
+}
+
+.list-search-clear-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+}
+
+.list-search-clear-btn:hover {
+  color: #0f172a;
+}
+
+/* Filter Tabs */
+.list-filter-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.list-filter-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary, #64748b);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.list-filter-tab-btn:hover {
+  background-color: var(--bg-hover, #f1f5f9);
+  color: var(--text-primary, #0f172a);
+}
+
+.list-filter-tab-btn.active {
+  background-color: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
+  font-weight: 700;
+}
+
+.tab-count-badge {
+  background-color: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 10.5px;
+}
+
+/* Responsive Rules (< 768px) */
+@media screen and (max-width: 767px) {
+  .list-header-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .list-actions-group {
+    width: 100%;
+  }
+
+  .list-actions-group .list-btn {
+    flex: 1;
+    justify-content: center;
+    min-height: 40px;
+  }
+
+  .list-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 10px;
+  }
+
+  .list-search-bar {
+    width: 100%;
+    min-width: 100%;
+    min-height: 42px;
+  }
+
+  .list-filter-tabs {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    flex-wrap: nowrap;
+  }
+}

@@ -39,6 +39,28 @@ html, body {
   margin-bottom: 1rem;
 }
 
+/* Responsive Table / Mobile Card Switching */
+.table-desktop-view {
+  display: block;
+  width: 100%;
+}
+
+.card-mobile-view {
+  display: none;
+  width: 100%;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media screen and (max-width: 767px) {
+  .table-desktop-view {
+    display: none !important;
+  }
+  .card-mobile-view {
+    display: flex !important;
+  }
+}
+
 .table-responsive::-webkit-scrollbar {
   height: 6px;
 }
@@ -60,8 +82,8 @@ html, body {
 /* Auto-fitting Responsive Metric Cards Grid */
 .responsive-metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
   width: 100%;
 }
 
@@ -125,11 +147,15 @@ html, body {
     padding: var(--content-padding-mobile) !important;
   }
 
-  /* Grids to single column */
+  /* Grids adjustments on mobile */
   .responsive-metrics-grid,
   .stats-grid,
-  .dashboard-grid,
   .sfa-metrics-grid {
+    grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .dashboard-grid {
     grid-template-columns: 1fr !important;
     gap: 12px !important;
   }
@@ -168,6 +194,14 @@ html, body {
   .sfa-search-box {
     min-width: 100% !important;
     max-width: 100% !important;
+  }
+}
+
+@media screen and (max-width: 360px) {
+  .responsive-metrics-grid,
+  .stats-grid,
+  .sfa-metrics-grid {
+    grid-template-columns: 1fr !important;
   }
 }
 

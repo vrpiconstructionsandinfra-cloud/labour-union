@@ -10,14 +10,14 @@ interface UserAvatarProps {
 
 // Generate consistent background color based on string hash
 const getColorFromName = (name: string): string => {
-  if (!name) return '#2563EB';
+  if (!name) return '#EA580C';
   const colors = [
-    '#2563EB', // Blue
+    '#EA580C', // Orange
     '#059669', // Emerald
     '#7C3AED', // Purple
     '#D97706', // Amber
     '#DC2626', // Red
-    '#0891B2', // Cyan
+    '#2563EB', // Blue
     '#4F46E5', // Indigo
     '#DB2777'  // Pink
   ];

@@ -70,7 +70,7 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
               <Users size={18} color="#2563EB" />
             </div>
             <div>
-              <h3 className="mobile-menu-title">Labor Union</h3>
+              <h3 className="mobile-menu-title">Labour Union</h3>
               <span className="mobile-menu-subtitle">Management System</span>
             </div>
           </div>

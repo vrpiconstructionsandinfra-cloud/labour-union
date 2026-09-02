@@ -3,12 +3,10 @@ import { useAuth } from '../context/AuthContext';
 import { ResponsiveLayout } from '../components/ResponsiveLayout';
 import { AgentDashboardView, WorkerDashboardView } from '../components/RoleDashboards';
 import { MetricCard } from '../components/MetricCard';
-import { AttendanceOverviewChart } from '../components/AttendanceOverviewChart';
-import { WorkersBySiteChart } from '../components/WorkersBySiteChart';
+import { TodayAgentAttendanceTable } from '../components/TodayAgentAttendanceTable';
 import { QuickActions } from '../components/QuickActions';
-import { RecentLeavesTable } from '../components/RecentLeavesTable';
 import { fetchDashboardStatsApi } from '../services/api';
-import type { MetricData, AttendanceDataPoint, SiteWorkerDistribution, LeaveRecord, QuickActionItem } from '../types';
+import type { MetricData, QuickActionItem } from '../types';
 
 interface DashboardProps {
   onNavigate?: (nav: string) => void;
@@ -34,24 +32,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
     { id: '4', title: 'Active Workers', value: '142', change: '+10.8%', isPositive: true, type: 'active', comparisonPeriod: 'from last month' },
     { id: '5', title: 'Today Attendance', value: '138', change: '+3.6%', isPositive: true, type: 'attendance', comparisonPeriod: 'from yesterday' }
   ]);
-  const [attendanceData, setAttendanceData] = useState<AttendanceDataPoint[]>([]);
-  const [siteDistribution, setSiteDistribution] = useState<SiteWorkerDistribution[]>([]);
-  const [recentLeaves, setRecentLeaves] = useState<LeaveRecord[]>([]);
 
   useEffect(() => {
     fetchDashboardStatsApi()
       .then((data) => {
         if (data.cards && data.cards.length > 0) {
           setMetrics(data.cards);
-        }
-        if (data.attendance) {
-          setAttendanceData(data.attendance);
-        }
-        if (data.siteDistribution) {
-          setSiteDistribution(data.siteDistribution);
-        }
-        if (data.recentLeaves) {
-          setRecentLeaves(data.recentLeaves);
         }
       })
       .catch(() => {});
@@ -85,24 +71,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
           ))}
         </div>
 
-        {/* Charts Row */}
+        {/* Today's Agent Attendance Row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-          <AttendanceOverviewChart data={attendanceData} />
-          <WorkersBySiteChart
-            data={siteDistribution}
-            onViewAll={() => onNavigate('sites')}
-          />
+          <TodayAgentAttendanceTable onViewAllAgents={() => onNavigate('agents')} />
         </div>
 
-        {/* Quick Actions & Recent Leaves */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+        {/* Quick Actions */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
           <QuickActions
             actions={DEFAULT_QUICK_ACTIONS}
             onActionClick={onOpenModal}
-          />
-          <RecentLeavesTable
-            leaves={recentLeaves}
-            onViewAll={() => onNavigate('leaves')}
           />
         </div>
       </div>

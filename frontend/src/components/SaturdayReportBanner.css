@@ -1,0 +1,304 @@
+/* Saturday Weekly Audit Excel Report Component Styles */
+
+.saturday-audit-card {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  background-color: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.saturday-audit-card.is-active {
+  border-color: #93c5fd;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.06);
+}
+
+.saturday-audit-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+}
+
+/* Left Section: Icon + Text Info */
+.saturday-audit-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  flex: 1;
+}
+
+.saturday-audit-icon-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background-color: #FFF7ED;
+  border: 1px solid #FED7AA;
+  color: #EA580C;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.saturday-audit-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.saturday-audit-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.saturday-audit-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  letter-spacing: -0.2px;
+  line-height: 1.3;
+}
+
+/* Compact Status Pill */
+.saturday-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.saturday-status-pill.active {
+  background-color: #DCFCE7;
+  color: #16A34A;
+  border: 1px solid #BBF7D0;
+}
+
+.saturday-status-pill.closed {
+  background-color: #FEF3C7;
+  color: #D97706;
+  border: 1px solid #FDE68A;
+}
+
+.saturday-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  flex-shrink: 0;
+}
+
+.saturday-audit-subtext {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-secondary, #64748b);
+  line-height: 1.4;
+}
+
+/* Right Section: Action Controls */
+.saturday-audit-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* Action Buttons */
+.saturday-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  box-sizing: border-box;
+  text-decoration: none;
+  min-height: 38px;
+}
+
+.saturday-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Primary Download Button - Vibrant Orange */
+.saturday-btn-primary {
+  background-color: #EA580C;
+  color: #ffffff;
+  border: 1px solid #C2410C;
+  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.25);
+}
+
+.saturday-btn-primary:hover:not(:disabled) {
+  background-color: #C2410C;
+}
+
+.saturday-btn-primary:active:not(:disabled) {
+  background-color: #9A3412;
+}
+
+/* Secondary Email Button - Clean with Subtle Warm Tint */
+.saturday-btn-secondary {
+  background-color: #ffffff;
+  color: #EA580C;
+  border: 1px solid #FED7AA;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.saturday-btn-secondary:hover:not(:disabled) {
+  background-color: #FFF7ED;
+  border-color: #FDBA74;
+}
+
+/* Demo Toggle Button */
+.saturday-btn-demo {
+  background-color: #FEF2F2;
+  color: #DC2626;
+  border: 1px solid #FECACA;
+  font-size: 12px;
+  padding: 7px 11px;
+}
+
+.saturday-btn-demo.is-on {
+  background-color: #FEF2F2;
+  color: #DC2626;
+  border-color: #FECACA;
+}
+
+.saturday-btn-demo:hover {
+  background-color: #FEE2E2;
+}
+
+/* Feedback Status Banner */
+.saturday-feedback-banner {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.saturday-feedback-banner.success {
+  background-color: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.saturday-feedback-banner.error {
+  background-color: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+/* ==========================================================================
+   Responsive Breakpoints
+   ========================================================================== */
+
+/* Tablet (768px – 1023px) */
+@media (max-width: 1023px) {
+  .saturday-audit-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .saturday-audit-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+/* Mobile (< 768px) */
+@media (max-width: 767px) {
+  .saturday-audit-card {
+    padding: 14px 16px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+  }
+
+  .saturday-audit-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .saturday-audit-info {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .saturday-audit-icon-box {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+  }
+
+  .saturday-audit-title {
+    font-size: 14.5px;
+  }
+
+  .saturday-status-pill {
+    font-size: 11px;
+    padding: 1px 6px;
+  }
+
+  .saturday-audit-subtext {
+    font-size: 12px;
+  }
+
+  /* Mobile Stacked Action Buttons */
+  .saturday-audit-actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .saturday-audit-actions .saturday-btn {
+    min-height: 44px; /* 44px+ touch-friendly target */
+    font-size: 13px;
+  }
+
+  /* Primary Download Button Full Width */
+  .saturday-audit-actions .saturday-btn-primary {
+    width: 100%;
+    order: 1;
+  }
+
+  /* Secondary Actions Row side-by-side */
+  .saturday-mobile-secondary-row {
+    display: flex;
+    width: 100%;
+    gap: 8px;
+    order: 2;
+  }
+
+  .saturday-mobile-secondary-row .saturday-btn {
+    flex: 1;
+    min-height: 44px;
+  }
+}

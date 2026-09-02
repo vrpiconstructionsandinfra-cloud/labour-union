@@ -210,148 +210,215 @@ export const EnquiriesPage: React.FC = () => {
         </div>
       )}
 
-      {/* Main Table Card */}
-      <div className="enquiries-table-card">
-        {isLoading ? (
-          <div className="enquiries-loading-state">
-            <RefreshCw size={28} className="spinner" color="#2563EB" />
-            <p>Loading candidate enquiries from database...</p>
-          </div>
-        ) : enquiries.length === 0 ? (
-          <div className="enquiries-empty-state">
-            <FileSpreadsheet size={48} color="#94A3B8" />
-            <h3>No enquiries found</h3>
-            <p>
-              {searchTerm || designationFilter !== 'ALL' || statusFilter !== 'ALL'
-                ? 'No candidate enquiries match your filter criteria.'
-                : 'New enquiries submitted from the login page will appear here.'}
-            </p>
-          </div>
-        ) : (
-          <div className="table-responsive">
-            <table className="enquiries-data-table">
-              <thead>
-                <tr>
-                  <th>Candidate</th>
-                  <th>Designation</th>
-                  <th>Contact Number</th>
-                  <th>Email Address</th>
-                  <th>Address</th>
-                  <th>Submitted On</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {enquiries.map((item) => {
-                  const dateStr = new Date(item.createdAt).toLocaleDateString('en-IN', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  });
+      {/* DESKTOP TABLE VIEW */}
+      <div className="table-desktop-view">
+        <div className="enquiries-table-card">
+          {isLoading ? (
+            <div className="enquiries-loading-state">
+              <RefreshCw size={28} className="spinner" color="#2563EB" />
+              <p>Loading candidate enquiries from database...</p>
+            </div>
+          ) : enquiries.length === 0 ? (
+            <div className="enquiries-empty-state">
+              <FileSpreadsheet size={48} color="#94A3B8" />
+              <h3>No enquiries found</h3>
+              <p>
+                {searchTerm || designationFilter !== 'ALL' || statusFilter !== 'ALL'
+                  ? 'No candidate enquiries match your filter criteria.'
+                  : 'New enquiries submitted from the login page will appear here.'}
+              </p>
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="enquiries-data-table">
+                <thead>
+                  <tr>
+                    <th>Candidate</th>
+                    <th>Designation</th>
+                    <th>Contact Number</th>
+                    <th>Email Address</th>
+                    <th>Address</th>
+                    <th>Submitted On</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {enquiries.map((item) => {
+                    const dateStr = new Date(item.createdAt).toLocaleDateString('en-IN', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    });
 
-                  return (
-                    <tr key={item.id}>
-                      {/* Candidate Name */}
-                      <td>
-                        <div className="candidate-name-cell">
-                          <div className={`candidate-avatar ${item.designation.toLowerCase()}`}>
-                            {item.name.charAt(0).toUpperCase()}
+                    return (
+                      <tr key={item.id}>
+                        <td>
+                          <div className="candidate-name-cell">
+                            <div className={`candidate-avatar ${item.designation.toLowerCase()}`}>
+                              {item.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <span className="candidate-full-name">{item.name}</span>
+                              <span className="candidate-id-sub">Lead #{item.id}</span>
+                            </div>
                           </div>
-                          <div>
-                            <span className="candidate-full-name">{item.name}</span>
-                            <span className="candidate-id-sub">Lead #{item.id}</span>
-                          </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Designation */}
-                      <td>
-                        {item.designation === 'AGENT' ? (
-                          <span className="designation-badge agent">
-                            👔 Field Agent
-                          </span>
-                        ) : (
-                          <span className="designation-badge worker">
-                            👷 Union Worker
-                          </span>
-                        )}
-                      </td>
+                        <td>
+                          {item.designation === 'AGENT' ? (
+                            <span className="designation-badge agent">
+                              👔 Field Agent
+                            </span>
+                          ) : (
+                            <span className="designation-badge worker">
+                              👷 Union Worker
+                            </span>
+                          )}
+                        </td>
 
-                      {/* Contact Phone */}
-                      <td>
-                        <a href={`tel:${item.phone}`} className="contact-link">
-                          <Phone size={13} color="#2563EB" />
-                          <span>{item.phone}</span>
-                        </a>
-                      </td>
-
-                      {/* Email */}
-                      <td>
-                        {item.email ? (
-                          <a href={`mailto:${item.email}`} className="contact-link">
-                            <Mail size={13} color="#64748B" />
-                            <span>{item.email}</span>
+                        <td>
+                          <a href={`tel:${item.phone}`} className="contact-link">
+                            <Phone size={13} color="#2563EB" />
+                            <span>{item.phone}</span>
                           </a>
-                        ) : (
-                          <span className="text-muted-dash">—</span>
-                        )}
-                      </td>
+                        </td>
 
-                      {/* Address */}
-                      <td>
-                        {item.address ? (
-                          <div className="address-text" title={item.address}>
-                            <MapPin size={13} color="#64748B" style={{ flexShrink: 0 }} />
-                            <span>{item.address}</span>
+                        <td>
+                          {item.email ? (
+                            <a href={`mailto:${item.email}`} className="contact-link">
+                              <Mail size={13} color="#64748B" />
+                              <span>{item.email}</span>
+                            </a>
+                          ) : (
+                            <span className="text-muted-dash">—</span>
+                          )}
+                        </td>
+
+                        <td>
+                          {item.address ? (
+                            <div className="address-text" title={item.address}>
+                              <MapPin size={13} color="#64748B" style={{ flexShrink: 0 }} />
+                              <span>{item.address}</span>
+                            </div>
+                          ) : (
+                            <span className="text-muted-dash">—</span>
+                          )}
+                        </td>
+
+                        <td>
+                          <div className="date-cell">
+                            <Calendar size={13} color="#64748B" />
+                            <span>{dateStr}</span>
                           </div>
-                        ) : (
-                          <span className="text-muted-dash">—</span>
-                        )}
-                      </td>
+                        </td>
 
-                      {/* Date */}
-                      <td>
-                        <div className="date-cell">
-                          <Calendar size={13} color="#64748B" />
-                          <span>{dateStr}</span>
-                        </div>
-                      </td>
+                        <td>
+                          <select
+                            value={item.status}
+                            onChange={(e) => handleStatusChange(item.id, e.target.value)}
+                            className={`status-dropdown-pill ${item.status.toLowerCase()}`}
+                          >
+                            <option value="NEW">⚡ New</option>
+                            <option value="CONTACTED">📞 Contacted</option>
+                            <option value="CONVERTED">✓ Converted</option>
+                            <option value="REJECTED">✕ Rejected</option>
+                          </select>
+                        </td>
 
-                      {/* Status */}
-                      <td>
-                        <select
-                          value={item.status}
-                          onChange={(e) => handleStatusChange(item.id, e.target.value)}
-                          className={`status-dropdown-pill ${item.status.toLowerCase()}`}
-                        >
-                          <option value="NEW">⚡ New</option>
-                          <option value="CONTACTED">📞 Contacted</option>
-                          <option value="CONVERTED">✓ Converted</option>
-                          <option value="REJECTED">✕ Rejected</option>
-                        </select>
-                      </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(item.id, item.name)}
+                            className="action-delete-btn"
+                            title="Delete Enquiry"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
 
-                      {/* Actions */}
-                      <td style={{ textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(item.id, item.name)}
-                          className="action-delete-btn"
-                          title="Delete Enquiry"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+      {/* MOBILE CARDS VIEW */}
+      <div className="card-mobile-view">
+        {enquiries.map((item) => (
+          <div
+            key={item.id}
+            style={{
+              backgroundColor: 'var(--bg-card, #ffffff)',
+              border: '1px solid var(--border-color, #e2e8f0)',
+              borderRadius: '14px',
+              padding: '16px',
+              boxShadow: '0 1px 4px rgba(0, 0, 0, 0.04)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div className={`candidate-avatar ${item.designation.toLowerCase()}`} style={{ width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, backgroundColor: item.designation === 'AGENT' ? '#EDE9FE' : '#DBEAFE', color: item.designation === 'AGENT' ? '#6D28D9' : '#1D4ED8' }}>
+                  {item.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '14.5px', fontWeight: 800 }}>{item.name}</h4>
+                  <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>Lead #{item.id}</span>
+                </div>
+              </div>
+              <span className={`designation-badge ${item.designation.toLowerCase()}`}>
+                {item.designation === 'AGENT' ? '👔 Agent' : '👷 Worker'}
+              </span>
+            </div>
+
+            <div style={{ backgroundColor: 'var(--bg-main, #f8fafc)', padding: '10px 12px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12.5px' }}>
+              <a href={`tel:${item.phone}`} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#2563EB', textDecoration: 'none', fontWeight: 600 }}>
+                <Phone size={13} /> {item.phone}
+              </a>
+              {item.email && (
+                <a href={`mailto:${item.email}`} style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', textDecoration: 'none' }}>
+                  <Mail size={13} /> {item.email}
+                </a>
+              )}
+              {item.address && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)' }}>
+                  <MapPin size={13} /> {item.address}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+              <select
+                value={item.status}
+                onChange={(e) => handleStatusChange(item.id, e.target.value)}
+                className={`status-dropdown-pill ${item.status.toLowerCase()}`}
+                style={{ flex: 1, padding: '6px 10px', fontSize: '12px' }}
+              >
+                <option value="NEW">⚡ New</option>
+                <option value="CONTACTED">📞 Contacted</option>
+                <option value="CONVERTED">✓ Converted</option>
+                <option value="REJECTED">✕ Rejected</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => handleDelete(item.id, item.name)}
+                className="list-btn touch-target"
+                style={{ padding: '6px 12px', backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}
+                title="Delete Enquiry"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

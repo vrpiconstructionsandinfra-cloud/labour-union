@@ -1,80 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import './styles/variables.css';
 
 :root {
   --font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  
-  /* Color Palette - Light Mode */
-  --bg-main: #F4F6FA;
-  --bg-card: #FFFFFF;
-  --bg-sidebar: #0A1633;
-  --bg-sidebar-active: #2563EB;
-  --bg-sidebar-hover: rgba(255, 255, 255, 0.06);
-  
-  --text-primary: #0F172A;
-  --text-secondary: #64748B;
-  --text-muted: #94A3B8;
-  --text-white: #FFFFFF;
-  --text-sidebar: #94A3B8;
-  --text-sidebar-muted: #64748B;
-  
-  --border-color: #E2E8F0;
-  --border-light: #F1F5F9;
-  
-  /* Metric Colors */
-  --color-workers-bg: #EFF6FF;
-  --color-workers-icon: #3B82F6;
-  
-  --color-agents-bg: #DCFCE7;
-  --color-agents-icon: #22C55E;
-  
-  --color-sites-bg: #F3E8FF;
-  --color-sites-icon: #A855F7;
-  
-  --color-active-bg: #FEF3C7;
-  --color-active-icon: #F59E0B;
-  
-  --color-attendance-bg: #FEE2E2;
-  --color-attendance-icon: #EF4444;
-  
-  --color-success: #16A34A;
-  --color-danger: #DC2626;
-  --color-warning: #D97706;
-  
-  /* Shadows & Elevation */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-card: 0 4px 12px -2px rgba(0, 0, 0, 0.03), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
-  --shadow-popover: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
-  
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-full: 9999px;
-  
-  --header-height: 70px;
-  --sidebar-width: 250px;
-  --sidebar-collapsed-width: 80px;
-}
-
-[data-theme="dark"],
-body.dark-mode {
-  --bg-main: #0F172A;
-  --bg-card: #1E293B;
-  --bg-sidebar: #091124;
-  
-  --text-primary: #F8FAFC;
-  --text-secondary: #94A3B8;
-  --text-muted: #64748B;
-  
-  --border-color: #334155;
-  --border-light: #1E293B;
-  
-  --color-workers-bg: rgba(59, 130, 246, 0.15);
-  --color-agents-bg: rgba(34, 197, 94, 0.15);
-  --color-sites-bg: rgba(168, 85, 247, 0.15);
-  --color-active-bg: rgba(245, 158, 11, 0.15);
-  --color-attendance-bg: rgba(239, 68, 68, 0.15);
-  
-  --shadow-card: 0 4px 12px -2px rgba(0, 0, 0, 0.3);
+  --bg-main: var(--bg-app, #F8FAFC);
 }
 
 /* Universal Dark Mode Overrides for Inputs, Selects, Tables, Modals, Tabs & Cards */
@@ -483,7 +412,6 @@ body {
   .main-wrapper.sidebar-collapsed .top-header {
     left: 0 !important;
     width: 100% !important;
-    padding: 10px 14px !important;
   }
 
   .search-bar {
@@ -491,8 +419,8 @@ body {
   }
 
   .main-content {
-    padding: 12px !important;
-    margin-top: 60px !important;
+    padding: 16px 12px 84px 12px !important;
+    margin-top: 68px !important;
   }
 
   .page-wrapper {
@@ -517,11 +445,13 @@ body {
   }
 
   .metrics-grid {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
   }
 
   .stats-row-3, .stats-row-4 {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
   }
 
   .middle-grid, .bottom-grid {
@@ -529,8 +459,8 @@ body {
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 380px) {
   .metrics-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
   }
 }

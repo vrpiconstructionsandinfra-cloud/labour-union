@@ -271,7 +271,7 @@ export async function getWorkers(reqUser?: { id: number; role: string }) {
  */
 export async function getAgents() {
   return prisma.user.findMany({
-    where: { role: { in: [UserRole.AGENT, UserRole.CUSTOMER_SUPPORT] } },
+    where: { role: UserRole.AGENT },
     orderBy: { createdAt: "desc" },
     select: {
       ...userSelect,

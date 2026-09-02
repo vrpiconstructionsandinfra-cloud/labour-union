@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Clock, Loader2, RotateCw, Plus, Calendar } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Loader2, Plus, Calendar, Check, X } from 'lucide-react';
 import { fetchLeavesApi, fetchMyLeavesApi, approveLeaveApi, rejectLeaveApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { getSocket } from '../services/socket';
 import type { LeaveRecord } from '../types';
 import { UserAvatar } from '../components/UserAvatar';
+import {
+  ListHeader,
+  StatusBadge,
+  MobileListCard,
+  ResponsivePagination,
+  ListEmptyState,
+  ListLoadingState
+} from '../components/common';
 import './Pages.css';
 
 interface LeavePageProps {
@@ -13,27 +21,46 @@ interface LeavePageProps {
   isMyLeavesOnly?: boolean;
 }
 
-export const LeavePage: React.FC<LeavePageProps> = ({ onOpenModal, refreshTrigger, isMyLeavesOnly }) => {
+const PRESET_FILTERS = [
+  { key: 'ALL', label: 'All Dates' },
+  { key: 'TODAY', label: 'Today' },
+  { key: 'THIS_MONTH', label: 'This Month' }
+];
+
+export const LeavePage: React.FC<LeavePageProps> = ({
+  onOpenModal,
+  refreshTrigger,
+  isMyLeavesOnly
+}) => {
   const { role } = useAuth();
   const [leaves, setLeaves] = useState<LeaveRecord[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
-  // Date Navigation & Range Filter States
+  // Date Filter States
   const [filterStartDate, setFilterStartDate] = useState<string>('');
   const [filterEndDate, setFilterEndDate] = useState<string>('');
   const [activePreset, setActivePreset] = useState<'ALL' | 'TODAY' | 'THIS_MONTH' | 'CUSTOM'>('ALL');
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
   const isAgentOrSuperAdmin = !isMyLeavesOnly && (role === 'SUPER_AGENT' || role === 'AGENT');
 
   const loadLeaves = () => {
-    if (isMyLeavesOnly) {
-      fetchMyLeavesApi().then(setLeaves).catch(() => {});
-    } else if (isAgentOrSuperAdmin) {
-      fetchLeavesApi().then(setLeaves).catch(() => {});
-    } else {
-      fetchMyLeavesApi().then(setLeaves).catch(() => {});
-    }
+    setIsLoading(true);
+    const fetcher = isMyLeavesOnly
+      ? fetchMyLeavesApi()
+      : isAgentOrSuperAdmin
+      ? fetchLeavesApi()
+      : fetchMyLeavesApi();
+
+    fetcher
+      .then(setLeaves)
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
   };
 
   useEffect(() => {
@@ -53,14 +80,8 @@ export const LeavePage: React.FC<LeavePageProps> = ({ onOpenModal, refreshTrigge
     };
   }, [refreshTrigger, role, isMyLeavesOnly]);
 
-  const handleManualRefresh = () => {
-    setIsRefreshing(true);
-    loadLeaves();
-    setTimeout(() => setIsRefreshing(false), 500);
-  };
-
-  const handleSelectPreset = (preset: 'ALL' | 'TODAY' | 'THIS_MONTH') => {
-    setActivePreset(preset);
+  const handleSelectPreset = (preset: string) => {
+    setActivePreset(preset as any);
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
 
@@ -106,9 +127,19 @@ export const LeavePage: React.FC<LeavePageProps> = ({ onOpenModal, refreshTrigge
   };
 
   const filteredLeaves = leaves.filter((leave) => {
-    // Super Agents manage Field Agent & Customer Support Agent leave applications
     if (!isMyLeavesOnly && role === 'SUPER_AGENT' && leave.workerRole && !['AGENT', 'CUSTOMER_SUPPORT'].includes(leave.workerRole)) {
       return false;
+    }
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      const wName = (leave.workerName || '').toLowerCase();
+      const wId = (leave.workerId || '').toLowerCase();
+      const reason = (leave.reason || '').toLowerCase();
+      const lType = (leave.leaveType || '').toLowerCase();
+      if (!wName.includes(term) && !wId.includes(term) && !reason.includes(term) && !lType.includes(term)) {
+        return false;
+      }
     }
 
     if (!filterStartDate && !filterEndDate) return true;
@@ -130,52 +161,78 @@ export const LeavePage: React.FC<LeavePageProps> = ({ onOpenModal, refreshTrigge
   const approvedCount = filteredLeaves.filter((l) => l.status === 'APPROVED').length;
   const rejectedCount = filteredLeaves.filter((l) => l.status === 'REJECTED').length;
 
+  const totalItems = filteredLeaves.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const paginatedLeaves = filteredLeaves.slice(startIndex, endIndex);
+
+  const getPageTitle = () => {
+    if (isMyLeavesOnly) return 'My Leave Requests';
+    if (role === 'SUPER_AGENT') return 'Leave Requests';
+    if (role === 'AGENT') return 'Worker Leave Requests';
+    return 'Leave Requests';
+  };
+
+  const getPageSubtitle = () => {
+    if (isMyLeavesOnly) return 'View your submitted leave requests and approval status.';
+    if (role === 'SUPER_AGENT') return 'Review and authorize leave applications submitted by Field Agents and Support Staff.';
+    if (role === 'AGENT') return 'Review and authorize workforce leave applications submitted across assigned working sites.';
+    return 'Directory of workforce leave records and approvals.';
+  };
+
   return (
     <div className="page-wrapper animate-fade-in">
-      <div className="page-header">
-        <div>
-          <h2>{isMyLeavesOnly ? 'My Leave Applications' : 'Leave Management'}</h2>
-          <p>
-            {isMyLeavesOnly
-              ? 'View your submitted leave requests and application status.'
-              : role === 'SUPER_AGENT'
-              ? 'Review and approve/reject leave requests submitted by Agents & Support Staff.'
-              : role === 'AGENT'
-              ? 'Review and approve/reject all worker leave requests across system sites.'
-              : 'View your applied leaves and application status.'}
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          {onOpenModal && (
-            <button
-              className="primary-btn"
-              onClick={() => onOpenModal('apply_leave')}
-            >
-              <Plus size={16} />
-              <span>Apply Leave</span>
-            </button>
-          )}
-          <button
-            className="secondary-btn"
-            title="Refresh Data"
-            aria-label="Refresh Data"
-            disabled={isRefreshing}
-            onClick={handleManualRefresh}
-            style={{ padding: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <RotateCw size={16} className={isRefreshing ? 'spinner' : ''} />
-          </button>
-        </div>
-      </div>
+      {/* Standardized Header */}
+      <ListHeader
+        title={getPageTitle()}
+        subtitle={getPageSubtitle()}
+        badgeCount={totalItems}
+        searchQuery={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Search by applicant name, ID, or leave reason..."
+        filterOptions={PRESET_FILTERS}
+        activeFilter={activePreset}
+        onFilterSelect={handleSelectPreset}
+        primaryActionLabel={role !== 'SUPER_AGENT' && onOpenModal ? 'Apply Leave' : undefined}
+        primaryActionIcon={role !== 'SUPER_AGENT' && onOpenModal ? <Plus size={16} /> : undefined}
+        onPrimaryAction={role !== 'SUPER_AGENT' && onOpenModal ? () => onOpenModal('apply_leave') : undefined}
+        customFilters={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#475569', fontWeight: 600, flexWrap: 'wrap' }}>
+            <Calendar size={14} color="#64748B" />
+            <span>From:</span>
+            <input
+              type="date"
+              value={filterStartDate}
+              onChange={(e) => {
+                setFilterStartDate(e.target.value);
+                setActivePreset('CUSTOM');
+              }}
+              style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12px' }}
+            />
+            <span>To:</span>
+            <input
+              type="date"
+              value={filterEndDate}
+              onChange={(e) => {
+                setFilterEndDate(e.target.value);
+                setActivePreset('CUSTOM');
+              }}
+              style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12px' }}
+            />
+          </div>
+        }
+      />
 
-      <div className="stats-row-3">
+      {/* Metrics Summary Row */}
+      <div className="responsive-metrics-grid" style={{ marginBottom: '16px' }}>
         <div className="stat-box-card border-amber">
           <div className="stat-header">
             <span>Pending Approvals</span>
             <Clock size={18} className="text-amber" />
           </div>
           <span className="stat-number">{pendingCount}</span>
-          <span className="stat-sub">{isAgentOrSuperAdmin ? 'Requires Agent Action' : 'Awaiting Review'}</span>
+          <span className="stat-sub">{isAgentOrSuperAdmin ? 'Requires Your Action' : 'Awaiting Review'}</span>
         </div>
         <div className="stat-box-card border-green">
           <div className="stat-header">
@@ -183,7 +240,7 @@ export const LeavePage: React.FC<LeavePageProps> = ({ onOpenModal, refreshTrigge
             <CheckCircle size={18} className="text-green" />
           </div>
           <span className="stat-number">{approvedCount}</span>
-          <span className="stat-sub">Paid Leave Granted</span>
+          <span className="stat-sub">Paid Leaves Granted</span>
         </div>
         <div className="stat-box-card border-red">
           <div className="stat-header">
@@ -191,220 +248,173 @@ export const LeavePage: React.FC<LeavePageProps> = ({ onOpenModal, refreshTrigge
             <XCircle size={18} className="text-red" />
           </div>
           <span className="stat-number">{rejectedCount}</span>
-          <span className="stat-sub">Leave Rejected</span>
+          <span className="stat-sub">Leave Applications Declined</span>
         </div>
       </div>
 
-      <div className="table-card mt-24">
-        <div className="card-header border-b" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', padding: '16px 20px' }}>
-          <h3 className="card-title" style={{ margin: 0, fontSize: '16px', fontWeight: 800 }}>
-            {role === 'AGENT'
-              ? 'Leave Applications for Assigned Workers'
-              : role === 'SUPER_AGENT'
-              ? 'Agent Leave Applications'
-              : 'My Leave Applications'}
-          </h3>
-
-          {/* Date Navigation & Range Filter Bar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', backgroundColor: '#F1F5F9', padding: '3px', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
-              <button
-                type="button"
-                onClick={() => handleSelectPreset('ALL')}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  fontSize: '11.5px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  backgroundColor: activePreset === 'ALL' ? '#FFFFFF' : 'transparent',
-                  color: activePreset === 'ALL' ? '#2563EB' : '#64748B',
-                  boxShadow: activePreset === 'ALL' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none'
-                }}
-              >
-                All Dates
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectPreset('TODAY')}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  fontSize: '11.5px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  backgroundColor: activePreset === 'TODAY' ? '#FFFFFF' : 'transparent',
-                  color: activePreset === 'TODAY' ? '#2563EB' : '#64748B',
-                  boxShadow: activePreset === 'TODAY' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none'
-                }}
-              >
-                Today
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectPreset('THIS_MONTH')}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  fontSize: '11.5px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  backgroundColor: activePreset === 'THIS_MONTH' ? '#FFFFFF' : 'transparent',
-                  color: activePreset === 'THIS_MONTH' ? '#2563EB' : '#64748B',
-                  boxShadow: activePreset === 'THIS_MONTH' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none'
-                }}
-              >
-                This Month
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#FFFFFF', padding: '4px 8px', borderRadius: '8px', border: '1px solid #CBD5E1' }}>
-              <Calendar size={14} color="#64748B" />
-              <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B' }}>From:</span>
-              <input
-                type="date"
-                value={filterStartDate}
-                onChange={(e) => {
-                  setFilterStartDate(e.target.value);
-                  setActivePreset('CUSTOM');
-                }}
-                style={{ border: 'none', outline: 'none', fontSize: '12px', fontWeight: 600, color: '#334155', cursor: 'pointer' }}
-              />
-              <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', marginLeft: '4px' }}>To:</span>
-              <input
-                type="date"
-                value={filterEndDate}
-                onChange={(e) => {
-                  setFilterEndDate(e.target.value);
-                  setActivePreset('CUSTOM');
-                }}
-                style={{ border: 'none', outline: 'none', fontSize: '12px', fontWeight: 600, color: '#334155', cursor: 'pointer' }}
-              />
-            </div>
-
-            {(filterStartDate || filterEndDate) && (
-              <button
-                type="button"
-                onClick={() => handleSelectPreset('ALL')}
-                style={{
-                  backgroundColor: '#FEF2F2',
-                  color: '#EF4444',
-                  border: '1px solid #FCA5A5',
-                  borderRadius: '6px',
-                  padding: '4px 8px',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                Clear Filter
-              </button>
-            )}
-          </div>
-        </div>
-        <div className="table-responsive">
-          <table className="custom-table">
-            <thead>
-              <tr>
-                <th>Worker</th>
-                <th>Leave Type</th>
-                <th>From Date</th>
-                <th>To Date</th>
-                <th>Reason</th>
-                <th>Status</th>
-                {isAgentOrSuperAdmin && <th>Actions</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredLeaves.length > 0 ? (
-                filteredLeaves.map((leave) => (
-                  <tr key={leave.id}>
-                    <td>
-                      <div className="table-user-cell">
-                        <UserAvatar src={leave.avatar} name={leave.workerName} />
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span className="user-name-bold">{leave.workerName || 'Worker'}</span>
-                            {leave.workerRole === 'AGENT' && (
-                              <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', backgroundColor: 'rgba(124, 58, 237, 0.15)', color: '#7C3AED' }}>
-                                AGENT
-                              </span>
+      {isLoading ? (
+        <ListLoadingState message="Loading leave applications..." rows={5} />
+      ) : filteredLeaves.length === 0 ? (
+        <ListEmptyState
+          title={role === 'SUPER_AGENT' ? 'No leave requests submitted yet' : undefined}
+          message={
+            role === 'SUPER_AGENT'
+              ? 'Leave applications submitted by Field Agents and Support Staff will appear here for your review and approval.'
+              : undefined
+          }
+          isSearchOrFilter={Boolean(searchTerm || filterStartDate || filterEndDate)}
+          onClearFilters={() => {
+            setSearchTerm('');
+            setFilterStartDate('');
+            setFilterEndDate('');
+            setActivePreset('ALL');
+          }}
+          primaryActionLabel={role !== 'SUPER_AGENT' && onOpenModal ? 'Apply Leave' : undefined}
+          onPrimaryAction={role !== 'SUPER_AGENT' && onOpenModal ? () => onOpenModal('apply_leave') : undefined}
+        />
+      ) : (
+        <>
+          {/* DESKTOP TABLE VIEW (≥ 768px) */}
+          <div className="table-desktop-view">
+            <div className="table-card">
+              <div className="table-responsive">
+                <table className="custom-table">
+                  <thead>
+                    <tr>
+                      <th>Applicant</th>
+                      <th>Leave Type</th>
+                      <th>From Date</th>
+                      <th>To Date</th>
+                      <th>Reason</th>
+                      <th>Status</th>
+                      {isAgentOrSuperAdmin && <th>Actions</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedLeaves.map((leave) => (
+                      <tr key={leave.id}>
+                        <td>
+                          <div className="table-user-cell">
+                            <UserAvatar src={leave.avatar} name={leave.workerName} size={32} />
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span className="user-name-bold">{leave.workerName || 'Worker'}</span>
+                                {leave.workerRole === 'AGENT' && (
+                                  <span style={{ fontSize: '10px', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', backgroundColor: '#F5F3FF', color: '#6D28D9', border: '1px solid #DDD6FE' }}>
+                                    AGENT
+                                  </span>
+                                )}
+                              </div>
+                              <span className="user-sub-email">ID: {leave.workerId}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span className="badge badge-casual">{leave.leaveType || 'Casual Leave'}</span>
+                        </td>
+                        <td>{leave.fromDate}</td>
+                        <td>{leave.toDate}</td>
+                        <td>{leave.reason || 'Personal leave request'}</td>
+                        <td>
+                          <StatusBadge status={leave.status} size="sm" />
+                        </td>
+                        {isAgentOrSuperAdmin && (
+                          <td>
+                            {leave.status === 'PENDING' ? (
+                              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                <button
+                                  type="button"
+                                  className="list-btn touch-target"
+                                  style={{ padding: '4px 10px', fontSize: '12px', minHeight: '30px', backgroundColor: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' }}
+                                  disabled={actionLoadingId === leave.id}
+                                  onClick={() => handleApprove(leave.id)}
+                                >
+                                  {actionLoadingId === leave.id ? <Loader2 size={12} className="spinner" /> : <><Check size={12} /> Approve</>}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="list-btn touch-target"
+                                  style={{ padding: '4px 10px', fontSize: '12px', minHeight: '30px', backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}
+                                  disabled={actionLoadingId === leave.id}
+                                  onClick={() => handleReject(leave.id)}
+                                >
+                                  {actionLoadingId === leave.id ? <Loader2 size={12} className="spinner" /> : <><X size={12} /> Reject</>}
+                                </button>
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Completed</span>
                             )}
-                          </div>
-                          <span className="user-sub-email">ID: {leave.workerId}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td><span className="badge badge-casual">{leave.leaveType || 'Casual Leave'}</span></td>
-                    <td>{leave.fromDate}</td>
-                    <td>{leave.toDate}</td>
-                    <td>{leave.reason || 'Family leave request'}</td>
-                    <td>
-                      <span className={`badge ${
-                        leave.status === 'APPROVED' ? 'badge-approved' : leave.status === 'REJECTED' ? 'badge-rejected' : 'badge-pending'
-                      }`}>
-                        {leave.status}
-                      </span>
-                    </td>
-                    {isAgentOrSuperAdmin && (
-                      <td>
-                        {leave.status === 'PENDING' ? (
-                          <div className="action-buttons-group">
-                            <button
-                              className="sm-btn btn-success"
-                              disabled={actionLoadingId === leave.id}
-                              onClick={() => handleApprove(leave.id)}
-                            >
-                              {actionLoadingId === leave.id ? <Loader2 size={12} className="spinner" /> : 'Approve'}
-                            </button>
-                            <button
-                              className="sm-btn btn-danger"
-                              disabled={actionLoadingId === leave.id}
-                              onClick={() => handleReject(leave.id)}
-                            >
-                              {actionLoadingId === leave.id ? <Loader2 size={12} className="spinner" /> : 'Reject'}
-                            </button>
-                          </div>
-                        ) : (
-                          <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
-                            Action Taken
-                          </span>
+                          </td>
                         )}
-                      </td>
-                    )}
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={isAgentOrSuperAdmin ? 7 : 6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '36px 24px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                      <Clock size={32} style={{ color: 'var(--text-muted)', opacity: 0.6 }} />
-                      <span style={{ fontSize: '15px', fontWeight: 500 }}>
-                        {isAgentOrSuperAdmin
-                          ? 'No leave applications found in the system.'
-                          : 'No leave applications submitted yet.'}
-                      </span>
-                      {!isAgentOrSuperAdmin && onOpenModal && (
-                        <button
-                          className="primary-btn sm-btn"
-                          style={{ marginTop: '4px' }}
-                          onClick={() => onOpenModal('apply_leave')}
-                        >
-                          <Plus size={14} />
-                          <span>Apply For Leave</span>
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* MOBILE CARDS VIEW (< 768px) */}
+          <div className="card-mobile-view">
+            {paginatedLeaves.map((leave) => (
+              <MobileListCard
+                key={leave.id}
+                avatarName={leave.workerName}
+                title={leave.workerName}
+                subtitle={`ID: ${leave.workerId}`}
+                status={leave.status}
+                metaRows={[
+                  {
+                    label: 'Leave Type',
+                    value: leave.leaveType || 'Casual Leave'
+                  },
+                  {
+                    label: 'Period',
+                    value: `${leave.fromDate} → ${leave.toDate}`,
+                    icon: <Calendar size={13} color="#64748B" />
+                  },
+                  {
+                    label: 'Reason',
+                    value: leave.reason || 'Personal leave'
+                  }
+                ]}
+                primaryAction={
+                  isAgentOrSuperAdmin && leave.status === 'PENDING'
+                    ? {
+                        label: 'Approve Request',
+                        icon: <Check size={14} />,
+                        onClick: () => handleApprove(leave.id),
+                        variant: 'success'
+                      }
+                    : undefined
+                }
+                secondaryActions={
+                  isAgentOrSuperAdmin && leave.status === 'PENDING'
+                    ? [
+                        {
+                          label: 'Reject Request',
+                          icon: <X size={14} />,
+                          variant: 'danger',
+                          onClick: () => handleReject(leave.id)
+                        }
+                      ]
+                    : undefined
+                }
+              />
+            ))}
+          </div>
+
+          {/* Responsive Pagination */}
+          <ResponsivePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setItemsPerPage}
+          />
+        </>
+      )}
     </div>
   );
 };

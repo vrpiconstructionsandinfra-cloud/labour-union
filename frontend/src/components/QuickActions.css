@@ -45,28 +45,28 @@
 }
 
 .action-site .action-icon-circle {
-  background-color: #F3E8FF;
-  color: #A855F7;
+  background-color: #FFF7ED;
+  color: #EA580C;
 }
 
 .action-agent .action-icon-circle {
-  background-color: #EFF6FF;
-  color: #3B82F6;
+  background-color: #FEF3C7;
+  color: #D97706;
 }
 
 .action-worker .action-icon-circle {
-  background-color: #FEF3C7;
-  color: #F59E0B;
+  background-color: #DCFCE7;
+  color: #16A34A;
 }
 
 .action-attendance .action-icon-circle {
   background-color: #DCFCE7;
-  color: #10B981;
+  color: #16A34A;
 }
 
 .action-report .action-icon-circle {
-  background-color: #CCFBF1;
-  color: #14B8A6;
+  background-color: #FFF7ED;
+  color: #EA580C;
 }
 
 .action-text-group {

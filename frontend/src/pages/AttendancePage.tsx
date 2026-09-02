@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CheckCircle, XCircle, Clock, Loader2, Calendar } from 'lucide-react';
+import { Plus, CheckCircle, XCircle, Clock, Calendar, Eye } from 'lucide-react';
 import { fetchAttendanceLogsApi, fetchWorkersApi } from '../services/api';
 import { getSocket } from '../services/socket';
 import type { User as UserType } from '../types';
+import {
+  ListHeader,
+  StatusBadge,
+  MobileListCard,
+  ResponsivePagination,
+  ListEmptyState,
+  ListLoadingState
+} from '../components/common';
 import './Pages.css';
 
 interface AttendancePageProps {
@@ -11,7 +19,17 @@ interface AttendancePageProps {
   refreshTrigger?: number;
 }
 
-export const AttendancePage: React.FC<AttendancePageProps> = ({ user, onOpenModal, refreshTrigger }) => {
+const DATE_PRESETS = [
+  { key: 'ALL', label: 'All Dates' },
+  { key: 'TODAY', label: 'Today' },
+  { key: 'THIS_MONTH', label: 'This Month' }
+];
+
+export const AttendancePage: React.FC<AttendancePageProps> = ({
+  user,
+  onOpenModal,
+  refreshTrigger
+}) => {
   const [summary, setSummary] = useState({
     todayPresent: 0,
     todayAbsent: 0,
@@ -23,11 +41,16 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({ user, onOpenModa
   const [allLogs, setAllLogs] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // Date Navigation & Range Filter States
+  // Date Filter States
   const [filterStartDate, setFilterStartDate] = useState<string>('');
   const [filterEndDate, setFilterEndDate] = useState<string>('');
   const [activePreset, setActivePreset] = useState<'ALL' | 'TODAY' | 'THIS_MONTH' | 'CUSTOM'>('ALL');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const loadAttendanceData = () => {
     setIsLoading(true);
@@ -49,7 +72,6 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({ user, onOpenModa
         assignedWorkerNames = new Set(myWorkers.map((w: any) => (w.name || '').toLowerCase()));
       }
 
-      // Filter logs strictly for assigned workers if logged in as an Agent
       const filteredLogs = (isAgent && user?.id && assignedWorkerIds.size > 0)
         ? fetchedLogs.filter((log: any) => {
             const wId = String(log.workerId || log.worker?.id || '');
@@ -80,7 +102,6 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({ user, onOpenModa
     };
   }, [refreshTrigger, user]);
 
-  // Apply Date Range Filters Dynamically
   useEffect(() => {
     let result = [...allLogs];
 
@@ -98,30 +119,36 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({ user, onOpenModa
       });
     }
 
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter((l: any) => {
+        const wName = (l.worker?.name || l.workerName || '').toLowerCase();
+        const wCode = (l.worker?.employeeCode || '').toLowerCase();
+        const sName = (l.worker?.site?.siteName || l.siteName || '').toLowerCase();
+        return wName.includes(term) || wCode.includes(term) || sName.includes(term);
+      });
+    }
+
     setLogs(result);
 
-    // Compute dynamic summary metrics
     const presentCount = result.filter((l: any) => l.status === 'PRESENT' || l.status === 'HALF_DAY').length;
     const absentCount = result.filter((l: any) => l.status === 'ABSENT').length;
     const totalCount = result.length || 1;
     const totalOT = result.reduce((sum: number, l: any) => sum + (l.overtimeHours || 0), 0);
     const uniqueSites = new Set(result.map((l: any) => l.siteId || l.worker?.site?.siteName)).size || 1;
 
-    const attRate = Math.min(100, Math.round((presentCount / totalCount) * 100));
-    const absRate = Math.min(100, Math.round((absentCount / totalCount) * 100));
-
     setSummary({
       todayPresent: presentCount,
       todayAbsent: absentCount,
-      attendanceRate: attRate,
-      absenceRate: absRate,
+      attendanceRate: Math.min(100, Math.round((presentCount / totalCount) * 100)),
+      absenceRate: Math.min(100, Math.round((absentCount / totalCount) * 100)),
       totalOvertime: totalOT,
       totalSites: uniqueSites
     });
-  }, [allLogs, filterStartDate, filterEndDate]);
+  }, [allLogs, filterStartDate, filterEndDate, searchTerm]);
 
-  const handleSelectPreset = (preset: 'ALL' | 'TODAY' | 'THIS_MONTH') => {
-    setActivePreset(preset);
+  const handleSelectPreset = (preset: string) => {
+    setActivePreset(preset as any);
     const today = new Date();
     const todayISO = today.toISOString().split('T')[0];
 
@@ -138,29 +165,60 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({ user, onOpenModa
     }
   };
 
-  const todayFormatted = new Date().toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  });
+  const totalItems = logs.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const paginatedLogs = logs.slice(startIndex, endIndex);
 
   return (
     <div className="page-wrapper animate-fade-in">
-      <div className="page-header">
-        <div>
-          <h2>Attendance Module</h2>
-          <p>Mark daily attendance, overtime hours, and review attendance logs across sites.</p>
-        </div>
-        <button className="primary-btn" onClick={() => onOpenModal('mark_attendance')}>
-          <Plus size={16} />
-          <span>Mark Attendance</span>
-        </button>
-      </div>
+      {/* Standardized Header */}
+      <ListHeader
+        title="Attendance Logs"
+        subtitle="Mark daily workforce attendance, track overtime hours, and review deployment logs."
+        badgeCount={totalItems}
+        searchQuery={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Search by worker name, ID, or site..."
+        filterOptions={DATE_PRESETS}
+        activeFilter={activePreset}
+        onFilterSelect={handleSelectPreset}
+        primaryActionLabel="Mark Attendance"
+        primaryActionIcon={<Plus size={16} />}
+        onPrimaryAction={() => onOpenModal('mark_attendance')}
+        customFilters={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#475569', fontWeight: 600, flexWrap: 'wrap' }}>
+            <Calendar size={14} color="#64748B" />
+            <span>From:</span>
+            <input
+              type="date"
+              value={filterStartDate}
+              onChange={(e) => {
+                setFilterStartDate(e.target.value);
+                setActivePreset('CUSTOM');
+              }}
+              style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12px' }}
+            />
+            <span>To:</span>
+            <input
+              type="date"
+              value={filterEndDate}
+              onChange={(e) => {
+                setFilterEndDate(e.target.value);
+                setActivePreset('CUSTOM');
+              }}
+              style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12px' }}
+            />
+          </div>
+        }
+      />
 
-      <div className="stats-row-3">
+      {/* Metrics Summary Row */}
+      <div className="responsive-metrics-grid" style={{ marginBottom: '16px' }}>
         <div className="stat-box-card border-green">
           <div className="stat-header">
-            <span>Today Present</span>
+            <span>Total Present</span>
             <CheckCircle size={18} className="text-green" />
           </div>
           <span className="stat-number">{summary.todayPresent.toLocaleString()}</span>
@@ -168,7 +226,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({ user, onOpenModa
         </div>
         <div className="stat-box-card border-red">
           <div className="stat-header">
-            <span>Today Absent</span>
+            <span>Total Absent</span>
             <XCircle size={18} className="text-red" />
           </div>
           <span className="stat-number">{summary.todayAbsent.toLocaleString()}</span>
@@ -176,7 +234,7 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({ user, onOpenModa
         </div>
         <div className="stat-box-card border-blue">
           <div className="stat-header">
-            <span>Total Overtime Hours</span>
+            <span>Overtime Recorded</span>
             <Clock size={18} className="text-blue" />
           </div>
           <span className="stat-number">{summary.totalOvertime} Hrs</span>
@@ -184,182 +242,142 @@ export const AttendancePage: React.FC<AttendancePageProps> = ({ user, onOpenModa
         </div>
       </div>
 
-      <div className="table-card mt-24">
-        {/* Date Selector Navigation Menu */}
-        <div className="card-header border-b" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', padding: '16px 20px' }}>
-          <div>
-            <h3 className="card-title" style={{ margin: 0, fontSize: '16px', fontWeight: 700 }}>
-              {activePreset === 'TODAY'
-                ? `Daily Attendance Logs – ${todayFormatted}`
-                : activePreset === 'THIS_MONTH'
-                ? 'Attendance Logs – This Month'
-                : activePreset === 'CUSTOM' && filterStartDate
-                ? `Attendance Logs (${filterStartDate} to ${filterEndDate || 'Today'})`
-                : 'All System Attendance Logs'}
-            </h3>
-            <span style={{ fontSize: '12px', color: '#64748B', fontWeight: 500 }}>
-              Showing {logs.length} record{logs.length === 1 ? '' : 's'}
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', gap: '6px', background: '#F1F5F9', padding: '4px', borderRadius: '8px' }}>
-              <button
-                onClick={() => handleSelectPreset('TODAY')}
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  backgroundColor: activePreset === 'TODAY' ? '#2563EB' : 'transparent',
-                  color: activePreset === 'TODAY' ? '#FFFFFF' : '#475569'
-                }}
-              >
-                Today
-              </button>
-              <button
-                onClick={() => handleSelectPreset('THIS_MONTH')}
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  backgroundColor: activePreset === 'THIS_MONTH' ? '#2563EB' : 'transparent',
-                  color: activePreset === 'THIS_MONTH' ? '#FFFFFF' : '#475569'
-                }}
-              >
-                This Month
-              </button>
-              <button
-                onClick={() => handleSelectPreset('ALL')}
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  backgroundColor: activePreset === 'ALL' ? '#2563EB' : 'transparent',
-                  color: activePreset === 'ALL' ? '#FFFFFF' : '#475569'
-                }}
-              >
-                All Dates
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#475569', fontWeight: 600 }}>
-              <Calendar size={14} color="#64748B" />
-              <span>From:</span>
-              <input
-                type="date"
-                value={filterStartDate}
-                onChange={(e) => {
-                  setFilterStartDate(e.target.value);
-                  setActivePreset('CUSTOM');
-                }}
-                style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12px' }}
-              />
-              <span>To:</span>
-              <input
-                type="date"
-                value={filterEndDate}
-                onChange={(e) => {
-                  setFilterEndDate(e.target.value);
-                  setActivePreset('CUSTOM');
-                }}
-                style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #CBD5E1', fontSize: '12px' }}
-              />
-              {(filterStartDate || filterEndDate) && (
-                <button
-                  onClick={() => handleSelectPreset('ALL')}
-                  style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '12px', fontWeight: 700, padding: '2px 6px' }}
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="table-responsive">
-          <table className="custom-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Worker</th>
-                <th>Site</th>
-                <th>Marked By</th>
-                <th>Status</th>
-                <th>Overtime</th>
-                <th>Remarks</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '24px' }}>
-                    <Loader2 size={18} className="spinner" style={{ marginRight: '8px' }} /> Loading attendance logs...
-                  </td>
-                </tr>
-              ) : logs.length > 0 ? (
-                logs.map((log: any) => {
-                  const workerName = log.worker?.name || log.workerName || `Worker #${log.workerId}`;
-                  const workerCode = log.worker?.employeeCode || `WRK-${log.workerId}`;
-                  const siteName = log.worker?.site?.siteName || log.siteName || 'Active Site';
-                  const markedByName = log.markedBy?.name ? `${log.markedBy.name} (${log.markedBy.role || 'Agent'})` : 'Field Agent';
-                  const isPresent = log.status === 'PRESENT' || log.status === 'HALF_DAY';
-
-                  const logDateFormatted = log.date
-                    ? new Date(log.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-                    : log.createdAt
-                    ? new Date(log.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-                    : '14 Aug 2026';
-
-                  return (
-                    <tr key={log.id}>
-                      <td style={{ fontWeight: 600, color: '#1E293B', fontSize: '13px' }}>
-                        {logDateFormatted}
-                      </td>
-                      <td>
-                        <span
-                          className="user-name-bold"
-                          style={{ color: '#2563EB', cursor: 'pointer', textDecoration: 'underline' }}
-                          onClick={() => window.open(`/worker-details?id=${log.workerId || log.worker?.id || 1}`, '_blank')}
-                          title="Click to open worker profile details in new tab"
-                        >
-                          {workerName}
-                        </span>
-                        <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginLeft: '6px' }}>
-                          ({workerCode})
-                        </span>
-                      </td>
-                      <td>{siteName}</td>
-                      <td>{markedByName}</td>
-                      <td>
-                        <span className={`badge ${isPresent ? 'badge-approved' : 'badge-rejected'}`}>
-                          {log.status}
-                        </span>
-                      </td>
-                      <td>{log.overtimeHours || 0} Hours</td>
-                      <td>{log.remarks || 'Shift recorded'}</td>
+      {isLoading ? (
+        <ListLoadingState message="Loading attendance logs..." rows={6} />
+      ) : logs.length === 0 ? (
+        <ListEmptyState
+          isSearchOrFilter={Boolean(searchTerm || filterStartDate || filterEndDate)}
+          onClearFilters={() => {
+            setSearchTerm('');
+            setFilterStartDate('');
+            setFilterEndDate('');
+            setActivePreset('ALL');
+          }}
+          primaryActionLabel="Mark Attendance"
+          onPrimaryAction={() => onOpenModal('mark_attendance')}
+        />
+      ) : (
+        <>
+          {/* DESKTOP TABLE VIEW (≥ 768px) */}
+          <div className="table-desktop-view">
+            <div className="table-card">
+              <div className="table-responsive">
+                <table className="custom-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Worker</th>
+                      <th>Site</th>
+                      <th>Marked By</th>
+                      <th>Status</th>
+                      <th>Overtime</th>
+                      <th>Remarks</th>
                     </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
-                    No attendance logs recorded for your assigned workers.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                  </thead>
+                  <tbody>
+                    {paginatedLogs.map((log: any) => {
+                      const workerName = log.worker?.name || log.workerName || `Worker #${log.workerId}`;
+                      const workerCode = log.worker?.employeeCode || `WRK-${log.workerId}`;
+                      const siteName = log.worker?.site?.siteName || log.siteName || 'Active Site';
+                      const markedByName = log.markedBy?.name ? `${log.markedBy.name} (${log.markedBy.role || 'Agent'})` : 'Field Agent';
+
+                      const logDateFormatted = log.date
+                        ? new Date(log.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                        : log.createdAt
+                        ? new Date(log.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                        : 'Today';
+
+                      return (
+                        <tr key={log.id}>
+                          <td style={{ fontWeight: 600, color: '#1E293B', fontSize: '13px' }}>
+                            {logDateFormatted}
+                          </td>
+                          <td>
+                            <span
+                              className="user-name-bold"
+                              style={{ color: '#2563EB', cursor: 'pointer', textDecoration: 'underline' }}
+                              onClick={() => window.open(`/worker-details?id=${log.workerId || log.worker?.id || 1}`, '_blank')}
+                              title="Click to open worker profile"
+                            >
+                              {workerName}
+                            </span>
+                            <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginLeft: '6px' }}>
+                              ({workerCode})
+                            </span>
+                          </td>
+                          <td>{siteName}</td>
+                          <td>{markedByName}</td>
+                          <td>
+                            <StatusBadge status={log.status || 'PRESENT'} size="sm" />
+                          </td>
+                          <td>{log.overtimeHours || 0} Hours</td>
+                          <td>{log.remarks || 'Shift recorded'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* MOBILE CARDS VIEW (< 768px) */}
+          <div className="card-mobile-view">
+            {paginatedLogs.map((log: any) => {
+              const workerName = log.worker?.name || log.workerName || `Worker #${log.workerId}`;
+              const workerCode = log.worker?.employeeCode || `WRK-${log.workerId}`;
+              const siteName = log.worker?.site?.siteName || log.siteName || 'Active Site';
+
+              const logDateFormatted = log.date
+                ? new Date(log.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                : 'Today';
+
+              return (
+                <MobileListCard
+                  key={log.id}
+                  avatarName={workerName}
+                  title={workerName}
+                  subtitle={siteName}
+                  idBadge={workerCode}
+                  status={log.status || 'PRESENT'}
+                  metaRows={[
+                    {
+                      label: 'Date',
+                      value: logDateFormatted,
+                      icon: <Calendar size={13} color="#64748B" />
+                    },
+                    {
+                      label: 'Overtime',
+                      value: `${log.overtimeHours || 0} Hours`,
+                      icon: <Clock size={13} color="#2563EB" />
+                    },
+                    {
+                      label: 'Remarks',
+                      value: log.remarks || 'Shift recorded'
+                    }
+                  ]}
+                  primaryAction={{
+                    label: 'Worker Profile',
+                    icon: <Eye size={14} />,
+                    onClick: () => window.open(`/worker-details?id=${log.workerId || log.worker?.id || 1}`, '_blank'),
+                    variant: 'outline'
+                  }}
+                />
+              );
+            })}
+          </div>
+
+          {/* Responsive Pagination */}
+          <ResponsivePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setItemsPerPage}
+          />
+        </>
+      )}
     </div>
   );
 };
