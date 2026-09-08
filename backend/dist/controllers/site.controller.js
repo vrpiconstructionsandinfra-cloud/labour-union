@@ -37,50 +37,96 @@ exports.remove = exports.update = exports.findOne = exports.findAll = exports.cr
 const siteService = __importStar(require("../services/site.service"));
 const site_validator_1 = require("../validators/site.validator");
 const create = async (req, res) => {
-    const body = site_validator_1.createSiteSchema.parse(req.body);
-    const user = req.user;
-    const site = await siteService.createSite(body, user.id);
-    res.status(201).json({
-        success: true,
-        data: site
-    });
+    try {
+        const body = site_validator_1.createSiteSchema.parse(req.body);
+        const user = req.user;
+        const site = await siteService.createSite(body, user.id);
+        res.status(201).json({
+            success: true,
+            data: site
+        });
+    }
+    catch (error) {
+        if (error?.errors) {
+            return res.status(400).json({
+                success: false,
+                message: error.errors.map((e) => e.message).join(", ")
+            });
+        }
+        res.status(400).json({
+            success: false,
+            message: error.message || "Failed to create working site"
+        });
+    }
 };
 exports.create = create;
 const findAll = async (req, res) => {
-    const sites = await siteService.getAllSites();
-    res.json({
-        success: true,
-        data: sites
-    });
+    try {
+        const sites = await siteService.getAllSites();
+        res.json({
+            success: true,
+            data: sites
+        });
+    }
+    catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message || "Failed to fetch sites"
+        });
+    }
 };
 exports.findAll = findAll;
 const findOne = async (req, res) => {
-    const site = await siteService.getSiteById(Number(req.params.id));
-    if (!site) {
-        return res.status(404).json({
-            success: false,
-            message: "Site not found"
+    try {
+        const site = await siteService.getSiteById(Number(req.params.id));
+        if (!site) {
+            return res.status(404).json({
+                success: false,
+                message: "Site not found"
+            });
+        }
+        res.json({
+            success: true,
+            data: site
         });
     }
-    res.json({
-        success: true,
-        data: site
-    });
+    catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message || "Failed to fetch site"
+        });
+    }
 };
 exports.findOne = findOne;
 const update = async (req, res) => {
-    const site = await siteService.updateSite(Number(req.params.id), req.body);
-    res.json({
-        success: true,
-        data: site
-    });
+    try {
+        const site = await siteService.updateSite(Number(req.params.id), req.body);
+        res.json({
+            success: true,
+            data: site
+        });
+    }
+    catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message || "Failed to update site"
+        });
+    }
 };
 exports.update = update;
 const remove = async (req, res) => {
-    await siteService.deleteSite(Number(req.params.id));
-    res.json({
-        success: true,
-        message: "Site deleted"
-    });
+    try {
+        await siteService.deleteSite(Number(req.params.id));
+        res.json({
+            success: true,
+            message: "Site deleted"
+        });
+    }
+    catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message || "Failed to delete site"
+        });
+    }
 };
 exports.remove = remove;

@@ -89,7 +89,10 @@ async function getAllInsurance(reqUser) {
         })).map((w) => w.id);
         where.workerId = { in: [...myWorkerIds, reqUser.id] };
     }
-    const [policies, totalMembers] = await Promise.all([
+    const todayStr = new Date().toISOString().split("T")[0];
+    const todayStart = new Date(`${todayStr}T00:00:00.000Z`);
+    const todayEnd = new Date(`${todayStr}T23:59:59.999Z`);
+    const [policies, totalMembers, todayAttendances] = await Promise.all([
         prisma_1.default.insurance.findMany({
             where,
             include: {
@@ -104,13 +107,32 @@ async function getAllInsurance(reqUser) {
                 ? { id: reqUser.id }
                 : { role: { in: ["WORKER", "AGENT"] } },
         }),
+        prisma_1.default.attendance.findMany({
+            where: {
+                date: {
+                    gte: todayStart,
+                    lte: todayEnd,
+                },
+            },
+        }),
     ]);
-    const activePolicies = policies.filter((p) => p.status === "ACTIVE").length;
+    const presentWorkerIds = new Set(todayAttendances
+        .filter((att) => att.status === "PRESENT" || att.status === "HALF_DAY" || !!att.checkInTime)
+        .map((att) => att.workerId));
+    const enrichedPolicies = policies.map((p) => {
+        const isPresent = presentWorkerIds.has(p.workerId);
+        return {
+            ...p,
+            isPresentToday: isPresent,
+            status: isPresent ? "ACTIVE" : "INACTIVE",
+        };
+    });
+    const activePolicies = enrichedPolicies.filter((p) => p.status === "ACTIVE").length;
     const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    const expiringSoon = policies.filter((p) => new Date(p.endDate) <= thirtyDaysFromNow && new Date(p.endDate) >= new Date()).length;
-    const totalMemberCount = Math.max(totalMembers, activePolicies || 1);
+    const expiringSoon = enrichedPolicies.filter((p) => new Date(p.endDate) <= thirtyDaysFromNow && new Date(p.endDate) >= new Date()).length;
+    const totalMemberCount = Math.max(totalMembers, policies.length || 1);
     const coverageRate = Number(((activePolicies / totalMemberCount) * 100).toFixed(1));
-    const maxCoverage = policies.reduce((max, p) => Math.max(max, p.coverageAmount || 500000), 500000);
+    const maxCoverage = enrichedPolicies.reduce((max, p) => Math.max(max, p.coverageAmount || 500000), 500000);
     return {
         summary: {
             activePolicies: activePolicies,
@@ -119,7 +141,7 @@ async function getAllInsurance(reqUser) {
             coverageRate: coverageRate,
             totalWorkers: totalMemberCount,
         },
-        policies,
+        policies: enrichedPolicies,
     };
 }
 /*

@@ -1,8 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.emitInsuranceUpdate = exports.emitPayrollUpdate = exports.emitWalletUpdate = exports.emitTicketComment = exports.emitTicketUpdate = exports.emitLeaveUpdate = exports.emitAttendanceUpdate = exports.getSocketIO = exports.initSocket = void 0;
+exports.emitSupportMessage = exports.emitInsuranceUpdate = exports.emitPayrollUpdate = exports.emitWalletUpdate = exports.emitTicketComment = exports.emitTicketUpdate = exports.emitLeaveUpdate = exports.emitAttendanceUpdate = exports.getSocketIO = exports.initSocket = exports.getOnlineUserIds = void 0;
 const socket_io_1 = require("socket.io");
 let io = null;
+const socketUserMap = new Map();
+const userSocketsMap = new Map();
+const getOnlineUserIds = () => {
+    return Array.from(userSocketsMap.keys());
+};
+exports.getOnlineUserIds = getOnlineUserIds;
 const initSocket = (server) => {
     io = new socket_io_1.Server(server, {
         cors: {
@@ -13,6 +19,8 @@ const initSocket = (server) => {
     });
     io.on("connection", (socket) => {
         console.log(`[Socket.io] Client connected: ${socket.id}`);
+        // Send current online user IDs immediately to connected socket
+        socket.emit("users:online", Array.from(userSocketsMap.keys()));
         // Join room based on user role or ID
         socket.on("join", (data) => {
             if (data?.role) {
@@ -20,11 +28,37 @@ const initSocket = (server) => {
                 console.log(`Socket ${socket.id} joined role:${data.role}`);
             }
             if (data?.userId) {
-                socket.join(`user:${data.userId}`);
-                console.log(`Socket ${socket.id} joined user:${data.userId}`);
+                const uid = Number(data.userId);
+                if (!isNaN(uid)) {
+                    socket.join(`user:${uid}`);
+                    socketUserMap.set(socket.id, uid);
+                    if (!userSocketsMap.has(uid)) {
+                        userSocketsMap.set(uid, new Set());
+                    }
+                    userSocketsMap.get(uid).add(socket.id);
+                    console.log(`Socket ${socket.id} joined user:${uid}`);
+                    io?.emit("users:online", Array.from(userSocketsMap.keys()));
+                    io?.emit("user:status:changed", { userId: uid, isOnline: true });
+                }
             }
         });
+        socket.on("get:online_users", () => {
+            socket.emit("users:online", Array.from(userSocketsMap.keys()));
+        });
         socket.on("disconnect", () => {
+            const uid = socketUserMap.get(socket.id);
+            if (uid !== undefined) {
+                socketUserMap.delete(socket.id);
+                const userSockets = userSocketsMap.get(uid);
+                if (userSockets) {
+                    userSockets.delete(socket.id);
+                    if (userSockets.size === 0) {
+                        userSocketsMap.delete(uid);
+                        io?.emit("users:online", Array.from(userSocketsMap.keys()));
+                        io?.emit("user:status:changed", { userId: uid, isOnline: false });
+                    }
+                }
+            }
             console.log(`[Socket.io] Client disconnected: ${socket.id}`);
         });
     });
@@ -102,3 +136,9 @@ const emitInsuranceUpdate = (data) => {
     }
 };
 exports.emitInsuranceUpdate = emitInsuranceUpdate;
+const emitSupportMessage = (data) => {
+    if (io) {
+        io.emit("support_message", data);
+    }
+};
+exports.emitSupportMessage = emitSupportMessage;

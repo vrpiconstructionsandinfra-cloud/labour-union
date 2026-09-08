@@ -97,21 +97,38 @@ async function getMyTickets(workerId) {
     });
 }
 /*
- * Agent / Super Agent - All Tickets (Scoped by role)
+ * Agent / Super Agent - All Tickets (Scoped by role & Agent ID)
  */
 async function getAllTickets(reqUser) {
     const where = {};
     if (reqUser?.role === "WORKER") {
-        where.workerId = reqUser.id;
+        // Customer Support is completely disabled for workers
+        return [];
     }
+    else if (reqUser?.role === "AGENT") {
+        // Strictly filter tickets created by or assigned to this Agent ID
+        where.OR = [
+            { workerId: reqUser.id },
+            { handledById: reqUser.id }
+        ];
+    }
+    // CUSTOMER_SUPPORT, SUPER_AGENT, and ADMIN can view all tickets
     const tickets = await prisma_1.default.supportTicket.findMany({
         where,
         include: {
-            worker: true,
+            worker: {
+                select: {
+                    id: true,
+                    name: true,
+                    employeeCode: true,
+                    role: true,
+                },
+            },
             handledBy: {
                 select: {
                     id: true,
                     name: true,
+                    employeeCode: true,
                     role: true,
                 },
             },
@@ -125,8 +142,14 @@ async function getAllTickets(reqUser) {
     });
     return tickets.map((t) => ({
         ...t,
-        creatorName: t.worker?.name || t.handledBy?.name || "User",
-        creatorRole: t.worker?.role || "WORKER",
+        agentId: t.workerId,
+        agentName: t.worker?.name || "Agent",
+        agentCode: t.worker?.employeeCode || `AGT-${String(t.workerId).padStart(3, '0')}`,
+        creatorName: t.worker?.name || "Agent",
+        creatorRole: t.worker?.role || "AGENT",
+        creatorCode: t.worker?.employeeCode || `AGT-${String(t.workerId).padStart(3, '0')}`,
+        supportAgentName: t.handledBy?.name,
+        supportAgentCode: t.handledBy?.employeeCode || (t.handledById ? `CSA-${String(t.handledById).padStart(3, '0')}` : undefined),
     }));
 }
 /*
@@ -302,9 +325,17 @@ async function closeTicket(id, handledById) {
     return updated;
 }
 /*
- * Get Comments for a Ticket
+ * Get Comments for a Ticket (Filtered by Agent ID / Support Agent)
  */
-async function getTicketComments(ticketId) {
+async function getTicketComments(ticketId, reqUser) {
+    const ticket = await prisma_1.default.supportTicket.findUnique({ where: { id: ticketId } });
+    if (!ticket) {
+        throw new Error("Ticket not found");
+    }
+    // If requesting user is a Field Agent, verify ticket belongs to them or is handled by them
+    if (reqUser?.role === "AGENT" && ticket.workerId !== reqUser.id && ticket.handledById !== reqUser.id) {
+        throw new Error("Unauthorized to access this ticket conversation");
+    }
     const comments = await prisma_1.default.supportTicketComment.findMany({
         where: { ticketId },
         include: {
@@ -312,6 +343,7 @@ async function getTicketComments(ticketId) {
                 select: {
                     id: true,
                     name: true,
+                    employeeCode: true,
                     role: true,
                 },
             },
@@ -324,19 +356,23 @@ async function getTicketComments(ticketId) {
         id: c.id,
         ticketId: c.ticketId,
         authorId: c.authorId,
-        authorName: c.author?.name || "User",
-        authorRole: c.author?.role || "WORKER",
+        authorName: c.author?.name || (c.author?.role === 'CUSTOMER_SUPPORT' ? "Support Agent" : "Agent"),
+        authorRole: c.author?.role === 'CUSTOMER_SUPPORT' ? "CUSTOMER_SUPPORT" : (c.author?.role || "AGENT"),
+        authorCode: c.author?.employeeCode || (c.author?.role === 'CUSTOMER_SUPPORT' ? `CSA-${String(c.authorId).padStart(3, '0')}` : `AGT-${String(c.authorId).padStart(3, '0')}`),
         message: c.message,
         createdAt: c.createdAt,
     }));
 }
 /*
- * Add Comment to a Ticket
+ * Add Comment to a Ticket (Restricted to Agent & Support Agent)
  */
-async function addTicketComment(ticketId, authorId, message) {
+async function addTicketComment(ticketId, authorId, message, reqUser) {
     const ticket = await prisma_1.default.supportTicket.findUnique({ where: { id: ticketId } });
     if (!ticket) {
         throw new Error("Ticket not found");
+    }
+    if (reqUser?.role === "AGENT" && ticket.workerId !== reqUser.id && ticket.handledById !== reqUser.id) {
+        throw new Error("Unauthorized to comment on this ticket");
     }
     const comment = await prisma_1.default.supportTicketComment.create({
         data: {
@@ -349,6 +385,7 @@ async function addTicketComment(ticketId, authorId, message) {
                 select: {
                     id: true,
                     name: true,
+                    employeeCode: true,
                     role: true,
                 },
             },
@@ -358,27 +395,27 @@ async function addTicketComment(ticketId, authorId, message) {
         id: comment.id,
         ticketId: comment.ticketId,
         authorId: comment.authorId,
-        authorName: comment.author?.name || "User",
-        authorRole: comment.author?.role || "WORKER",
+        authorName: comment.author?.name || (comment.author?.role === 'CUSTOMER_SUPPORT' ? "Support Agent" : "Agent"),
+        authorRole: comment.author?.role === 'CUSTOMER_SUPPORT' ? "CUSTOMER_SUPPORT" : (comment.author?.role || "AGENT"),
+        authorCode: comment.author?.employeeCode || (comment.author?.role === 'CUSTOMER_SUPPORT' ? `CSA-${String(comment.authorId).padStart(3, '0')}` : `AGT-${String(comment.authorId).padStart(3, '0')}`),
         message: comment.message,
         createdAt: comment.createdAt,
     };
     (0, socket_1.emitTicketComment)(commentData);
-    // Send notification if author is not the worker
+    // Send notification to the other party (Agent or Support Agent)
     if (authorId !== ticket.workerId) {
         (0, notification_service_1.createNotification)({
             userId: ticket.workerId,
-            title: `New Message on Ticket #TKT-${ticket.id}`,
-            message: `New message on Ticket #TKT-${ticket.id}: "${message.slice(0, 60)}"`,
+            title: `New Reply on Ticket #TKT-${ticket.id}`,
+            message: `${comment.author?.name || 'Support Agent'} sent a message on your support ticket.`,
             type: "SUPPORT",
         }).catch(() => { });
     }
-    // Send notification to assigned agent if author is not the assigned agent
-    if (ticket.handledById && authorId !== ticket.handledById) {
+    else if (ticket.handledById && authorId !== ticket.handledById) {
         (0, notification_service_1.createNotification)({
             userId: ticket.handledById,
-            title: `New Message on Ticket #TKT-${ticket.id}`,
-            message: `${comment.author?.name || 'Worker'} sent a message on Ticket #TKT-${ticket.id}: "${message.slice(0, 60)}"`,
+            title: `Agent Reply on Ticket #TKT-${ticket.id}`,
+            message: `${comment.author?.name || 'Agent'} sent a message on ticket #TKT-${ticket.id}.`,
             type: "SUPPORT",
         }).catch(() => { });
     }
@@ -561,7 +598,7 @@ async function getSupportAnalytics(reqUser) {
 async function getFieldAgentsForSupport(supportUserId) {
     const agents = await prisma_1.default.user.findMany({
         where: {
-            role: client_1.UserRole.AGENT,
+            role: { in: [client_1.UserRole.AGENT, client_1.UserRole.SUPER_AGENT] },
         },
         include: {
             site: true,
@@ -670,7 +707,7 @@ async function getFieldAgentsForSupport(supportUserId) {
  */
 async function assignAgentToSupportBasket(supportUserId, agentId) {
     const agent = await prisma_1.default.user.findUnique({ where: { id: agentId } });
-    if (!agent || agent.role !== client_1.UserRole.AGENT) {
+    if (!agent || (agent.role !== client_1.UserRole.AGENT && agent.role !== client_1.UserRole.SUPER_AGENT)) {
         throw new Error("Field Agent not found");
     }
     const updated = await prisma_1.default.user.update({
@@ -689,7 +726,7 @@ async function assignAgentToSupportBasket(supportUserId, agentId) {
  */
 async function unassignAgentFromSupportBasket(agentId) {
     const agent = await prisma_1.default.user.findUnique({ where: { id: agentId } });
-    if (!agent || agent.role !== client_1.UserRole.AGENT) {
+    if (!agent || (agent.role !== client_1.UserRole.AGENT && agent.role !== client_1.UserRole.SUPER_AGENT)) {
         throw new Error("Field Agent not found");
     }
     const updated = await prisma_1.default.user.update({
@@ -701,15 +738,18 @@ async function unassignAgentFromSupportBasket(agentId) {
 /*
  * Assign Working Site to an Agent with Duration (Days)
  */
-async function assignSiteWithDuration(supportUserId, agentId, siteId, durationDays, startDate) {
+async function assignSiteWithDuration(supportUserId, agentId, siteId, durationDays, startDate, workersNeeded) {
     const agent = await prisma_1.default.user.findUnique({ where: { id: agentId } });
-    if (!agent || agent.role !== client_1.UserRole.AGENT) {
+    if (!agent || (agent.role !== client_1.UserRole.AGENT && agent.role !== client_1.UserRole.SUPER_AGENT)) {
         throw new Error("Field Agent not found");
     }
     const site = await prisma_1.default.site.findUnique({ where: { id: siteId } });
     if (!site) {
         throw new Error("Site not found");
     }
+    const supportUser = await prisma_1.default.user.findUnique({ where: { id: supportUserId } });
+    const supportName = supportUser?.name || "Customer Support";
+    const supportCode = supportUser?.employeeCode || (supportUser ? `CSA-${String(supportUser.id).padStart(3, '0')}` : 'CSA-001');
     const start = startDate ? new Date(startDate) : new Date();
     const end = new Date(start);
     end.setDate(end.getDate() + (Number(durationDays) || 1));
@@ -739,11 +779,23 @@ async function assignSiteWithDuration(supportUserId, agentId, siteId, durationDa
         where: { id: agentId },
         data: { siteId },
     });
-    // Send Notification to Field Agent
+    const workforceText = workersNeeded ? `${workersNeeded} workers` : "As required";
+    const noticeMessage = `🏗️ Site Assignment Notice: You have been assigned to site "${site.siteName}" by Support Agent ${supportName} (${supportCode}) for ${durationDays} days. Required Workforce: ${workforceText}.`;
+    // 1. Dispatch automated direct SMS/chat notice into Support conversation thread
+    await sendSupportAgentMessage({
+        supportAgentId: supportUserId,
+        fieldAgentId: agentId,
+        senderId: supportUserId,
+        message: noticeMessage,
+        messageType: "TEXT",
+    }).catch((err) => {
+        console.error("Failed to send automated assignment chat message:", err);
+    });
+    // 2. Send System Notification to Field Agent
     (0, notification_service_1.createNotification)({
         userId: agentId,
         title: `New Site Assigned: ${site.siteName}`,
-        message: `You have been assigned to ${site.siteName} for ${durationDays} days starting ${start.toLocaleDateString()}.`,
+        message: noticeMessage,
         type: "SITE_ASSIGNED",
     }).catch(() => { });
     return assignment;
@@ -781,6 +833,7 @@ async function getSupportAgentMessages(fieldAgentId) {
                 select: {
                     id: true,
                     name: true,
+                    employeeCode: true,
                     role: true,
                     profileImage: true,
                 }
@@ -809,12 +862,14 @@ async function sendSupportAgentMessage(data) {
                 select: {
                     id: true,
                     name: true,
+                    employeeCode: true,
                     role: true,
                     profileImage: true,
                 }
             }
         }
     });
+    (0, socket_1.emitSupportMessage)(messageRecord);
     return messageRecord;
 }
 /*
@@ -831,7 +886,7 @@ async function raiseTicketFromSupportChat(data) {
             description: data.description,
             priority: data.priority || "HIGH",
             status: client_1.TicketStatus.OPEN,
-            handledById: data.supportAgentId,
+            handledById: data.supportAgentId || null,
         },
         include: {
             worker: true,
@@ -843,7 +898,7 @@ async function raiseTicketFromSupportChat(data) {
     await sendSupportAgentMessage({
         supportAgentId: data.supportAgentId,
         fieldAgentId: data.fieldAgentId,
-        senderId: data.supportAgentId,
+        senderId: data.supportAgentId || data.fieldAgentId,
         message: `🚨 Emergency Ticket Raised: #${ticket.id} — "${data.subject}" (Priority: ${data.priority || 'HIGH'})`,
         messageType: "TICKET_RAISED",
         ticketId: ticket.id,

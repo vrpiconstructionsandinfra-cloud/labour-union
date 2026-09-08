@@ -39,13 +39,13 @@ const role_middleware_1 = require("../middleware/role.middleware");
 const siteController = __importStar(require("../controllers/site.controller"));
 const router = (0, express_1.Router)();
 // Create Site
-router.post("/", auth_middleware_1.authenticate, (0, role_middleware_1.authorize)("SUPER_AGENT"), siteController.create);
+router.post("/", auth_middleware_1.authenticate, (0, role_middleware_1.authorize)("SUPER_AGENT", "CUSTOMER_SUPPORT"), siteController.create);
 // Get All Sites
-router.get("/", auth_middleware_1.authenticate, (0, role_middleware_1.authorize)("SUPER_AGENT", "AGENT"), siteController.findAll);
+router.get("/", auth_middleware_1.authenticate, (0, role_middleware_1.authorize)("SUPER_AGENT", "CUSTOMER_SUPPORT", "AGENT"), siteController.findAll);
 // Get Site By Id
-router.get("/:id", auth_middleware_1.authenticate, (0, role_middleware_1.authorize)("SUPER_AGENT", "AGENT"), siteController.findOne);
+router.get("/:id", auth_middleware_1.authenticate, (0, role_middleware_1.authorize)("SUPER_AGENT", "CUSTOMER_SUPPORT", "AGENT"), siteController.findOne);
 // Update Site
-router.put("/:id", auth_middleware_1.authenticate, (0, role_middleware_1.authorize)("SUPER_AGENT"), siteController.update);
+router.put("/:id", auth_middleware_1.authenticate, (0, role_middleware_1.authorize)("SUPER_AGENT", "CUSTOMER_SUPPORT"), siteController.update);
 // Delete Site
 router.delete("/:id", auth_middleware_1.authenticate, (0, role_middleware_1.authorize)("SUPER_AGENT"), siteController.remove);
 exports.default = router;

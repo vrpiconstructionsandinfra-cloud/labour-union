@@ -7,17 +7,19 @@ exports.deleteSite = exports.updateSite = exports.getSiteById = exports.getAllSi
 const prisma_1 = __importDefault(require("../config/prisma"));
 const notification_service_1 = require("./notification.service");
 const createSite = async (data, createdById) => {
+    let siteCode = data.siteCode?.trim() || `SITE-${Date.now().toString().slice(-4)}`;
     const exists = await prisma_1.default.site.findUnique({
         where: {
-            siteCode: data.siteCode
+            siteCode
         }
     });
     if (exists) {
-        throw new Error("Site code already exists");
+        siteCode = `SITE-${Date.now().toString().slice(-6)}`;
     }
     return prisma_1.default.site.create({
         data: {
             ...data,
+            siteCode,
             createdById
         }
     });

@@ -19,19 +19,19 @@ router.get("/messages/:agentId", (0, role_middleware_1.authorize)(client_1.UserR
 router.post("/messages", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.CUSTOMER_SUPPORT, client_1.UserRole.AGENT), support_controller_1.sendAgentMessage);
 router.post("/messages/raise-ticket", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.CUSTOMER_SUPPORT, client_1.UserRole.AGENT), support_controller_1.raiseTicketFromChat);
 /*
- * Worker Routes
+ * Agent Support Ticket Routes (Restricted to AGENT, SUPER_AGENT, CUSTOMER_SUPPORT)
  */
-router.post("/", (0, role_middleware_1.authorize)("WORKER", "AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"), support_controller_1.createSupportTicket);
-router.get("/my", (0, role_middleware_1.authorize)("WORKER", "AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"), support_controller_1.getMyTickets);
+router.post("/", (0, role_middleware_1.authorize)("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"), support_controller_1.createSupportTicket);
+router.get("/my", (0, role_middleware_1.authorize)("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"), support_controller_1.getMyTickets);
 /*
  * Agent & Super Agent Routes
  */
 router.get("/analytics", (0, role_middleware_1.authorize)("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"), support_controller_1.getSupportAnalytics);
-router.get("/", (0, role_middleware_1.authorize)("WORKER", "AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"), support_controller_1.getTickets);
-router.get("/:id", (0, role_middleware_1.authorize)("WORKER", "AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"), support_controller_1.getTicket);
-router.patch("/:id", (0, role_middleware_1.authorize)("WORKER", "AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"), support_controller_1.updateTicketDetails);
+router.get("/", (0, role_middleware_1.authorize)("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"), support_controller_1.getTickets);
+router.get("/:id", (0, role_middleware_1.authorize)("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"), support_controller_1.getTicket);
+router.patch("/:id", (0, role_middleware_1.authorize)("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"), support_controller_1.updateTicketDetails);
 router.patch("/:id/reply", (0, role_middleware_1.authorize)("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"), support_controller_1.replyToTicket);
 router.patch("/:id/close", (0, role_middleware_1.authorize)("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"), support_controller_1.closeTicket);
-router.get("/:id/comments", (0, role_middleware_1.authorize)("WORKER", "AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"), support_controller_1.getTicketComments);
-router.post("/:id/comments", (0, role_middleware_1.authorize)("WORKER", "AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"), support_controller_1.addTicketComment);
+router.get("/:id/comments", (0, role_middleware_1.authorize)("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"), support_controller_1.getTicketComments);
+router.post("/:id/comments", (0, role_middleware_1.authorize)("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"), support_controller_1.addTicketComment);
 exports.default = router;

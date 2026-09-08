@@ -198,7 +198,7 @@ async function updateTicketDetails(req, res) {
  */
 async function getTicketComments(req, res) {
     try {
-        const comments = await supportService.getTicketComments(Number(req.params.id));
+        const comments = await supportService.getTicketComments(Number(req.params.id), req.user);
         res.json({
             success: true,
             data: comments,
@@ -223,7 +223,7 @@ async function addTicketComment(req, res) {
                 message: "Comment message is required",
             });
         }
-        const comment = await supportService.addTicketComment(Number(req.params.id), req.user.id, message.trim());
+        const comment = await supportService.addTicketComment(Number(req.params.id), req.user.id, message.trim(), req.user);
         res.status(201).json({
             success: true,
             message: "Comment added successfully",
@@ -327,14 +327,14 @@ async function assignSiteDuration(req, res) {
     try {
         const supportUserId = req.user.id;
         const agentId = Number(req.params.agentId);
-        const { siteId, durationDays, startDate } = req.body;
+        const { siteId, durationDays, startDate, workersNeeded } = req.body;
         if (!siteId) {
             return res.status(400).json({
                 success: false,
                 message: "Please select a valid working site",
             });
         }
-        const assignment = await supportService.assignSiteWithDuration(supportUserId, agentId, Number(siteId), Number(durationDays) || 7, startDate);
+        const assignment = await supportService.assignSiteWithDuration(supportUserId, agentId, Number(siteId), Number(durationDays) || 7, startDate, workersNeeded ? Number(workersNeeded) : undefined);
         res.json({
             success: true,
             message: "Site assigned to agent successfully",
