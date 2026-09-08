@@ -15,8 +15,8 @@ import {
   BarChart3,
   Sun,
   Moon,
-  ShieldCheck,
-  Smartphone
+  Smartphone,
+  Headset
 } from 'lucide-react';
 import {
   loginApi,
@@ -161,6 +161,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       setIsLoading(false);
       setServerError(err.message || 'Failed to dispatch mobile approval email');
     }
+  };
+
+  const handleNavigateToSupportLogin = () => {
+    window.history.pushState({}, '', '/support/login');
+    window.dispatchEvent(new Event('popstate'));
   };
 
   // Submit Handler
@@ -348,18 +353,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         {/* Right Authentication Form Card (Desktop) */}
         <div className="auth-form-right">
           <div className="auth-card-box">
-            {/* Top Right Header Action */}
-            <div className="auth-card-top-link">
-              <span>Don't have an account? </span>
-              <button
-                type="button"
-                className="auth-link-orange"
-                onClick={() => setIsEnquiryModalOpen(true)}
-              >
-                Contact Admin <ArrowRight size={13} style={{ display: 'inline', verticalAlign: 'middle' }} />
-              </button>
-            </div>
-
             {/* Form Brand Badge & Titles */}
             <div className="auth-card-header">
               <div className="auth-card-logo-row">
@@ -370,6 +363,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                   <h3>Labour Union</h3>
                   <p>Management System</p>
                 </div>
+                <button
+                  type="button"
+                  className="auth-support-portal-pill"
+                  onClick={handleNavigateToSupportLogin}
+                  title="Customer Support Agent Login Portal"
+                >
+                  <Headset size={14} />
+                  <span>Support Login</span>
+                </button>
               </div>
               <h2 className="auth-card-title">
                 {isForgotView ? 'Reset Password' : 'Welcome Back!'}
@@ -384,8 +386,19 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             {/* Alert Messages */}
             {serverError && (
               <div className="auth-toast-banner auth-toast-error">
-                <AlertCircle size={16} />
-                <span>{serverError}</span>
+                <div className="auth-toast-content">
+                  <AlertCircle size={16} className="auth-toast-icon" />
+                  <span>{serverError}</span>
+                </div>
+                {serverError.toLowerCase().includes('support') && (
+                  <button
+                    type="button"
+                    className="auth-toast-action-btn"
+                    onClick={handleNavigateToSupportLogin}
+                  >
+                    Go to Customer Support Login →
+                  </button>
+                )}
               </div>
             )}
 
@@ -564,37 +577,27 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                     )}
                   </button>
 
-                  {/* Social Login Divider */}
-                  <div className="auth-divider">
-                    <span>OR</span>
+                  {/* Desktop Enquiry & Support Footer Links */}
+                  <div className="auth-desktop-footer-row">
+                    <span>Need to register as an Agent or Worker? </span>
+                    <button
+                      type="button"
+                      className="auth-link-orange"
+                      onClick={() => setIsEnquiryModalOpen(true)}
+                    >
+                      Submit an Enquiry
+                    </button>
                   </div>
 
-                  {/* Google OAuth Button */}
-                  <button
-                    type="button"
-                    className="auth-social-btn"
-                    onClick={() => {
-                      setEmail('superagent@laborunion.com');
-                      setPassword('Admin@123');
-                    }}
-                    title="Quick autofill demo account"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                    </svg>
-                    <span>Continue with Google</span>
-                  </button>
-
-                  {/* Trust Footer */}
-                  <div className="auth-trust-box">
-                    <ShieldCheck size={16} className="auth-trust-icon" />
-                    <div className="auth-trust-text">
-                      <strong>Secure Login</strong>
-                      <p>Your information is protected with industry-standard security.</p>
-                    </div>
+                  <div className="auth-support-footer-row">
+                    <span>Customer Support Agent? </span>
+                    <button
+                      type="button"
+                      className="auth-link-orange"
+                      onClick={handleNavigateToSupportLogin}
+                    >
+                      Support Portal Login
+                    </button>
                   </div>
                 </>
               )}
@@ -619,16 +622,28 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             </div>
           </div>
 
-          {setDarkMode && (
+          <div className="auth-mobile-top-bar-right">
             <button
               type="button"
-              className="auth-mobile-theme-pill"
-              onClick={() => setDarkMode(!darkMode)}
+              className="auth-mobile-support-pill"
+              onClick={handleNavigateToSupportLogin}
+              title="Customer Support Agent Portal"
             >
-              {darkMode ? <Moon size={14} /> : <Sun size={14} color="#EA580C" />}
-              <span>{darkMode ? 'Dark Mode' : 'Light Mode'}</span>
+              <Headset size={14} />
+              <span>Support</span>
             </button>
-          )}
+
+            {setDarkMode && (
+              <button
+                type="button"
+                className="auth-mobile-theme-pill"
+                onClick={() => setDarkMode(!darkMode)}
+              >
+                {darkMode ? <Moon size={14} /> : <Sun size={14} color="#EA580C" />}
+                <span>{darkMode ? 'Dark' : 'Light'}</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Mobile Sunrise Hero Graphic with Construction Silhouette */}
@@ -664,8 +679,19 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
           {serverError && (
             <div className="auth-toast-banner auth-toast-error">
-              <AlertCircle size={15} />
-              <span>{serverError}</span>
+              <div className="auth-toast-content">
+                <AlertCircle size={15} className="auth-toast-icon" />
+                <span>{serverError}</span>
+              </div>
+              {serverError.toLowerCase().includes('support') && (
+                <button
+                  type="button"
+                  className="auth-toast-action-btn"
+                  onClick={handleNavigateToSupportLogin}
+                >
+                  Go to Customer Support Login →
+                </button>
+              )}
             </div>
           )}
 
@@ -804,57 +830,26 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                   )}
                 </button>
 
-                {/* Social Divider */}
-                <div className="auth-divider">
-                  <span>or continue with</span>
-                </div>
-
-                {/* Social Login Buttons (Google & Microsoft) */}
-                <div className="auth-mobile-social-col">
-                  <button
-                    type="button"
-                    className="auth-social-btn"
-                    onClick={() => {
-                      setEmail('superagent@laborunion.com');
-                      setPassword('Admin@123');
-                    }}
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                    </svg>
-                    <span>Continue with Google</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="auth-social-btn"
-                    onClick={() => {
-                      setEmail('agent1@laborunion.com');
-                      setPassword('Agent@123');
-                    }}
-                  >
-                    <svg width="18" height="18" viewBox="0 0 23 23">
-                      <path fill="#f35325" d="M1 1h10v10H1z"/>
-                      <path fill="#81bc06" d="M12 1h10v10H12z"/>
-                      <path fill="#05a6f0" d="M1 12h10v10H1z"/>
-                      <path fill="#ffba08" d="M12 12h10v10H12z"/>
-                    </svg>
-                    <span>Continue with Microsoft</span>
-                  </button>
-                </div>
-
-                {/* Footer Link */}
+                {/* Mobile Enquiry & Support Footer Links */}
                 <div className="auth-mobile-footer-row">
-                  <span>Don't have an account? </span>
+                  <span>Need to register as an Agent or Worker? </span>
                   <button
                     type="button"
                     className="auth-link-orange"
                     onClick={() => setIsEnquiryModalOpen(true)}
                   >
-                    Contact Super Agent
+                    Submit an Enquiry
+                  </button>
+                </div>
+
+                <div className="auth-support-footer-row mobile-footer-support">
+                  <span>Customer Support Agent? </span>
+                  <button
+                    type="button"
+                    className="auth-link-orange"
+                    onClick={handleNavigateToSupportLogin}
+                  >
+                    Support Portal Login
                   </button>
                 </div>
               </>

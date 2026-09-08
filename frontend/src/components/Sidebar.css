@@ -164,7 +164,15 @@
 }
 
 .nav-label {
+  display: inline-block;
   white-space: nowrap;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.nav-item.active .nav-label {
+  color: #FFFFFF;
+  font-weight: 700;
 }
 
 .nav-item-right {
@@ -229,20 +237,46 @@
 }
 
 /* ==========================================================================
-   Mobile Responsive Sidebar Drawer (<= 768px)
+   Desktop Collapsed Sidebar (min-width: 769px)
+   ========================================================================== */
+@media (min-width: 769px) {
+  .sidebar.collapsed .nav-label,
+  .sidebar.collapsed .nav-arrow,
+  .sidebar.collapsed .nav-item-right,
+  .sidebar.collapsed .section-title,
+  .sidebar.collapsed .brand-text,
+  .sidebar.collapsed .sidebar-worker-cards-container,
+  .sidebar.collapsed .sidebar-logout-btn span {
+    display: none !important;
+  }
+
+  .sidebar.collapsed .nav-item {
+    justify-content: center;
+    padding: 10px 0;
+  }
+
+  .sidebar.collapsed .nav-item-left {
+    gap: 0;
+    justify-content: center;
+  }
+}
+
+/* ==========================================================================
+   Mobile Responsive Sidebar Drawer (max-width: 768px)
+   Always shows full labels, header, and chevrons
    ========================================================================== */
 @media (max-width: 768px) {
   .sidebar {
     width: 280px !important;
-    max-width: 85vw;
-    height: 100vh;
-    top: 0;
-    left: 0;
-    bottom: 0;
+    max-width: 85vw !important;
+    height: 100vh !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
     z-index: 10000 !important;
-    transform: translateX(0);
+    transform: translateX(0) !important;
     transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
-    box-shadow: 10px 0 35px rgba(0, 0, 0, 0.5);
+    box-shadow: 10px 0 35px rgba(0, 0, 0, 0.5) !important;
     background:
       linear-gradient(180deg, rgba(45, 48, 55, 0.72) 0%, rgba(32, 35, 42, 0.80) 45%, rgba(20, 22, 28, 0.90) 100%),
       url('https://images.unsplash.com/photo-1477959858617-67f30bc75b82?w=800&auto=format&fit=crop&q=80') center bottom / cover no-repeat !important;
@@ -256,13 +290,54 @@
     width: 280px !important;
   }
 
-  .sidebar-mobile-close-btn {
-    display: flex;
+  .sidebar .nav-label,
+  .sidebar.collapsed .nav-label {
+    display: inline-block !important;
+    font-size: 13.5px !important;
+    font-weight: 500 !important;
+    color: rgba(255, 255, 255, 0.85) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    white-space: nowrap !important;
   }
 
-  .nav-item {
+  .sidebar .nav-item.active .nav-label,
+  .sidebar.collapsed .nav-item.active .nav-label {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+  }
+
+  .sidebar .nav-arrow,
+  .sidebar.collapsed .nav-arrow {
+    display: block !important;
+  }
+
+  .sidebar .section-title,
+  .sidebar.collapsed .section-title {
+    display: block !important;
+  }
+
+  .sidebar .brand-text,
+  .sidebar.collapsed .brand-text {
+    display: block !important;
+  }
+
+  .sidebar .sidebar-logout-btn span,
+  .sidebar.collapsed .sidebar-logout-btn span {
+    display: inline !important;
+  }
+
+  .sidebar .nav-item {
     min-height: 44px;
-    padding: 10px 14px;
-    font-size: 13.5px;
+    padding: 10px 14px !important;
+    justify-content: space-between !important;
+  }
+
+  .sidebar .nav-item-left {
+    gap: 12px !important;
+  }
+
+  .sidebar-mobile-close-btn {
+    display: flex !important;
   }
 }

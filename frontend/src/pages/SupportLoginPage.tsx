@@ -65,7 +65,8 @@ export const SupportLoginPage: React.FC<SupportLoginPageProps> = ({ onSuccessNav
   };
 
   const handleNavigateMainLogin = () => {
-    window.location.href = '/login';
+    window.history.pushState({}, '', '/');
+    window.dispatchEvent(new Event('popstate'));
   };
 
   return (

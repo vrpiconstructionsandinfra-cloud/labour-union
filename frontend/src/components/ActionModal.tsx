@@ -317,8 +317,6 @@ export const ActionModal: React.FC<ActionModalProps> = ({
   const [ticketSubject, setTicketSubject] = useState('Safety Equipment & PPE Request');
   const [ticketPriority, setTicketPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'>('MEDIUM');
   const [ticketDescription, setTicketDescription] = useState('');
-  const [ticketWorkerId, setTicketWorkerId] = useState('');
-  const [ticketAgentId, setTicketAgentId] = useState('');
   const [ticketReplyText, setTicketReplyText] = useState('');
   const [closeOnReply, setCloseOnReply] = useState(false);
 
@@ -363,7 +361,6 @@ export const ActionModal: React.FC<ActionModalProps> = ({
       setTicketSubject('Safety Equipment & PPE Request');
       setTicketPriority('MEDIUM');
       setTicketDescription('');
-      setTicketAgentId('');
       setTicketReplyText('');
       setCloseOnReply(false);
       removeAttachment();
@@ -405,7 +402,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
         setPassword(
           type === 'add_agent' || type === 'agents'
             ? generateTempPassword()
-            : type === 'add_worker' || type === 'workers'
+            : type === 'add_worker' || type === 'workers' || type === 'CREATE_WORKER' || type === 'create_worker' || type === 'register_worker'
             ? generateWorkerTempPassword()
             : ''
         );
@@ -443,6 +440,26 @@ export const ActionModal: React.FC<ActionModalProps> = ({
       setInsuranceCoverage('');
       setInsurancePremium('');
       setInsuranceEndDate('');
+
+      if (type === 'create_ticket') {
+        const prefill = sessionStorage.getItem('prefill_ticket_category');
+        if (prefill === 'Emergency') {
+          setTicketSubject('Site Working Conditions & Safety Grievance');
+          setTicketPriority('URGENT');
+        } else if (prefill === 'Equipment') {
+          setTicketSubject('Safety Equipment & PPE Request');
+          setTicketPriority('HIGH');
+        } else if (prefill === 'General') {
+          setTicketSubject('General Inquiry & Union Support');
+          setTicketPriority('LOW');
+        } else {
+          setTicketSubject('Safety Equipment & PPE Request');
+          setTicketPriority('MEDIUM');
+        }
+        setTicketDescription('');
+        setAttachmentDataUrl('');
+        setAttachmentName('');
+      }
     }
 
     if (isOpen && (type === 'assign_agent' || type === 'add_agent' || type === 'agents' || type === 'add_worker' || type === 'workers' || type === 'add_site' || type === 'sites')) {
@@ -494,14 +511,13 @@ export const ActionModal: React.FC<ActionModalProps> = ({
       }).catch(() => {});
     }
 
-    if (isOpen && (type === 'assign_agent' || type === 'assign_worker' || type === 'add_worker' || type === 'edit_worker' || type === 'mark_attendance' || type === 'attendance' || type === 'create_ticket' || type === 'apply_leave' || type === 'leaves')) {
+    if (isOpen && (type === 'assign_agent' || type === 'assign_worker' || type === 'add_worker' || type === 'CREATE_WORKER' || type === 'create_worker' || type === 'register_worker' || type === 'edit_worker' || type === 'mark_attendance' || type === 'attendance' || type === 'create_ticket' || type === 'apply_leave' || type === 'leaves')) {
       fetchWorkersApi().then((list) => {
         setWorkersList(list);
         if (list.length > 0) {
           setSelectedWorkerId(list[0].id);
-          setTicketWorkerId(role === 'WORKER' && user?.id ? String(user.id) : list[0].id);
         }
-        if (type === 'add_worker') {
+        if (type === 'add_worker' || type === 'CREATE_WORKER' || type === 'create_worker' || type === 'register_worker') {
           const existingNums = list
             .map(w => Number(String(w.employeeCode || w.id).replace(/\D/g, '')))
             .filter(n => !isNaN(n) && n > 0);
@@ -889,7 +905,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
         setIsLoading(false);
         setErrorMsg(err.message || 'Failed to assign worker');
       }
-    } else if (type === 'add_worker' || type === 'workers') {
+    } else if (type === 'add_worker' || type === 'workers' || type === 'CREATE_WORKER' || type === 'create_worker' || type === 'register_worker') {
       if (role === 'SUPER_AGENT') {
         setErrorMsg('Super Agents cannot modify worker information.');
         return;
@@ -1111,8 +1127,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
           description: ticketDescription.trim(),
           priority: ticketPriority,
           agentId: user?.id ? Number(user.id) : undefined,
-          workerId: ticketWorkerId && !isNaN(Number(ticketWorkerId)) && Number(ticketWorkerId) > 0 ? Number(ticketWorkerId) : undefined,
-          handledById: ticketAgentId ? Number(ticketAgentId) : undefined,
+          workerId: user?.id ? Number(user.id) : undefined,
           attachmentUrl: attachmentDataUrl || undefined
         });
 
@@ -1231,6 +1246,9 @@ export const ActionModal: React.FC<ActionModalProps> = ({
         return 'Register New Agent';
       case 'add_worker':
       case 'workers':
+      case 'CREATE_WORKER':
+      case 'create_worker':
+      case 'register_worker':
         return 'Register New Worker';
       case 'add_insurance':
       case 'insurance':
@@ -1305,7 +1323,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
                 ? 'Worker Assigned to Agent Successfully!'
                 : type === 'assign_agent'
                 ? 'Field Agent Assigned to Working Site Successfully!'
-                : type === 'add_worker' || type === 'workers'
+                : type === 'add_worker' || type === 'workers' || type === 'CREATE_WORKER' || type === 'create_worker' || type === 'register_worker'
                 ? 'Worker Registered Successfully!'
                 : type === 'edit_worker'
                 ? 'Worker Details Updated Successfully!'
@@ -2032,7 +2050,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
                   </button>
                 </div>
               </>
-            ) : type === 'add_worker' || type === 'edit_worker' || type === 'workers' ? (
+            ) : type === 'add_worker' || type === 'edit_worker' || type === 'workers' || type === 'CREATE_WORKER' || type === 'create_worker' || type === 'register_worker' ? (
               <>
                 {/* Photo Upload & Live Camera Capture */}
                 <div className="form-group" style={{ backgroundColor: '#F8FAFC', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', marginBottom: '20px' }}>
@@ -3046,43 +3064,15 @@ export const ActionModal: React.FC<ActionModalProps> = ({
               </>
             ) : type === 'create_ticket' ? (
               <>
-                {role === 'AGENT' ? (
-                  <div className="form-group">
-                    <label>Support Ticket Creator (Logged-in Agent)</label>
-                    <input
-                      type="text"
-                      disabled
-                      value={`${user?.name || 'Agent'} (${(user as any)?.employeeCode || 'AGT-002'}) - ${(user as any)?.designation || 'Field Agent'}`}
-                      style={{ backgroundColor: '#EFF6FF', color: '#1E40AF', fontWeight: 800, border: '1px solid #BFDBFE' }}
-                    />
-                  </div>
-                ) : role === 'SUPER_AGENT' ? (
-                  workersList.length > 0 && (
-                    <div className="form-group">
-                      <label>Select Worker (Optional for Super-Agents)</label>
-                      <select
-                        value={ticketWorkerId}
-                        onChange={(e) => setTicketWorkerId(e.target.value)}
-                      >
-                        {workersList.map((w) => (
-                          <option key={w.id} value={w.id}>
-                            {w.name} ({w.employeeCode}) - {w.designation}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )
-                ) : (
-                  <div className="form-group">
-                    <label>Worker Application (Logged-in User)</label>
-                    <input
-                      type="text"
-                      disabled
-                      value={`${user?.name || 'Worker'} (${(user as any)?.employeeCode || `WRK-00${user?.id || 1}`}) - ${(user as any)?.designation || 'Worker'}`}
-                      style={{ backgroundColor: '#F1F5F9', color: '#334155', fontWeight: 600 }}
-                    />
-                  </div>
-                )}
+                <div className="form-group">
+                  <label>Support Ticket Creator (Field Agent)</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={`${user?.name || 'Agent'} (${(user as any)?.employeeCode || `AGT-${String(user?.id || 1).padStart(3, '0')}`}) - ${(user as any)?.designation || 'Field Agent'}`}
+                    style={{ backgroundColor: '#EFF6FF', color: '#1E40AF', fontWeight: 800, border: '1px solid #BFDBFE' }}
+                  />
+                </div>
 
                 <div className="form-row">
                   <div className="form-group flex-1">

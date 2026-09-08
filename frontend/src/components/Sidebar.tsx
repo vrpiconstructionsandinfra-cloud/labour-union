@@ -20,8 +20,7 @@ import {
   QrCode,
   FileSpreadsheet,
   X,
-  Settings,
-  HelpCircle
+  Settings
 } from 'lucide-react';
 import { UserAvatar } from './UserAvatar';
 import './Sidebar.css';
@@ -81,19 +80,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const allMoreNav = [
     { id: 'notifications', label: 'Notifications', icon: Bell, badge: unreadCount > 0 ? String(unreadCount) : undefined },
-    { id: 'settings', label: 'Settings', icon: Settings },
-    { id: 'help', label: 'Help & Support', icon: HelpCircle }
+    { id: 'settings', label: 'Settings', icon: Settings }
   ];
 
   // Role Based Navigation Filtering
   const managementNav = allManagementNav.filter(item => hasPermission(item.id));
-  const moreNav = allMoreNav.filter(item => item.id === 'settings' || item.id === 'help' || hasPermission(item.id));
+  const moreNav = allMoreNav.filter(item => item.id === 'settings' || hasPermission(item.id));
 
   const handleNavClick = (id: string) => {
     if (id === 'tickets' && role === 'SUPER_AGENT') {
       setActiveTab('support_agents');
-    } else if (id === 'help') {
-      onOpenModal('help');
     } else if (id === 'notifications') {
       onOpenModal('notifications');
     } else {
@@ -119,12 +115,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <path d="M7 5.13C6.13692 5.35049 5.37177 5.85244 4.82665 6.55589C4.28153 7.25934 3.98555 8.12353 3.98555 9.0145C3.98555 9.90547 4.28153 10.7697 4.82665 11.4731C5.37177 12.1766 6.13692 12.6785 7 12.9" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
-        {(!collapsed || window.innerWidth <= 768) && (
-          <div className="brand-text">
-            <h2>Labour Union</h2>
-            <p>Management System</p>
-          </div>
-        )}
+        <div className="brand-text">
+          <h2>Labour Union</h2>
+          <p>Management System</p>
+        </div>
         <button
           className="sidebar-mobile-close-btn"
           onClick={() => setSidebarCollapsed?.(true)}
@@ -138,7 +132,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="sidebar-nav-container">
         {/* MANAGEMENT Section */}
         <div className="nav-section">
-          {(!collapsed || window.innerWidth <= 768) && <span className="section-title">MANAGEMENT</span>}
+          <span className="section-title">MANAGEMENT</span>
           <ul className="nav-list">
             {managementNav.map((item) => {
               const Icon = item.icon;
@@ -155,9 +149,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   >
                     <div className="nav-item-left">
                       <Icon className="nav-icon" size={18} />
-                      {(!collapsed || window.innerWidth <= 768) && <span className="nav-label">{item.label}</span>}
+                      <span className="nav-label">{item.label}</span>
                     </div>
-                    {(!collapsed || window.innerWidth <= 768) && !item.isDashboard && (
+                    {!item.isDashboard && (
                       <ChevronRight className="nav-arrow" size={16} />
                     )}
                   </button>
@@ -171,7 +165,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {moreNav.length > 0 && (
           <div className="nav-section">
             <div className="sidebar-nav-divider"></div>
-            {(!collapsed || window.innerWidth <= 768) && <span className="section-title desktop-only">MORE</span>}
+            <span className="section-title">MORE</span>
             <ul className="nav-list">
               {moreNav.map((item) => {
                 const Icon = item.icon;
@@ -185,14 +179,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     >
                       <div className="nav-item-left">
                         <Icon className="nav-icon" size={18} />
-                        {(!collapsed || window.innerWidth <= 768) && <span className="nav-label">{item.label}</span>}
+                        <span className="nav-label">{item.label}</span>
                       </div>
-                      {(!collapsed || window.innerWidth <= 768) && (
-                        <div className="nav-item-right">
-                          {item.badge && <span className="nav-badge-red">{item.badge}</span>}
-                          <ChevronRight className="nav-arrow" size={16} />
-                        </div>
-                      )}
+                      <div className="nav-item-right">
+                        {item.badge && <span className="nav-badge-red">{item.badge}</span>}
+                        <ChevronRight className="nav-arrow" size={16} />
+                      </div>
                     </button>
                   </li>
                 );

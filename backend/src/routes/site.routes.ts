@@ -11,7 +11,7 @@ const router = Router();
 router.post(
   "/",
   authenticate,
-  authorize("SUPER_AGENT"),
+  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT"),
   siteController.create
 );
 
@@ -19,7 +19,7 @@ router.post(
 router.get(
   "/",
   authenticate,
-  authorize("SUPER_AGENT", "AGENT"),
+  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT", "AGENT"),
   siteController.findAll
 );
 
@@ -27,7 +27,7 @@ router.get(
 router.get(
   "/:id",
   authenticate,
-  authorize("SUPER_AGENT", "AGENT"),
+  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT", "AGENT"),
   siteController.findOne
 );
 
@@ -35,7 +35,7 @@ router.get(
 router.put(
   "/:id",
   authenticate,
-  authorize("SUPER_AGENT"),
+  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT"),
   siteController.update
 );
 

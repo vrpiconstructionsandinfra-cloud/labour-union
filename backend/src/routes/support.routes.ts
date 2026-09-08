@@ -81,17 +81,17 @@ router.post(
 );
 
 /*
- * Worker Routes
+ * Agent Support Ticket Routes (Restricted to AGENT, SUPER_AGENT, CUSTOMER_SUPPORT)
  */
 router.post(
   "/",
-  authorize("WORKER", "AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"),
+  authorize("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"),
   createSupportTicket
 );
 
 router.get(
   "/my",
-  authorize("WORKER", "AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"),
+  authorize("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"),
   getMyTickets
 );
 
@@ -106,19 +106,19 @@ router.get(
 
 router.get(
   "/",
-  authorize("WORKER", "AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"),
+  authorize("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"),
   getTickets
 );
 
 router.get(
   "/:id",
-  authorize("WORKER", "AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"),
+  authorize("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"),
   getTicket
 );
 
 router.patch(
   "/:id",
-  authorize("WORKER", "AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"),
+  authorize("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"),
   updateTicketDetails
 );
 
@@ -136,13 +136,13 @@ router.patch(
 
 router.get(
   "/:id/comments",
-  authorize("WORKER", "AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"),
+  authorize("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"),
   getTicketComments
 );
 
 router.post(
   "/:id/comments",
-  authorize("WORKER", "AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"),
+  authorize("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"),
   addTicketComment
 );
 

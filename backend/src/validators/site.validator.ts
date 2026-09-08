@@ -3,44 +3,54 @@ import { z } from "zod";
 export const createSiteSchema = z.object({
   siteCode: z
     .string()
-    .min(3, "Site code must be at least 3 characters")
-    .max(20),
+    .min(1, "Site code is required")
+    .max(50)
+    .optional()
+    .or(z.literal("")),
 
   siteName: z
     .string()
-    .min(3, "Site name is required"),
+    .min(1, "Site name is required"),
 
   companyName: z
     .string()
-    .min(3, "Company name is required"),
+    .optional()
+    .default("Labor Union Org"),
 
   address: z
     .string()
-    .min(5, "Address is required"),
+    .optional()
+    .default("Site Location"),
 
   city: z
     .string()
-    .min(2),
+    .optional()
+    .default("Mumbai"),
 
   state: z
     .string()
-    .min(2),
+    .optional()
+    .default("Maharashtra"),
 
   pincode: z
     .string()
-    .regex(/^[0-9]{6}$/, "Invalid pincode"),
+    .optional()
+    .default("400001"),
 
   contactPerson: z
     .string()
-    .min(3),
+    .optional()
+    .default("Site Supervisor"),
 
   contactNumber: z
     .string()
-    .regex(/^[0-9]{10}$/, "Invalid phone number"),
+    .optional()
+    .default("9876543210"),
 
   status: z
     .string()
     .optional()
+    .default("ACTIVE")
 });
 
 export type CreateSiteInput = z.infer<typeof createSiteSchema>;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Plus, AlertCircle, Calendar, Edit, Trash2, Shield, DollarSign } from 'lucide-react';
-import { fetchInsuranceApi, deleteInsuranceApi } from '../services/api';
+import { fetchInsuranceApi, deleteInsuranceApi, fetchAttendanceLogsApi } from '../services/api';
 import { getSocket } from '../services/socket';
 import type { InsurancePolicy } from '../types';
 import {
@@ -47,13 +47,44 @@ export const InsurancePage: React.FC<InsurancePageProps> = ({
 
   const loadData = () => {
     setIsLoading(true);
-    fetchInsuranceApi()
-      .then((data) => {
-        if (data.summary) {
-          setSummary(data.summary);
+    Promise.all([
+      fetchInsuranceApi().catch(() => ({ summary: null, policies: [] })),
+      fetchAttendanceLogsApi().catch(() => ({ logs: [] }))
+    ])
+      .then(([insuranceData, attendanceRes]) => {
+        if (insuranceData?.summary) {
+          setSummary(insuranceData.summary);
         }
-        if (data.policies) {
-          setPolicies(data.policies);
+
+        const logs = Array.isArray(attendanceRes) ? attendanceRes : (attendanceRes?.logs || []);
+        const todayStr = new Date().toISOString().split('T')[0];
+        const presentWorkerIds = new Set<string>();
+
+        logs.forEach((log: any) => {
+          const logDate = log.date ? (typeof log.date === 'string' ? log.date.split('T')[0] : new Date(log.date).toISOString().split('T')[0]) : '';
+          if (logDate === todayStr || !log.date) {
+            const isPresent = log.status === 'PRESENT' || log.status === 'HALF_DAY' || Boolean(log.checkInTime || log.signInTime);
+            if (isPresent) {
+              if (log.workerId) presentWorkerIds.add(String(log.workerId));
+              if (log.workerName) presentWorkerIds.add(String(log.workerName).toLowerCase());
+            }
+          }
+        });
+
+        if (insuranceData?.policies) {
+          const enriched = insuranceData.policies.map((p: any) => {
+            const isPresent = Boolean(
+              p.isPresentToday ||
+              presentWorkerIds.has(String(p.workerId)) ||
+              presentWorkerIds.has(String(p.workerName || '').toLowerCase())
+            );
+            return {
+              ...p,
+              status: isPresent ? 'ACTIVE' : 'INACTIVE',
+              isPresentToday: isPresent
+            };
+          });
+          setPolicies(enriched);
         }
       })
       .catch(() => {})
@@ -69,10 +100,12 @@ export const InsurancePage: React.FC<InsurancePageProps> = ({
     };
 
     socket.on('insurance:updated', handleUpdate);
+    socket.on('attendance:updated', handleUpdate);
     socket.on('notification', handleUpdate);
 
     return () => {
       socket.off('insurance:updated', handleUpdate);
+      socket.off('attendance:updated', handleUpdate);
       socket.off('notification', handleUpdate);
     };
   }, []);
@@ -332,7 +365,7 @@ export const InsurancePage: React.FC<InsurancePageProps> = ({
                   },
                   {
                     label: 'Premium',
-                    value: `₹ {((p as any).premium || 450).toLocaleString('en-IN')}/mo`,
+                    value: `₹ ${Number((p as any).premium || 450).toLocaleString('en-IN')}/mo`,
                     icon: <DollarSign size={13} color="#64748B" />
                   },
                   {

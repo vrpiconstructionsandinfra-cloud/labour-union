@@ -1,13 +1,12 @@
 /* ==========================================================================
    Labour Union Management System - Modern Auth Page Styling
-   Matches Desktop (Image 3) and Mobile (Image 1) Exactly
+   Matches Desktop (Image 2) and Mobile (Image 1) Exactly
    ========================================================================== */
 
 .auth-page-container {
   min-height: 100vh;
   width: 100vw;
   max-width: 100vw;
-  background: #FFFDF9;
   font-family: var(--font-family, 'Plus Jakarta Sans', sans-serif);
   color: #0F172A;
   box-sizing: border-box;
@@ -16,24 +15,32 @@
 }
 
 /* ==========================================================================
-   1. DESKTOP 2-COLUMN VIEW (Image 3)
+   1. DESKTOP 2-COLUMN VIEW (Image 2)
    ========================================================================== */
 .auth-desktop-layout {
   display: flex;
   min-height: 100vh;
   width: 100%;
+  position: relative;
+  background:
+    linear-gradient(135deg, rgba(255, 250, 245, 0.86) 0%, rgba(255, 241, 228, 0.72) 40%, rgba(255, 234, 215, 0.60) 100%),
+    url('https://images.unsplash.com/photo-1541888946425-d0fbb186156a?w=1800&auto=format&fit=crop&q=80') center center / cover no-repeat;
+  padding: 36px 56px;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
 }
 
-/* Left Hero Section */
+/* Left Hero Section - Transparent and Floating */
 .auth-hero-left {
-  flex: 1.15;
-  background: linear-gradient(135deg, #FFF6EC 0%, #FFEEDB 45%, #FDE4CD 100%);
-  padding: 40px 48px;
+  flex: 1.1;
+  max-width: 580px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  position: relative;
-  overflow: hidden;
+  background: transparent;
+  padding: 10px 20px 10px 0;
+  z-index: 2;
 }
 
 /* Left Hero Brand Logo */
@@ -41,7 +48,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  z-index: 2;
+  margin-bottom: 24px;
 }
 
 .auth-brand-logo-box {
@@ -72,18 +79,16 @@
 }
 
 .auth-hero-content {
-  z-index: 2;
-  max-width: 520px;
-  margin: 28px 0;
+  margin: 12px 0 20px 0;
 }
 
 .auth-hero-title {
-  font-size: 38px;
+  font-size: 40px;
   font-weight: 800;
   color: #0F172A;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-  margin-bottom: 14px;
+  line-height: 1.18;
+  letter-spacing: -0.025em;
+  margin: 0 0 16px 0;
 }
 
 .auth-gradient-text {
@@ -95,16 +100,18 @@
 
 .auth-hero-subtitle {
   font-size: 14.5px;
-  color: #64748B;
+  color: #475569;
   line-height: 1.6;
   margin-bottom: 28px;
+  max-width: 480px;
 }
 
-/* 4 Feature Bullet Cards (2x2 Grid) */
+/* 4 Feature Bullet Cards (2x2 Grid) - Frosted Glass Look */
 .auth-features-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 14px;
+  max-width: 500px;
 }
 
 .auth-feature-card {
@@ -112,11 +119,12 @@
   align-items: center;
   gap: 12px;
   background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(254, 215, 170, 0.6);
-  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 14px;
   padding: 12px 14px;
-  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.04);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
 }
 
 .auth-feature-icon-box {
@@ -124,6 +132,7 @@
   height: 36px;
   border-radius: 9px;
   background-color: #FFF7ED;
+  border: 1px solid #FED7AA;
   color: #EA580C;
   display: flex;
   align-items: center;
@@ -147,57 +156,58 @@
 /* Bottom Graphic with Workers Badge Overlay */
 .auth-hero-bottom-graphic {
   position: relative;
-  height: 140px;
-  margin-top: 10px;
-  background: linear-gradient(180deg, transparent 0%, rgba(234, 88, 12, 0.08) 100%);
-  border-radius: 16px;
+  margin-top: 32px;
   display: flex;
   align-items: flex-end;
-  padding: 16px;
 }
 
 .auth-workers-badge {
-  display: flex;
-  flex-direction: column;
-  color: #475569;
-  font-size: 18px;
+  font-size: 24px;
   font-weight: 800;
   font-style: italic;
+  color: #FFFFFF;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
   line-height: 1.1;
-  position: relative;
+  letter-spacing: -0.01em;
+}
+
+.auth-workers-badge span {
+  display: block;
 }
 
 .auth-workers-badge em {
+  display: block;
   font-style: italic;
-  color: #0F172A;
 }
 
 .auth-badge-swoop {
-  width: 90px;
+  width: 110px;
   height: 4px;
-  background: linear-gradient(90deg, #FF6B00 0%, #EA580C 100%);
-  border-radius: 2px;
-  margin-top: 4px;
+  background: #EA580C;
+  border-radius: 3px;
+  margin-top: 6px;
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.6);
 }
 
 /* Right Form Panel (Desktop) */
 .auth-form-right {
-  flex: 1;
+  flex: 0 0 460px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 40px;
-  background: #FFFDF9;
+  justify-content: flex-end;
+  background: transparent;
+  padding: 0;
+  z-index: 2;
 }
 
 .auth-card-box {
   width: 100%;
   max-width: 440px;
   background: #FFFFFF;
-  border: 1px solid #F1F5F9;
-  border-radius: 20px;
-  padding: 36px 32px;
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.06), 0 4px 10px -2px rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 24px;
+  padding: 38px 34px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.02);
 }
 
 .auth-card-top-link {
@@ -224,7 +234,7 @@
 }
 
 .auth-card-header {
-  margin-bottom: 24px;
+  margin-bottom: 22px;
 }
 
 .auth-card-logo-row {
@@ -253,8 +263,34 @@
   margin: 0;
 }
 
+.auth-support-portal-pill {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #FFF7ED;
+  color: #EA580C;
+  border: 1px solid #FED7AA;
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(234, 88, 12, 0.1);
+  white-space: nowrap;
+}
+
+.auth-support-portal-pill:hover {
+  background-color: #EA580C;
+  color: #FFFFFF;
+  border-color: #EA580C;
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.28);
+  transform: translateY(-1px);
+}
+
 .auth-card-title {
-  font-size: 24px;
+  font-size: 25px;
   font-weight: 800;
   color: #0F172A;
   margin: 0 0 6px 0;
@@ -270,7 +306,8 @@
 /* Alert Banners */
 .auth-toast-banner {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
   padding: 10px 14px;
   border-radius: 10px;
@@ -278,6 +315,37 @@
   font-weight: 600;
   margin-bottom: 18px;
   line-height: 1.4;
+}
+
+.auth-toast-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+}
+
+.auth-toast-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.auth-toast-action-btn {
+  background: #DC2626;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  align-self: flex-start;
+  margin-left: 24px;
+  transition: all 0.15s ease;
+}
+
+.auth-toast-action-btn:hover {
+  background: #B91C1C;
+  transform: translateY(-1px);
 }
 
 .auth-toast-error {
@@ -400,7 +468,7 @@
 /* Primary Submit Button */
 .auth-primary-btn {
   width: 100%;
-  height: 46px;
+  height: 48px;
   background: linear-gradient(135deg, #FF6B00 0%, #EA580C 100%);
   color: #FFFFFF;
   border: none;
@@ -412,12 +480,12 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.4);
 }
 
 .auth-primary-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, #EA580C 0%, #C2410C 100%);
-  box-shadow: 0 6px 18px rgba(234, 88, 12, 0.45);
+  box-shadow: 0 6px 18px rgba(234, 88, 12, 0.5);
 }
 
 .auth-primary-btn:disabled {
@@ -473,7 +541,7 @@
 
 /* Trust Box */
 .auth-trust-box {
-  margin-top: 24px;
+  margin-top: 22px;
   padding: 12px 14px;
   background-color: #F8FAFC;
   border: 1px solid #E2E8F0;
@@ -499,6 +567,20 @@
   font-size: 10.5px;
   color: #64748B;
   margin: 0;
+}
+
+.auth-desktop-footer-row {
+  text-align: center;
+  margin-top: 18px;
+  font-size: 13px;
+  color: #64748B;
+}
+
+.auth-support-footer-row {
+  text-align: center;
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: #64748B;
 }
 
 .auth-back-row {
@@ -553,6 +635,35 @@
     z-index: 10;
   }
 
+  .auth-mobile-top-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .auth-mobile-support-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #FFF7ED;
+    border: 1px solid #FED7AA;
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #EA580C;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(234, 88, 12, 0.08);
+    transition: all 0.15s ease;
+  }
+
+  .auth-mobile-support-pill:hover,
+  .auth-mobile-support-pill:active {
+    background: #EA580C;
+    color: #FFFFFF;
+    border-color: #EA580C;
+  }
+
   .auth-mobile-theme-pill {
     display: flex;
     align-items: center;
@@ -566,6 +677,11 @@
     color: #0F172A;
     cursor: pointer;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .mobile-footer-support {
+    margin-top: 8px;
+    font-size: 12px;
   }
 
   /* Mobile Sunrise & Workers Silhouette Art */

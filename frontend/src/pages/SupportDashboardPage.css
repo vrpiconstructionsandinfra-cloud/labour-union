@@ -1346,14 +1346,231 @@ body.dark-mode .menu-item-btn.logout-item:hover {
   color: #EF4444 !important;
 }
 
-/* Customer Support Dashboard Mobile Responsive Queries */
+/* Backdrop for mobile sliding drawer */
+.mobile-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 998;
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Tickets Responsive View Classes */
+.tickets-desktop-view {
+  display: block;
+}
+
+.tickets-mobile-view {
+  display: none;
+}
+
+.mobile-ticket-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.mobile-ticket-card:active {
+  transform: scale(0.99);
+}
+
+.mobile-ticket-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mobile-ticket-id-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #2563eb;
+  background: #eff6ff;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.mobile-ticket-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mobile-ticket-subject {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.mobile-ticket-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  background: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.mobile-meta-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-meta-label {
+  font-size: 10.5px;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.mobile-meta-value {
+  font-size: 12.5px;
+  color: #1e293b;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-ticket-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.mobile-status-select {
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  cursor: pointer;
+  outline: none;
+}
+
+.mobile-unassign-btn {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.mobile-assign-me-btn {
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.mobile-assigned-pill {
+  font-size: 11.5px;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.mobile-details-btn {
+  margin-left: auto;
+  background: transparent;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mobile-tickets-empty-state {
+  text-align: center;
+  padding: 32px 16px;
+  color: #94a3b8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Dark Mode Overrides for Mobile Elements */
+[data-theme="dark"] .mobile-ticket-card,
+body.dark-mode .mobile-ticket-card {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .mobile-ticket-subject,
+body.dark-mode .mobile-ticket-subject {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .mobile-ticket-meta-grid,
+body.dark-mode .mobile-ticket-meta-grid {
+  background: #0f172a !important;
+}
+
+[data-theme="dark"] .mobile-meta-value,
+body.dark-mode .mobile-meta-value {
+  color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .mobile-ticket-actions,
+body.dark-mode .mobile-ticket-actions {
+  border-top-color: #334155 !important;
+}
+
+[data-theme="dark"] .mobile-status-select,
+body.dark-mode .mobile-status-select {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .mobile-assigned-pill,
+body.dark-mode .mobile-assigned-pill {
+  background: #0f172a !important;
+  color: #94a3b8 !important;
+}
+
+/* Customer Support Dashboard Mobile & Tablet Responsive Breakpoints */
 @media (max-width: 1024px) {
-  .analytics-cards-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-  .support-split-layout {
-    grid-template-columns: 1fr !important;
-    gap: 20px !important;
+  .metrics-grid-container {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 12px !important;
   }
   .support-sidebar {
     width: 72px !important;
@@ -1364,25 +1581,189 @@ body.dark-mode .menu-item-btn.logout-item:hover {
 }
 
 @media (max-width: 768px) {
-  .analytics-cards-grid {
-    grid-template-columns: 1fr !important;
+  .support-dashboard-layout {
+    position: relative;
+    overflow-x: hidden;
   }
+
+  /* Sliding Drawer Sidebar */
+  .support-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: -290px !important;
+    width: 270px !important;
+    z-index: 1000 !important;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .support-sidebar.mobile-open {
+    left: 0 !important;
+  }
+
+  .support-sidebar.mobile-open .brand-text-block,
+  .support-sidebar.mobile-open .nav-item span {
+    display: inline-block !important;
+  }
+
+  .support-dashboard-layout.sidebar-mini .support-sidebar {
+    left: -290px !important;
+    width: 270px !important;
+  }
+
+  /* Main content padding for mobile bottom nav */
+  .support-main-content {
+    padding: 12px 14px 96px 14px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Compact Top Header */
   .support-top-header {
+    height: auto !important;
+    min-height: 52px !important;
+    padding: 8px 12px !important;
+    margin-bottom: 14px !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+  }
+
+  .header-left {
+    gap: 8px !important;
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+
+  .global-search-bar {
+    max-width: none !important;
+    padding: 6px 10px !important;
+  }
+
+  .shortcut-kbd {
+    display: none !important;
+  }
+
+  .header-right {
+    gap: 8px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .create-ticket-top-btn {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+    border-radius: 8px !important;
+  }
+
+  .create-ticket-top-btn span {
+    display: none !important;
+  }
+
+  .icon-notification-btn {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 8px !important;
+  }
+
+  /* 2x2 / 2-column metrics on mobile */
+  .metrics-grid-container {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .support-stat-card {
+    padding: 12px 14px !important;
+    border-radius: 12px !important;
+  }
+
+  .stat-icon-wrapper {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 10px !important;
+  }
+
+  .card-top-row {
+    margin-bottom: 8px !important;
+  }
+
+  .card-label {
+    font-size: 11.5px !important;
+  }
+
+  .card-value {
+    font-size: 20px !important;
+  }
+
+  .trend-badge {
+    font-size: 10px !important;
+  }
+
+  .trend-badge small {
+    display: none !important;
+  }
+
+  /* Recent Tickets Mobile Toggle */
+  .tickets-desktop-view {
+    display: none !important;
+  }
+
+  .tickets-mobile-view {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    margin-top: 10px !important;
+  }
+
+  .recent-tickets-widget {
+    padding: 14px !important;
+    border-radius: 14px !important;
+  }
+
+  .widget-card-header.flex-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .table-filter-group {
+    width: 100% !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .widget-select-dropdown {
+    flex: 1 !important;
+    min-width: 110px !important;
+  }
+
+  .view-all-link {
+    margin-left: auto !important;
+  }
+
+  .table-pagination-footer {
+    flex-direction: column !important;
+    gap: 10px !important;
+    align-items: center !important;
+  }
+
+  /* Standalone tab headers */
+  .standalone-header {
     flex-direction: column !important;
     align-items: flex-start !important;
     gap: 12px !important;
-    height: auto !important;
-    padding: 14px !important;
   }
-  .header-actions-group {
+
+  .standalone-search {
     width: 100% !important;
-    justify-content: space-between !important;
   }
-  .ticket-filters-bar {
-    flex-wrap: wrap !important;
-    gap: 10px !important;
-  }
-  .search-ticket-input {
-    width: 100% !important;
+
+  .kb-categories-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
   }
 }

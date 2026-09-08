@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { QrCode, X, Camera, Upload, Search, AlertCircle } from 'lucide-react';
+import { QrCode, X, Camera, Upload, Search, AlertCircle, RefreshCw, Zap } from 'lucide-react';
 import jsQR from 'jsqr';
 import { fetchWorkersApi } from '../services/api';
 import type { WorkerItem } from '../types';
+import './ScanWorkerQrModal.css';
 
 interface ScanWorkerQrModalProps {
   isOpen: boolean;
@@ -29,6 +30,10 @@ export const ScanWorkerQrModal: React.FC<ScanWorkerQrModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      setErrorMessage(null);
+      setManualCode('');
+      setSelectedWorkerId('');
+      
       const userStr = localStorage.getItem('user');
       const currentUser = userStr ? JSON.parse(userStr) : null;
       const isAgentRole = currentUser?.role === 'AGENT';
@@ -97,7 +102,7 @@ export const ScanWorkerQrModal: React.FC<ScanWorkerQrModalProps> = ({
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        videoRef.current.play().catch(() => {});
       }
       setIsCameraActive(true);
     } catch (err: any) {
@@ -264,131 +269,143 @@ export const ScanWorkerQrModal: React.FC<ScanWorkerQrModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 100, backgroundColor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-      <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', maxWidth: '480px', width: '100%', padding: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #E2E8F0' }}>
+    <div className="qr-modal-backdrop">
+      <div className="qr-modal-card">
         
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #F1F5F9', paddingBottom: '16px', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ backgroundColor: '#EFF6FF', color: '#2563EB', padding: '10px', borderRadius: '12px' }}>
-              <QrCode size={24} />
+        <div className="qr-modal-header">
+          <div className="qr-modal-header-left">
+            <div className="qr-modal-icon-badge">
+              <QrCode size={22} />
             </div>
             <div>
-              <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
-                Scan Worker QR Code
-              </h3>
-              <p style={{ fontSize: '12px', color: '#64748B', margin: 0 }}>
-                Scan worker's digital ID to immediately mark attendance.
-              </p>
+              <h3 className="qr-modal-title">Scan Worker QR Code</h3>
+              <p className="qr-modal-subtitle">Scan digital ID or quick-select assigned worker</p>
             </div>
           </div>
           <button
+            type="button"
             onClick={() => { stopCamera(); onClose(); }}
-            style={{ backgroundColor: 'transparent', border: 'none', color: '#94A3B8', cursor: 'pointer', padding: '4px' }}
+            className="qr-modal-close-btn"
+            title="Close"
           >
             <X size={20} />
           </button>
         </div>
 
-        {/* Viewfinder Area */}
-        <div style={{ position: 'relative', backgroundColor: '#0F172A', borderRadius: '16px', overflow: 'hidden', height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', border: '2px solid #1E293B' }}>
-          {isCameraActive ? (
-            <>
-              <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              {/* QR Target Frame Overlay */}
-              <div style={{ position: 'absolute', width: '170px', height: '170px', border: '3px solid #2563EB', borderRadius: '16px', boxShadow: '0 0 0 9999px rgba(15, 23, 42, 0.55)', pointerEvents: 'none' }}>
-                <div style={{ position: 'absolute', top: '-2px', left: '-2px', width: '20px', height: '20px', borderTop: '4px solid #60A5FA', borderLeft: '4px solid #60A5FA' }} />
-                <div style={{ position: 'absolute', top: '-2px', right: '-2px', width: '20px', height: '20px', borderTop: '4px solid #60A5FA', borderRight: '4px solid #60A5FA' }} />
-                <div style={{ position: 'absolute', bottom: '-2px', left: '-2px', width: '20px', height: '20px', borderBottom: '4px solid #60A5FA', borderLeft: '4px solid #60A5FA' }} />
-                <div style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '20px', height: '20px', borderBottom: '4px solid #60A5FA', borderRight: '4px solid #60A5FA' }} />
+        {/* Modal Body */}
+        <div className="qr-modal-body">
+
+          {/* Viewfinder Area */}
+          <div className="qr-viewfinder-container">
+            {isCameraActive ? (
+              <>
+                <video ref={videoRef} autoPlay playsInline muted className="qr-video-stream" />
+                {/* QR Target Frame Overlay */}
+                <div className="qr-target-overlay">
+                  <div className="qr-corner top-left" />
+                  <div className="qr-corner top-right" />
+                  <div className="qr-corner bottom-left" />
+                  <div className="qr-corner bottom-right" />
+                  <div className="qr-scanline" />
+                </div>
+                <div className="qr-live-pill">
+                  <span className="qr-live-dot" />
+                  <span>LIVE SCANNER READY</span>
+                </div>
+              </>
+            ) : (
+              <div className="qr-camera-placeholder">
+                <Camera size={38} style={{ opacity: 0.6 }} />
+                <p>{cameraError || 'Camera feed inactive'}</p>
+                <button
+                  type="button"
+                  className="qr-retry-btn"
+                  onClick={startCamera}
+                >
+                  <RefreshCw size={13} />
+                  <span>Start Camera</span>
+                </button>
               </div>
-              <div style={{ position: 'absolute', top: '12px', left: '12px', backgroundColor: '#EF4444', color: '#FFF', fontSize: '11px', fontWeight: 800, padding: '4px 10px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#FFF' }} />
-                <span>LIVE SCANNER READY</span>
-              </div>
-            </>
-          ) : (
-            <div style={{ textAlign: 'center', color: '#94A3B8', padding: '20px' }}>
-              <Camera size={44} style={{ marginBottom: '10px', opacity: 0.5 }} />
-              <p style={{ fontSize: '12px', margin: 0 }}>{cameraError || 'Camera feed unavailable'}</p>
+            )}
+          </div>
+
+          {/* Error Notification */}
+          {errorMessage && (
+            <div className="qr-error-alert">
+              <AlertCircle size={16} />
+              <span>{errorMessage}</span>
             </div>
           )}
-        </div>
 
-        {/* Error Notification */}
-        {errorMessage && (
-          <div style={{ backgroundColor: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626', padding: '10px 14px', borderRadius: '10px', fontSize: '12px', fontWeight: 700, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <AlertCircle size={16} />
-            <span>{errorMessage}</span>
-          </div>
-        )}
+          {/* Quick Pick Assigned Worker Selector */}
+          {assignedWorkers.length > 0 && (
+            <div className="qr-quick-select-card">
+              <label className="qr-quick-label">
+                <Zap size={13} color="#EA580C" />
+                <span>Quick Select Assigned Worker:</span>
+              </label>
+              <select
+                value={selectedWorkerId}
+                onChange={(e) => handleSelectWorkerFromDropdown(e.target.value)}
+                className="qr-quick-select"
+              >
+                <option value="">-- Choose Assigned Worker --</option>
+                {assignedWorkers.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name} ({w.employeeCode || `WRK-${w.id}`}) — {w.designation || 'Worker'}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
-        {/* Quick Pick Assigned Worker Selector */}
-        {assignedWorkers.length > 0 && (
-          <div style={{ marginBottom: '16px', backgroundColor: '#F8FAFC', padding: '12px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-            <label style={{ display: 'block', fontSize: '11px', fontWeight: 800, color: '#334155', textTransform: 'uppercase', marginBottom: '6px' }}>
-              ⚡ Quick Select Assigned Worker for Attendance:
-            </label>
-            <select
-              value={selectedWorkerId}
-              onChange={(e) => handleSelectWorkerFromDropdown(e.target.value)}
-              style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', backgroundColor: '#FFFFFF', color: '#0F172A', fontSize: '13px', fontWeight: 700 }}
-            >
-              <option value="">-- Choose Assigned Worker --</option>
-              {assignedWorkers.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.name} ({w.employeeCode || `WRK-${w.id}`}) — {w.designation || 'Worker'}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {/* Manual Payload / Code Input Section */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <label style={{ fontSize: '12px', fontWeight: 800, color: '#334155' }}>
-            Or Enter / Paste Worker Code or QR Payload:
-          </label>
-
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <input
-              type="text"
-              placeholder="e.g. WRK-760, WRK-005, or scan URL..."
-              value={manualCode}
-              onChange={(e) => setManualCode(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleProcessPayload(manualCode)}
-              style={{ flex: 1, padding: '10px 14px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', fontWeight: 600, color: '#0F172A' }}
-            />
-            <button
-              type="button"
-              onClick={() => handleProcessPayload(manualCode)}
-              disabled={isSearching}
-              style={{ backgroundColor: '#2563EB', color: '#FFFFFF', border: 'none', borderRadius: '10px', padding: '10px 18px', fontSize: '13px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-            >
-              <Search size={15} />
-              <span>{isSearching ? 'Scanning...' : 'Scan & Load'}</span>
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px' }}>
-            <label style={{ cursor: 'pointer', fontSize: '12px', fontWeight: 700, color: '#2563EB', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-              <Upload size={14} />
-              <span>Upload Image File</span>
-              <input type="file" accept="image/*" onChange={handleFileUpload} style={{ display: 'none' }} />
+          {/* Manual Payload / Code Input Section */}
+          <div className="qr-manual-card">
+            <label className="qr-manual-label">
+              Or Enter Worker Code / QR Payload:
             </label>
 
-            <button
-              type="button"
-              onClick={() => { stopCamera(); onClose(); }}
-              style={{ backgroundColor: '#F1F5F9', color: '#475569', border: 'none', borderRadius: '8px', padding: '8px 16px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}
-            >
-              Cancel
-            </button>
+            <div className="qr-manual-row">
+              <input
+                type="text"
+                placeholder="e.g. WRK-760, WRK-005, or URL..."
+                value={manualCode}
+                onChange={(e) => setManualCode(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleProcessPayload(manualCode)}
+                className="qr-manual-input"
+              />
+              <button
+                type="button"
+                onClick={() => handleProcessPayload(manualCode)}
+                disabled={isSearching}
+                className="qr-scan-load-btn"
+              >
+                <Search size={15} />
+                <span>{isSearching ? 'Loading...' : 'Scan & Load'}</span>
+              </button>
+            </div>
+
+            <div className="qr-action-footer">
+              <label className="qr-upload-label">
+                <Upload size={14} />
+                <span>Upload QR Image</span>
+                <input type="file" accept="image/*" onChange={handleFileUpload} style={{ display: 'none' }} />
+              </label>
+
+              <button
+                type="button"
+                onClick={() => { stopCamera(); onClose(); }}
+                className="qr-cancel-btn"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
+
         </div>
 
       </div>
     </div>
   );
 };
-

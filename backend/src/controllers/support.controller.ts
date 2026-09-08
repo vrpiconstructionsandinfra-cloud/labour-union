@@ -205,7 +205,8 @@ export async function getTicketComments(
 ) {
   try {
     const comments = await supportService.getTicketComments(
-      Number(req.params.id)
+      Number(req.params.id),
+      (req as any).user
     );
 
     res.json({
@@ -239,7 +240,8 @@ export async function addTicketComment(
     const comment = await supportService.addTicketComment(
       Number(req.params.id),
       req.user!.id,
-      message.trim()
+      message.trim(),
+      (req as any).user
     );
 
     res.status(201).json({
@@ -354,7 +356,7 @@ export async function assignSiteDuration(req: Request, res: Response) {
   try {
     const supportUserId = req.user!.id;
     const agentId = Number(req.params.agentId);
-    const { siteId, durationDays, startDate } = req.body;
+    const { siteId, durationDays, startDate, workersNeeded } = req.body;
 
     if (!siteId) {
       return res.status(400).json({
@@ -368,7 +370,8 @@ export async function assignSiteDuration(req: Request, res: Response) {
       agentId,
       Number(siteId),
       Number(durationDays) || 7,
-      startDate
+      startDate,
+      workersNeeded ? Number(workersNeeded) : undefined
     );
 
     res.json({

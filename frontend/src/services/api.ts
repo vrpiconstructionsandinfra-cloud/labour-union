@@ -1188,6 +1188,7 @@ export interface SupportAgentMessageItem {
   sender?: {
     id: number;
     name: string;
+    employeeCode?: string;
     role: string;
     profileImage?: string | null;
   };
@@ -1214,7 +1215,7 @@ export const unassignAgentFromBasketApi = async (agentId: number | string): Prom
 
 export const assignSiteToAgentApi = async (
   agentId: number | string,
-  data: { siteId: number | string; durationDays: number; startDate?: string }
+  data: { siteId: number | string; durationDays: number; startDate?: string; workersNeeded?: number | string }
 ): Promise<{ success: boolean; message: string; data: any }> => {
   const res = await fetchWithAuth(`/api/support/field-agents/${agentId}/assign-site`, {
     method: 'POST',

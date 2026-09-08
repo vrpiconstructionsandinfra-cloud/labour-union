@@ -61,6 +61,26 @@
   background-color: #1d4ed8;
 }
 
+.sfa-create-site-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #059669;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+  transition: all 0.2s ease;
+}
+
+.sfa-create-site-btn:hover {
+  background-color: #047857;
+}
+
 .sfa-refresh-btn {
   display: flex;
   align-items: center;
@@ -486,30 +506,46 @@
 }
 
 /* Drawers & Modals */
-.sfa-drawer-backdrop,
+.sfa-drawer-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+  z-index: 1000000;
+}
+
 .sfa-modal-backdrop {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(15, 23, 42, 0.6);
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background-color: rgba(15, 23, 42, 0.65);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  z-index: 9999;
-}
-
-.sfa-modal-backdrop {
   justify-content: center;
   padding: 16px;
+  z-index: 1000005;
 }
 
 .sfa-drawer-panel {
   width: 540px;
-  max-width: 95vw;
+  max-width: 100vw;
   height: 100vh;
+  height: 100dvh;
   background-color: #ffffff;
   box-shadow: -10px 0 25px rgba(0, 0, 0, 0.2);
   display: flex;
@@ -520,14 +556,16 @@
 
 .sfa-chat-panel {
   width: 480px;
-  max-width: 95vw;
+  max-width: 100vw;
   height: 100vh;
+  height: 100dvh;
   background-color: #ffffff;
   box-shadow: -10px 0 25px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   animation: slideInRight 0.25s ease-out forwards;
+  z-index: 1000001;
 }
 
 .sfa-modal-box {
@@ -950,31 +988,556 @@
   }
 }
 
-@media (max-width: 639px) {
-  .sfa-metrics-grid {
-    grid-template-columns: 1fr;
+/* Searchable Agent Picker */
+.sfa-searchable-picker {
+  position: relative;
+  width: 100%;
+}
+
+.sfa-picker-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 12px;
+  transition: all 0.2s ease;
+}
+
+.sfa-picker-search-bar:focus-within {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.sfa-picker-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: #0f172a;
+  background: transparent;
+}
+
+.sfa-picker-clear {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 50%;
+}
+
+.sfa-picker-clear:hover {
+  background-color: #f1f5f9;
+  color: #475569;
+}
+
+.sfa-picker-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 1050;
+}
+
+.sfa-picker-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background-color 0.15s ease;
+}
+
+.sfa-picker-item:last-child {
+  border-bottom: none;
+}
+
+.sfa-picker-item:hover {
+  background-color: #eff6ff;
+}
+
+.sfa-picker-item.unassigned-opt {
+  background-color: #f8fafc;
+  color: #64748b;
+  font-size: 12.5px;
+}
+
+.sfa-picker-item.unassigned-opt:hover {
+  background-color: #f1f5f9;
+  color: #334155;
+}
+
+.sfa-picker-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-right: 10px;
+}
+
+.sfa-picker-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.sfa-picker-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.sfa-picker-sub {
+  font-size: 11.5px;
+  color: #64748b;
+}
+
+.sfa-picker-site-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background-color: #f1f5f9;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.sfa-picker-empty {
+  padding: 14px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 12.5px;
+}
+
+/* Selected Agent Card */
+.sfa-selected-agent-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #ffffff;
+  border: 1.5px solid #93c5fd;
+  border-radius: 10px;
+  padding: 10px 14px;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.08);
+}
+
+.sfa-change-agent-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sfa-change-agent-btn:hover {
+  background-color: #fecaca;
+}
+
+.sfa-site-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.sfa-site-tag.active {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.sfa-site-tag.unassigned {
+  background-color: #fef3c7;
+  color: #b45309;
+}
+
+/* Responsive Desktop vs Mobile Card Classes */
+.sfa-desktop-table {
+  display: block;
+}
+
+.sfa-mobile-cards {
+  display: none;
+}
+
+/* Mobile Agent Card Component */
+.sfa-agent-card {
+  background-color: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sfa-agent-card:active {
+  transform: scale(0.99);
+}
+
+.sfa-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sfa-card-agent-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sfa-card-agent-name {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-primary, #0f172a);
+  line-height: 1.2;
+}
+
+.sfa-card-basket-badge {
+  flex-shrink: 0;
+}
+
+.sfa-card-contact-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sfa-card-contact-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--bg-main, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  text-decoration: none;
+  max-width: 100%;
+}
+
+.sfa-card-contact-pill:hover {
+  background-color: #eff6ff;
+  border-color: #bfdbfe;
+  color: #2563eb;
+}
+
+.truncate-pill-text {
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sfa-card-address {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+  line-height: 1.35;
+}
+
+.sfa-card-meta-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background-color: var(--bg-main, #f8fafc);
+  border: 1px solid var(--border-color, #f1f5f9);
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+
+.sfa-card-meta-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sfa-card-meta-col.right {
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.sfa-card-meta-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-secondary, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.sfa-card-site-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sfa-card-site-info strong {
+  font-size: 13px;
+  color: var(--text-primary, #0f172a);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.sfa-card-duration-text {
+  font-size: 11px;
+  color: #059669;
+  font-weight: 600;
+}
+
+.sfa-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color, #f1f5f9);
+}
+
+.sfa-card-actions .sfa-basket-btn {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 12px;
+  justify-content: center;
+}
+
+.sfa-card-actions .sfa-assign-site-btn {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 12px;
+  justify-content: center;
+}
+
+.sfa-card-actions .sfa-chat-btn {
+  padding: 8px 12px;
+}
+
+/* Dark Mode Overrides */
+[data-theme="dark"] .sfa-agent-card,
+body.dark-mode .sfa-agent-card {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .sfa-card-agent-name,
+body.dark-mode .sfa-card-agent-name {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .sfa-card-contact-pill,
+body.dark-mode .sfa-card-contact-pill {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .sfa-card-meta-box,
+body.dark-mode .sfa-card-meta-box {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .sfa-card-site-info strong,
+body.dark-mode .sfa-card-site-info strong {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .sfa-card-actions,
+body.dark-mode .sfa-card-actions {
+  border-top-color: #334155 !important;
+}
+
+/* Responsive Media Queries */
+@media (max-width: 768px) {
+  .support-field-agents-container {
+    padding: 12px 14px 24px 14px !important;
   }
+
+  .sfa-header-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .sfa-header-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .sfa-header-actions .sfa-add-agent-btn,
+  .sfa-header-actions .sfa-create-site-btn {
+    padding: 9px 12px !important;
+    font-size: 12px !important;
+    justify-content: center !important;
+  }
+
+  .sfa-header-actions .sfa-refresh-btn {
+    grid-column: span 2 !important;
+    justify-content: center !important;
+    padding: 8px 12px !important;
+  }
+
+  .sfa-metrics-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .sfa-metric-card {
+    padding: 12px 14px !important;
+    gap: 12px !important;
+    border-radius: 12px !important;
+  }
+
+  .sfa-metric-icon {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 10px !important;
+  }
+
+  .sfa-metric-label {
+    font-size: 11px !important;
+  }
+
+  .sfa-metric-value {
+    font-size: 18px !important;
+  }
+
+  .sfa-toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    margin-bottom: 14px !important;
+  }
+
+  .sfa-filter-tabs {
+    width: 100% !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 4px !important;
+    gap: 6px !important;
+  }
+
+  .sfa-tab-btn {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    font-size: 12px !important;
+    padding: 7px 12px !important;
+  }
+
+  .sfa-search-box {
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  .sfa-table-card {
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Switch Table to Cards */
+  .sfa-desktop-table {
+    display: none !important;
+  }
+
+  .sfa-mobile-cards {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  .sfa-drawer-backdrop {
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    z-index: 1000000 !important;
+  }
+
   .sfa-drawer-panel,
   .sfa-chat-panel {
-    width: 100vw;
-    max-width: 100vw;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
   }
-  .sfa-toolbar {
-    flex-direction: column;
-    align-items: stretch;
+
+  .sfa-chat-header {
+    padding-top: max(16px, env(safe-area-inset-top)) !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    padding-bottom: 12px !important;
   }
-  .sfa-search-box {
-    width: 100%;
-    min-width: 100%;
+
+  .sfa-chat-footer,
+  form.sfa-chat-footer {
+    padding-bottom: max(16px, env(safe-area-inset-bottom)) !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    padding-top: 10px !important;
   }
-  .sfa-filter-tabs {
-    width: 100%;
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    -webkit-overflow-scrolling: touch;
+
+  .sfa-chat-messages {
+    padding: 14px !important;
   }
-  .sfa-tab-btn {
-    flex-shrink: 0;
-    white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .sfa-card-meta-box {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+
+  .sfa-card-meta-col.right {
+    align-items: flex-start !important;
+    width: 100% !important;
   }
 }

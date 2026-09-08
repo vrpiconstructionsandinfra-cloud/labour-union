@@ -10,6 +10,8 @@ import {
   sendSupportMessageApi,
   raiseTicketFromChatApi,
   fetchSitesApi,
+  createSiteApi,
+  fetchAgentsApi,
   type SupportFieldAgentItem,
   type SupportAgentMessageItem,
 } from '../services/api';
@@ -51,6 +53,7 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterTab, setFilterTab] = useState<'ALL' | 'MY_BASKET' | 'ACTIVE_SITE' | 'UNASSIGNED'>('ALL');
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(new Set());
 
   // Selected Agent for Details Drawer
   const [selectedAgent, setSelectedAgent] = useState<SupportFieldAgentItem | null>(null);
@@ -59,8 +62,26 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
   const [siteModalAgent, setSiteModalAgent] = useState<SupportFieldAgentItem | null>(null);
   const [selectedSiteId, setSelectedSiteId] = useState<string>('');
   const [durationDays, setDurationDays] = useState<number>(7);
+  const [workersNeeded, setWorkersNeeded] = useState<number>(5);
   const [startDate, setStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [isAssigningSite, setIsAssigningSite] = useState<boolean>(false);
+
+  // Create Site Modal State
+  const [isCreateSiteModalOpen, setIsCreateSiteModalOpen] = useState<boolean>(false);
+  const [newSiteName, setNewSiteName] = useState<string>('');
+  const [newCompanyName, setNewCompanyName] = useState<string>('');
+  const [newAddress, setNewAddress] = useState<string>('');
+  const [newCity, setNewCity] = useState<string>('');
+  const [newState, setNewState] = useState<string>('');
+  const [newPincode, setNewPincode] = useState<string>('');
+  const [newContactPerson, setNewContactPerson] = useState<string>('');
+  const [newContactNumber, setNewContactNumber] = useState<string>('');
+  const [newAssignAgentId, setNewAssignAgentId] = useState<string>('');
+  const [modalAgentSearch, setModalAgentSearch] = useState<string>('');
+  const [isAgentDropdownOpen, setIsAgentDropdownOpen] = useState<boolean>(false);
+  const [newDurationDays, setNewDurationDays] = useState<number>(7);
+  const [newWorkersNeeded, setNewWorkersNeeded] = useState<number>(5);
+  const [isCreatingSite, setIsCreatingSite] = useState<boolean>(false);
 
   // Chat & Emergency Drawer State
   const [chatAgent, setChatAgent] = useState<SupportFieldAgentItem | null>(null);
@@ -81,7 +102,7 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
     else setIsLoading(true);
 
     try {
-      const [agentsData, sitesData] = await Promise.all([
+      let [agentsData, sitesData] = await Promise.all([
         fetchSupportFieldAgentsApi().catch((e) => {
           console.error('fetchSupportFieldAgentsApi error:', e);
           return [];
@@ -91,6 +112,50 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
           return [];
         }),
       ]);
+
+      if (!agentsData || agentsData.length === 0) {
+        try {
+          const fallbackAgents = await fetchAgentsApi();
+          if (Array.isArray(fallbackAgents) && fallbackAgents.length > 0) {
+            agentsData = fallbackAgents.map((fa: any) => ({
+              id: Number(fa.id),
+              name: fa.name,
+              employeeCode: fa.employeeCode || `AGT-${fa.id}`,
+              email: fa.email,
+              phone: fa.phone,
+              address: fa.address || '',
+              status: fa.status || 'ACTIVE',
+              active: fa.status === 'ACTIVE' || Boolean(fa.active),
+              workersCount: fa.assignedWorkersCount || fa.assignedWorkers?.length || 0,
+              workers: (fa.assignedWorkers || []).map((w: any) => ({
+                id: Number(w.id),
+                name: w.name,
+                employeeCode: w.employeeCode || `WRK-${w.id}`,
+                phone: w.phone || '',
+                email: w.email || '',
+                status: 'ACTIVE',
+                todayAttendance: 'PRESENT' as const,
+              })),
+              currentSite: fa.siteId ? {
+                id: Number(fa.siteId),
+                siteCode: `SITE-${fa.siteId}`,
+                siteName: fa.assignedSite || 'Working Site',
+                companyName: 'Labor Union Org',
+                city: 'City',
+                state: 'State',
+                status: 'ACTIVE',
+              } : null,
+              activeAssignment: null,
+              isInMyBasket: false,
+              managedBySupportId: null,
+              managedBySupport: null,
+            }));
+          }
+        } catch (e) {
+          console.error('Fallback fetchAgentsApi error:', e);
+        }
+      }
+
       setAgents(Array.isArray(agentsData) ? agentsData : []);
       setSites(Array.isArray(sitesData) ? sitesData : []);
 
@@ -111,17 +176,44 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
     loadData();
   }, []);
 
-  // Socket.io Real-Time Listener for Support Messages & Site Updates
+  // Socket.io Real-Time Listener for Support Messages, Online Presence & Site Updates
   useEffect(() => {
     const socket = getSocket();
+
+    const handleOnlineUsers = (userIds: number[]) => {
+      if (Array.isArray(userIds)) {
+        setOnlineUserIds(new Set(userIds.map(Number)));
+      }
+    };
+
+    const handleUserStatusChange = (data: { userId: number; isOnline: boolean }) => {
+      if (data && data.userId) {
+        setOnlineUserIds((prev) => {
+          const next = new Set(prev);
+          if (data.isOnline) {
+            next.add(Number(data.userId));
+          } else {
+            next.delete(Number(data.userId));
+          }
+          return next;
+        });
+      }
+    };
+
     const handleNewMessage = (msg: any) => {
       if (chatAgent && (msg.fieldAgentId === chatAgent.id || msg.senderId === chatAgent.id)) {
         setMessages((prev) => [...prev, msg]);
       }
     };
 
+    socket.on('users:online', handleOnlineUsers);
+    socket.on('user:status:changed', handleUserStatusChange);
     socket.on('support_message', handleNewMessage);
+    socket.emit('get:online_users');
+
     return () => {
+      socket.off('users:online', handleOnlineUsers);
+      socket.off('user:status:changed', handleUserStatusChange);
       socket.off('support_message', handleNewMessage);
     };
   }, [chatAgent]);
@@ -176,14 +268,71 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
         siteId: selectedSiteId,
         durationDays,
         startDate,
+        workersNeeded,
       });
       await loadData();
       setSiteModalAgent(null);
       setSelectedSiteId('');
+      setWorkersNeeded(5);
     } catch (err: any) {
       alert(err.message || 'Failed to assign site');
     } finally {
       setIsAssigningSite(false);
+    }
+  };
+
+  // Submit Create New Working Site
+  const handleCreateSiteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSiteName.trim()) return;
+
+    setIsCreatingSite(true);
+    try {
+      const siteCode = `SITE-${Date.now().toString().slice(-4)}`;
+      const createdSite = await createSiteApi({
+        siteCode,
+        siteName: newSiteName.trim(),
+        companyName: newCompanyName.trim() || 'Labor Union Org',
+        address: newAddress.trim() || 'Site Address',
+        city: newCity.trim() || 'Mumbai',
+        state: newState.trim() || 'Maharashtra',
+        pincode: newPincode.trim() || '400001',
+        contactPerson: newContactPerson.trim() || 'Site Supervisor',
+        contactNumber: newContactNumber.trim() || '9876543210',
+        status: 'ACTIVE',
+      });
+
+      const newSiteId = createdSite?.id;
+
+      // If an agent was selected to be assigned right away:
+      if (newAssignAgentId && newSiteId) {
+        await assignSiteToAgentApi(newAssignAgentId, {
+          siteId: newSiteId,
+          durationDays: newDurationDays || 7,
+          startDate: new Date().toISOString().split('T')[0],
+          workersNeeded: newWorkersNeeded || 5,
+        });
+      }
+
+      await loadData();
+      setIsCreateSiteModalOpen(false);
+      // Reset form fields
+      setNewSiteName('');
+      setNewCompanyName('');
+      setNewAddress('');
+      setNewCity('');
+      setNewState('');
+      setNewPincode('');
+      setNewContactPerson('');
+      setNewContactNumber('');
+      setNewAssignAgentId('');
+      setNewDurationDays(7);
+      setNewWorkersNeeded(5);
+      alert('Working site created successfully' + (newAssignAgentId ? ' and agent assigned with automated chat notice!' : '!'));
+    } catch (err: any) {
+      alert(err.message || 'Failed to create working site');
+    } finally {
+      setIsCreatingSite(false);
     }
   };
 
@@ -300,7 +449,16 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => setIsCreateSiteModalOpen(true)}
+            className="sfa-create-site-btn"
+          >
+            <Building2 size={16} />
+            <span>+ Create Working Site</span>
+          </button>
+
           {onOpenRegisterModal && (
             <button
               type="button"
@@ -426,162 +584,313 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
             <p>No agents match the selected filter criteria or search query.</p>
           </div>
         ) : (
-          <div className="table-responsive">
-            <table className="sfa-table">
-              <thead>
-                <tr>
-                  <th>Field Agent</th>
-                  <th>Contact Info</th>
-                  <th>Residential Address</th>
-                  <th>Assigned Site & Duration</th>
-                  <th>Assigned Workers</th>
-                  <th>Basket Status</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredAgents.map((agent) => (
-                  <tr key={agent.id} onClick={() => setSelectedAgent(agent)} style={{ cursor: 'pointer' }}>
-                    {/* Agent Name & ID */}
-                    <td>
-                      <div className="sfa-agent-cell">
-                        <div className="sfa-agent-avatar">
-                          {agent.name.charAt(0).toUpperCase()}
+          <>
+            {/* Desktop Table View */}
+            <div className="table-responsive sfa-desktop-table">
+              <table className="sfa-table">
+                <thead>
+                  <tr>
+                    <th>Field Agent</th>
+                    <th>Contact Info</th>
+                    <th>Residential Address</th>
+                    <th>Assigned Site & Duration</th>
+                    <th>Assigned Workers</th>
+                    <th>Basket Status</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAgents.map((agent) => (
+                    <tr key={agent.id} onClick={() => setSelectedAgent(agent)} style={{ cursor: 'pointer' }}>
+                      {/* Agent Name & ID */}
+                      <td>
+                        <div className="sfa-agent-cell">
+                          <div className="sfa-agent-avatar" style={{ position: 'relative' }}>
+                            {agent.name.charAt(0).toUpperCase()}
+                            <span
+                              style={{
+                                position: 'absolute',
+                                bottom: '-1px',
+                                right: '-1px',
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                backgroundColor: onlineUserIds.has(Number(agent.id)) ? '#10B981' : '#94A3B8',
+                                border: '1.5px solid #FFFFFF'
+                              }}
+                              title={onlineUserIds.has(Number(agent.id)) ? 'Online' : 'Offline'}
+                            />
+                          </div>
+                          <div>
+                            <span className="sfa-agent-name">{agent.name}</span>
+                            <span className="sfa-agent-code">{agent.employeeCode}</span>
+                          </div>
                         </div>
-                        <div>
-                          <span className="sfa-agent-name">{agent.name}</span>
-                          <span className="sfa-agent-code">{agent.employeeCode}</span>
-                        </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Contact Info */}
-                    <td onClick={(e) => e.stopPropagation()}>
-                      <div className="sfa-contact-cell">
-                        {agent.phone ? (
-                          <a href={`tel:${agent.phone}`} className="sfa-contact-link">
-                            <Phone size={13} color="#2563EB" />
-                            <span>{agent.phone}</span>
-                          </a>
+                      {/* Contact Info */}
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <div className="sfa-contact-cell">
+                          {agent.phone ? (
+                            <a href={`tel:${agent.phone}`} className="sfa-contact-link">
+                              <Phone size={13} color="#2563EB" />
+                              <span>{agent.phone}</span>
+                            </a>
+                          ) : (
+                            <span className="text-muted">—</span>
+                          )}
+                          {agent.email && (
+                            <a href={`mailto:${agent.email}`} className="sfa-email-link">
+                              <Mail size={12} color="#64748B" />
+                              <span>{agent.email}</span>
+                            </a>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Residential Address */}
+                      <td>
+                        {agent.address ? (
+                          <div className="sfa-address-text" title={agent.address}>
+                            <MapPin size={13} color="#64748B" style={{ flexShrink: 0 }} />
+                            <span>{agent.address}</span>
+                          </div>
                         ) : (
                           <span className="text-muted">—</span>
                         )}
-                        {agent.email && (
-                          <a href={`mailto:${agent.email}`} className="sfa-email-link">
-                            <Mail size={12} color="#64748B" />
-                            <span>{agent.email}</span>
-                          </a>
-                        )}
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Residential Address */}
-                    <td>
-                      {agent.address ? (
-                        <div className="sfa-address-text" title={agent.address}>
-                          <MapPin size={13} color="#64748B" style={{ flexShrink: 0 }} />
-                          <span>{agent.address}</span>
-                        </div>
-                      ) : (
-                        <span className="text-muted">—</span>
-                      )}
-                    </td>
-
-                    {/* Assigned Site & Duration */}
-                    <td onClick={(e) => e.stopPropagation()}>
-                      {agent.currentSite ? (
-                        <div className="sfa-site-cell">
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <Building2 size={14} color="#059669" />
-                            <strong style={{ color: '#0F172A', fontSize: '13px' }}>
-                              {agent.currentSite.siteName}
-                            </strong>
-                          </div>
-                          {agent.activeAssignment?.durationDays && (
-                            <div className="sfa-duration-badge">
-                              <Clock size={11} />
-                              <span>{agent.activeAssignment.durationDays} Days allocated</span>
-                              {agent.activeAssignment.remainingDays !== null && (
-                                <span className="sfa-remaining-tag">
-                                  ({agent.activeAssignment.remainingDays}d left)
-                                </span>
-                              )}
+                      {/* Assigned Site & Duration */}
+                      <td onClick={(e) => e.stopPropagation()}>
+                        {agent.currentSite ? (
+                          <div className="sfa-site-cell">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <Building2 size={14} color="#059669" />
+                              <strong style={{ color: '#0F172A', fontSize: '13px' }}>
+                                {agent.currentSite.siteName}
+                              </strong>
                             </div>
-                          )}
+                            {agent.activeAssignment?.durationDays && (
+                              <div className="sfa-duration-badge">
+                                <Clock size={11} />
+                                <span>{agent.activeAssignment.durationDays} Days allocated</span>
+                                {agent.activeAssignment.remainingDays !== null && (
+                                  <span className="sfa-remaining-tag">
+                                    ({agent.activeAssignment.remainingDays}d left)
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="sfa-unassigned-pill">Not Assigned</span>
+                        )}
+                      </td>
+
+                      {/* Assigned Workers Count */}
+                      <td>
+                        <div className="sfa-workers-badge">
+                          <UserCheck size={13} />
+                          <span>{agent.workersCount} Workers</span>
                         </div>
-                      ) : (
-                        <span className="sfa-unassigned-pill">Not Assigned</span>
-                      )}
-                    </td>
+                      </td>
 
-                    {/* Assigned Workers Count */}
-                    <td>
-                      <div className="sfa-workers-badge">
-                        <UserCheck size={13} />
-                        <span>{agent.workersCount} Workers</span>
+                      {/* Basket Status */}
+                      <td onClick={(e) => e.stopPropagation()}>
+                        {agent.isInMyBasket ? (
+                          <span className="sfa-basket-pill my-basket">
+                            ⭐ In My Basket
+                          </span>
+                        ) : agent.managedBySupport ? (
+                          <span className="sfa-basket-pill other-basket" title={`Managed by ${agent.managedBySupport.name}`}>
+                            Assigned: {agent.managedBySupport.name.split(' ')[0]}
+                          </span>
+                        ) : (
+                          <span className="sfa-basket-pill unassigned">
+                            Unassigned Basket
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Action Buttons */}
+                      <td onClick={(e) => e.stopPropagation()} style={{ textAlign: 'right' }}>
+                        <div className="sfa-actions-cell">
+                          {/* Basket Claim / Release */}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleBasket(agent)}
+                            className={`sfa-basket-btn ${agent.isInMyBasket ? 'unassign' : 'assign'}`}
+                            title={agent.isInMyBasket ? 'Release from My Basket' : 'Claim to My Basket'}
+                          >
+                            {agent.isInMyBasket ? 'Unassign' : 'Assign to Me'}
+                          </button>
+
+                          {/* Assign Site Button */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSiteModalAgent(agent);
+                              setSelectedSiteId(agent.currentSite?.id ? String(agent.currentSite.id) : '');
+                            }}
+                            className="sfa-assign-site-btn"
+                            title="Assign Working Site & Duration"
+                          >
+                            <Building2 size={13} />
+                            <span>Assign Site</span>
+                          </button>
+
+                          {/* Direct Chat / Equipment Request */}
+                          <button
+                            type="button"
+                            onClick={() => setChatAgent(agent)}
+                            className="sfa-chat-btn"
+                            title="Direct Message / Equipment Request"
+                          >
+                            <MessageSquare size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards View */}
+            <div className="sfa-mobile-cards">
+              {filteredAgents.map((agent) => (
+                <div
+                  key={agent.id}
+                  className="sfa-agent-card"
+                  onClick={() => setSelectedAgent(agent)}
+                >
+                  {/* Top Row: Avatar, Name, Code, Basket Pill */}
+                  <div className="sfa-card-top">
+                    <div className="sfa-card-agent-info">
+                      <div className="sfa-agent-avatar" style={{ position: 'relative' }}>
+                        {agent.name.charAt(0).toUpperCase()}
+                        <span
+                          style={{
+                            position: 'absolute',
+                            bottom: '-1px',
+                            right: '-1px',
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            backgroundColor: onlineUserIds.has(Number(agent.id)) ? '#10B981' : '#94A3B8',
+                            border: '1.5px solid #FFFFFF'
+                          }}
+                          title={onlineUserIds.has(Number(agent.id)) ? 'Online' : 'Offline'}
+                        />
                       </div>
-                    </td>
-
-                    {/* Basket Status */}
-                    <td onClick={(e) => e.stopPropagation()}>
+                      <div>
+                        <span className="sfa-card-agent-name">{agent.name}</span>
+                        <span className="sfa-agent-code">{agent.employeeCode}</span>
+                      </div>
+                    </div>
+                    <div className="sfa-card-basket-badge" onClick={(e) => e.stopPropagation()}>
                       {agent.isInMyBasket ? (
-                        <span className="sfa-basket-pill my-basket">
-                          ⭐ In My Basket
-                        </span>
+                        <span className="sfa-basket-pill my-basket">⭐ In My Basket</span>
                       ) : agent.managedBySupport ? (
                         <span className="sfa-basket-pill other-basket" title={`Managed by ${agent.managedBySupport.name}`}>
                           Assigned: {agent.managedBySupport.name.split(' ')[0]}
                         </span>
                       ) : (
-                        <span className="sfa-basket-pill unassigned">
-                          Unassigned Basket
-                        </span>
+                        <span className="sfa-basket-pill unassigned">Unassigned</span>
                       )}
-                    </td>
+                    </div>
+                  </div>
 
-                    {/* Action Buttons */}
-                    <td onClick={(e) => e.stopPropagation()} style={{ textAlign: 'right' }}>
-                      <div className="sfa-actions-cell">
-                        {/* Basket Claim / Release */}
-                        <button
-                          type="button"
-                          onClick={() => handleToggleBasket(agent)}
-                          className={`sfa-basket-btn ${agent.isInMyBasket ? 'unassign' : 'assign'}`}
-                          title={agent.isInMyBasket ? 'Release from My Basket' : 'Claim to My Basket'}
-                        >
-                          {agent.isInMyBasket ? 'Unassign' : 'Assign to Me'}
-                        </button>
+                  {/* Contact Row */}
+                  <div className="sfa-card-contact-row" onClick={(e) => e.stopPropagation()}>
+                    {agent.phone ? (
+                      <a href={`tel:${agent.phone}`} className="sfa-card-contact-pill">
+                        <Phone size={12} color="#2563EB" />
+                        <span>{agent.phone}</span>
+                      </a>
+                    ) : null}
+                    {agent.email ? (
+                      <a href={`mailto:${agent.email}`} className="sfa-card-contact-pill">
+                        <Mail size={12} color="#64748B" />
+                        <span className="truncate-pill-text">{agent.email}</span>
+                      </a>
+                    ) : null}
+                  </div>
 
-                        {/* Assign Site Button */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSiteModalAgent(agent);
-                            setSelectedSiteId(agent.currentSite?.id ? String(agent.currentSite.id) : '');
-                          }}
-                          className="sfa-assign-site-btn"
-                          title="Assign Working Site & Duration"
-                        >
-                          <Building2 size={13} />
-                          <span>Assign Site</span>
-                        </button>
+                  {/* Residential Address */}
+                  {agent.address ? (
+                    <div className="sfa-card-address">
+                      <MapPin size={12} color="#64748B" style={{ flexShrink: 0 }} />
+                      <span>{agent.address}</span>
+                    </div>
+                  ) : null}
 
-                        {/* Direct Chat / Equipment Request */}
-                        <button
-                          type="button"
-                          onClick={() => setChatAgent(agent)}
-                          className="sfa-chat-btn"
-                          title="Direct Message / Equipment Request"
-                        >
-                          <MessageSquare size={14} />
-                        </button>
+                  {/* Site & Workforce Metadata Box */}
+                  <div className="sfa-card-meta-box">
+                    <div className="sfa-card-meta-col">
+                      <span className="sfa-card-meta-label">Assigned Site</span>
+                      {agent.currentSite ? (
+                        <div className="sfa-card-site-info">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <Building2 size={13} color="#059669" />
+                            <strong>{agent.currentSite.siteName}</strong>
+                          </div>
+                          {agent.activeAssignment?.durationDays && (
+                            <span className="sfa-card-duration-text">
+                              {agent.activeAssignment.durationDays}d allocated
+                              {agent.activeAssignment.remainingDays !== null ? ` (${agent.activeAssignment.remainingDays}d left)` : ''}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="sfa-unassigned-pill">Not Assigned</span>
+                      )}
+                    </div>
+
+                    <div className="sfa-card-meta-col right">
+                      <span className="sfa-card-meta-label">Workforce</span>
+                      <div className="sfa-workers-badge">
+                        <UserCheck size={12} />
+                        <span>{agent.workersCount} Workers</span>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons Footer */}
+                  <div className="sfa-card-actions" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleBasket(agent)}
+                      className={`sfa-basket-btn ${agent.isInMyBasket ? 'unassign' : 'assign'}`}
+                    >
+                      {agent.isInMyBasket ? 'Unassign' : 'Assign to Me'}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSiteModalAgent(agent);
+                        setSelectedSiteId(agent.currentSite?.id ? String(agent.currentSite.id) : '');
+                      }}
+                      className="sfa-assign-site-btn"
+                    >
+                      <Building2 size={13} />
+                      <span>Assign Site</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setChatAgent(agent)}
+                      className="sfa-chat-btn"
+                      title="Direct Message / Equipment Request"
+                    >
+                      <MessageSquare size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
@@ -593,15 +902,33 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
           <div className="sfa-drawer-panel" onClick={(e) => e.stopPropagation()}>
             <div className="sfa-drawer-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div className="sfa-agent-avatar large">
+                <div className="sfa-agent-avatar large" style={{ position: 'relative' }}>
                   {selectedAgent.name.charAt(0).toUpperCase()}
+                  <span
+                    style={{
+                      position: 'absolute',
+                      bottom: '0px',
+                      right: '0px',
+                      width: '12px',
+                      height: '12px',
+                      borderRadius: '50%',
+                      backgroundColor: onlineUserIds.has(Number(selectedAgent.id)) ? '#10B981' : '#94A3B8',
+                      border: '2px solid #FFFFFF'
+                    }}
+                    title={onlineUserIds.has(Number(selectedAgent.id)) ? 'Online' : 'Offline'}
+                  />
                 </div>
                 <div>
                   <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0F172A' }}>
                     {selectedAgent.name}
                   </h2>
-                  <span style={{ fontSize: '12.5px', color: '#64748B', fontWeight: 600 }}>
-                    {selectedAgent.employeeCode} • Field Agent
+                  <span style={{ fontSize: '12.5px', color: '#64748B', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <span>{selectedAgent.employeeCode} • Field Agent</span>
+                    <span>•</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: onlineUserIds.has(Number(selectedAgent.id)) ? '#059669' : '#64748B' }}>
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: onlineUserIds.has(Number(selectedAgent.id)) ? '#10B981' : '#94A3B8', display: 'inline-block' }}></span>
+                      {onlineUserIds.has(Number(selectedAgent.id)) ? 'Online' : 'Offline'}
+                    </span>
                   </span>
                 </div>
               </div>
@@ -780,7 +1107,7 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
                 </select>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '14px', marginBottom: '20px' }}>
                 <div>
                   <label className="sfa-form-label">
                     <Clock size={14} color="#2563EB" />
@@ -792,6 +1119,22 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
                     max="365"
                     value={durationDays}
                     onChange={(e) => setDurationDays(Number(e.target.value))}
+                    className="sfa-form-input"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="sfa-form-label">
+                    <UserCheck size={14} color="#2563EB" />
+                    <span>Workers Needed *</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="1000"
+                    value={workersNeeded}
+                    onChange={(e) => setWorkersNeeded(Number(e.target.value))}
                     className="sfa-form-input"
                     required
                   />
@@ -834,25 +1177,425 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
+          2b. Modal: Create New Working Site & Assign Field Agent
+         ───────────────────────────────────────────────────────────────────────────── */}
+      {isCreateSiteModalOpen && (
+        <div
+          className="sfa-modal-backdrop"
+          onClick={() => {
+            setIsCreateSiteModalOpen(false);
+            setIsAgentDropdownOpen(false);
+            setModalAgentSearch('');
+          }}
+        >
+          <div className="sfa-modal-box" style={{ maxWidth: '640px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="sfa-modal-header">
+              <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Building2 size={20} color="#059669" />
+                <span>Create New Working Site</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCreateSiteModalOpen(false);
+                  setIsAgentDropdownOpen(false);
+                  setModalAgentSearch('');
+                }}
+                className="sfa-drawer-close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSiteSubmit} style={{ padding: '20px 24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                <div>
+                  <label className="sfa-form-label">
+                    <Building2 size={14} color="#2563EB" />
+                    <span>Site Name *</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newSiteName}
+                    onChange={(e) => setNewSiteName(e.target.value)}
+                    className="sfa-form-input"
+                    placeholder="e.g. Metro Line 4 Construction"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="sfa-form-label">
+                    <Briefcase size={14} color="#2563EB" />
+                    <span>Company / Client Name</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newCompanyName}
+                    onChange={(e) => setNewCompanyName(e.target.value)}
+                    className="sfa-form-input"
+                    placeholder="e.g. L&T Infrastructure"
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '14px' }}>
+                <label className="sfa-form-label">
+                  <MapPin size={14} color="#2563EB" />
+                  <span>Site Address / Landmark</span>
+                </label>
+                <input
+                  type="text"
+                  value={newAddress}
+                  onChange={(e) => setNewAddress(e.target.value)}
+                  className="sfa-form-input"
+                  placeholder="e.g. Plot 42, Sector 18, BKC"
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                <div>
+                  <label className="sfa-form-label"><span>City</span></label>
+                  <input
+                    type="text"
+                    value={newCity}
+                    onChange={(e) => setNewCity(e.target.value)}
+                    className="sfa-form-input"
+                    placeholder="Mumbai"
+                  />
+                </div>
+                <div>
+                  <label className="sfa-form-label"><span>State</span></label>
+                  <input
+                    type="text"
+                    value={newState}
+                    onChange={(e) => setNewState(e.target.value)}
+                    className="sfa-form-input"
+                    placeholder="Maharashtra"
+                  />
+                </div>
+                <div>
+                  <label className="sfa-form-label"><span>Pincode</span></label>
+                  <input
+                    type="text"
+                    value={newPincode}
+                    onChange={(e) => setNewPincode(e.target.value)}
+                    className="sfa-form-input"
+                    placeholder="400051"
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+                <div>
+                  <label className="sfa-form-label">
+                    <Users size={14} color="#2563EB" />
+                    <span>Site Supervisor / Contact Person</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newContactPerson}
+                    onChange={(e) => setNewContactPerson(e.target.value)}
+                    className="sfa-form-input"
+                    placeholder="e.g. Rajesh Kumar"
+                  />
+                </div>
+                <div>
+                  <label className="sfa-form-label">
+                    <Phone size={14} color="#2563EB" />
+                    <span>Contact Phone Number</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newContactNumber}
+                    onChange={(e) => setNewContactNumber(e.target.value)}
+                    className="sfa-form-input"
+                    placeholder="e.g. 9876543210"
+                  />
+                </div>
+              </div>
+
+              {/* Optional Field Agent Assignment Section */}
+              <div style={{ backgroundColor: '#F8FAFC', border: '1.5px dashed #CBD5E1', borderRadius: '10px', padding: '14px 16px', marginBottom: '20px' }}>
+                <h4 style={{ margin: '0 0 10px 0', fontSize: '13.5px', fontWeight: 800, color: '#1E293B', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <UserCheck size={16} color="#2563EB" />
+                  <span>Assign Field Agent Immediately (Optional)</span>
+                </h4>
+
+                <div style={{ marginBottom: '12px' }}>
+                  <label className="sfa-form-label" style={{ marginBottom: '6px' }}>
+                    <span>Select Field Agent</span>
+                  </label>
+
+                  {agents.find((ag) => String(ag.id) === String(newAssignAgentId)) ? (
+                    (() => {
+                      const selectedAssignAgent = agents.find((ag) => String(ag.id) === String(newAssignAgentId))!;
+                      return (
+                        <div className="sfa-selected-agent-card">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div className="sfa-picker-avatar" style={{ margin: 0 }}>
+                              {selectedAssignAgent.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="sfa-picker-name">
+                                {selectedAssignAgent.name}
+                              </div>
+                              <div className="sfa-picker-sub">
+                                {selectedAssignAgent.employeeCode} {selectedAssignAgent.phone ? `• 📞 ${selectedAssignAgent.phone}` : ''}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {selectedAssignAgent.currentSite ? (
+                              <span className="sfa-site-tag active">
+                                🏗️ {selectedAssignAgent.currentSite.siteName}
+                              </span>
+                            ) : (
+                              <span className="sfa-site-tag unassigned">
+                                ⏳ Standby
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNewAssignAgentId('');
+                                setModalAgentSearch('');
+                              }}
+                              className="sfa-change-agent-btn"
+                              title="Deselect Agent"
+                            >
+                              <X size={13} />
+                              <span>Remove</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    <div className="sfa-searchable-picker">
+                      <div className="sfa-picker-search-bar" onClick={() => setIsAgentDropdownOpen(true)}>
+                        <Search size={15} color="#64748B" />
+                        <input
+                          type="text"
+                          placeholder="Type to search agent by name, code, phone..."
+                          value={modalAgentSearch}
+                          onChange={(e) => {
+                            setModalAgentSearch(e.target.value);
+                            setIsAgentDropdownOpen(true);
+                          }}
+                          onFocus={() => setIsAgentDropdownOpen(true)}
+                          className="sfa-picker-input"
+                        />
+                        {modalAgentSearch && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setModalAgentSearch('');
+                            }}
+                            className="sfa-picker-clear"
+                          >
+                            <X size={13} />
+                          </button>
+                        )}
+                      </div>
+
+                      {isAgentDropdownOpen && (
+                        <div className="sfa-picker-dropdown">
+                          <div
+                            className="sfa-picker-item unassigned-opt"
+                            onClick={() => {
+                              setNewAssignAgentId('');
+                              setIsAgentDropdownOpen(false);
+                            }}
+                          >
+                            <span style={{ fontWeight: 600, color: '#64748B' }}>
+                              -- No Agent (Keep Unassigned) --
+                            </span>
+                          </div>
+
+                          {agents
+                            .filter((ag) => {
+                              if (!modalAgentSearch.trim()) return true;
+                              const q = modalAgentSearch.toLowerCase().trim();
+                              return (
+                                (ag.name || '').toLowerCase().includes(q) ||
+                                (ag.employeeCode || '').toLowerCase().includes(q) ||
+                                (ag.phone || '').includes(q) ||
+                                (ag.currentSite?.siteName || '').toLowerCase().includes(q)
+                              );
+                            })
+                            .length === 0 ? (
+                            <div className="sfa-picker-empty">
+                              {agents.length === 0
+                                ? 'No field agents available to assign.'
+                                : `No field agents found matching "${modalAgentSearch}".`}
+                            </div>
+                          ) : (
+                            agents
+                              .filter((ag) => {
+                                if (!modalAgentSearch.trim()) return true;
+                                const q = modalAgentSearch.toLowerCase().trim();
+                                return (
+                                  (ag.name || '').toLowerCase().includes(q) ||
+                                  (ag.employeeCode || '').toLowerCase().includes(q) ||
+                                  (ag.phone || '').includes(q) ||
+                                  (ag.currentSite?.siteName || '').toLowerCase().includes(q)
+                                );
+                              })
+                              .map((ag) => (
+                                <div
+                                  key={ag.id}
+                                  className="sfa-picker-item"
+                                  onClick={() => {
+                                    setNewAssignAgentId(String(ag.id));
+                                    setIsAgentDropdownOpen(false);
+                                    setModalAgentSearch('');
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <div className="sfa-picker-avatar">
+                                      {ag.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="sfa-picker-info">
+                                      <span className="sfa-picker-name">{ag.name}</span>
+                                      <span className="sfa-picker-sub">
+                                        {ag.employeeCode} {ag.phone ? `• 📞 ${ag.phone}` : ''}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="sfa-picker-site-tag">
+                                    {ag.currentSite ? `🏗️ ${ag.currentSite.siteName}` : '⏳ Standby'}
+                                  </div>
+                                </div>
+                              ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {newAssignAgentId && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label className="sfa-form-label">
+                        <Clock size={13} color="#2563EB" />
+                        <span>Work Duration (Days) *</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="365"
+                        value={newDurationDays}
+                        onChange={(e) => setNewDurationDays(Number(e.target.value))}
+                        className="sfa-form-input"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="sfa-form-label">
+                        <Users size={13} color="#2563EB" />
+                        <span>Workers Needed *</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="1000"
+                        value={newWorkersNeeded}
+                        onChange={(e) => setNewWorkersNeeded(Number(e.target.value))}
+                        className="sfa-form-input"
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCreateSiteModalOpen(false);
+                    setIsAgentDropdownOpen(false);
+                    setModalAgentSearch('');
+                  }}
+                  className="sfa-cancel-btn"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingSite}
+                  className="sfa-submit-btn"
+                  style={{ backgroundColor: '#059669' }}
+                >
+                  {isCreatingSite ? 'Creating Site...' : newAssignAgentId ? 'Create Site & Assign Agent' : 'Create Working Site'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────────────────────
           3. Drawer: Live Chat, Equipment Requests & Emergency Ticket Action
          ───────────────────────────────────────────────────────────────────────────── */}
       {chatAgent && (
         <div className="sfa-drawer-backdrop" onClick={() => setChatAgent(null)}>
           <div className="sfa-chat-panel" onClick={(e) => e.stopPropagation()}>
             <div className="sfa-chat-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div className="sfa-agent-avatar">
-                  {chatAgent.name.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0F172A' }}>
-                    {chatAgent.name}
-                  </h3>
-                  <span style={{ fontSize: '11.5px', color: '#059669', fontWeight: 600 }}>
-                    ● Online • {chatAgent.currentSite?.siteName || 'No Site'}
-                  </span>
-                </div>
-              </div>
+              {(() => {
+                const isOnline = onlineUserIds.has(Number(chatAgent.id));
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div className="sfa-agent-avatar" style={{ position: 'relative' }}>
+                      {chatAgent.name.charAt(0).toUpperCase()}
+                      <span
+                        style={{
+                          position: 'absolute',
+                          bottom: '-1px',
+                          right: '-1px',
+                          width: '9px',
+                          height: '9px',
+                          borderRadius: '50%',
+                          backgroundColor: isOnline ? '#10B981' : '#94A3B8',
+                          border: '1.5px solid #FFFFFF'
+                        }}
+                        title={isOnline ? 'Online' : 'Offline'}
+                      />
+                    </div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0F172A' }}>
+                        {chatAgent.name}
+                      </h3>
+                      <span
+                        style={{
+                          fontSize: '11.5px',
+                          color: isOnline ? '#059669' : '#64748B',
+                          fontWeight: 600,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: '6px',
+                            height: '6px',
+                            borderRadius: '50%',
+                            backgroundColor: isOnline ? '#10B981' : '#94A3B8',
+                            display: 'inline-block'
+                          }}
+                        />
+                        {isOnline ? 'Online' : 'Offline'} • {chatAgent.currentSite?.siteName || 'No Site'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {/* 1-Click Raise Emergency Ticket */}
@@ -891,9 +1634,32 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
               ) : (
                 messages.map((m) => {
                   const isMe = Number(m.senderId) === Number(user?.id);
+                  const senderName = m.sender?.name || (isMe ? (user?.name || 'Support Agent') : (chatAgent?.name || 'Field Agent'));
+                  const senderCode = m.sender?.employeeCode || (isMe ? `CSA-${String(user?.id || 1).padStart(3, '0')}` : chatAgent?.employeeCode || `AGT-${String(chatAgent?.id || 1).padStart(3, '0')}`);
+                  const senderRole = isMe ? 'Support Agent' : 'Field Agent';
+
                   return (
                     <div key={m.id} className={`sfa-msg-row ${isMe ? 'outgoing' : 'incoming'}`}>
                       <div className={`sfa-msg-bubble ${m.messageType.toLowerCase()}`}>
+                        {/* Speaker Name Header */}
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            marginBottom: '5px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            color: isMe ? 'rgba(255,255,255,0.92)' : '#64748B'
+                          }}
+                        >
+                          <span style={{ color: isMe ? '#FFFFFF' : '#2563EB', fontWeight: 800 }}>
+                            {senderName}
+                          </span>
+                          <span>•</span>
+                          <span>{senderRole} ({senderCode})</span>
+                        </div>
+
                         {m.messageType === 'EQUIPMENT_REQUEST' && (
                           <div className="sfa-msg-tag equipment">
                             <Wrench size={12} />

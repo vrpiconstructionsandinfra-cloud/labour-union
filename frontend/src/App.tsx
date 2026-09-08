@@ -44,6 +44,7 @@ import { AgentVerifyPage } from './pages/AgentVerifyPage';
 import { SaturdayReportBanner } from './components/SaturdayReportBanner';
 import { ScanWorkerQrModal } from './components/ScanWorkerQrModal';
 import { MarkAttendanceModal } from './components/MarkAttendanceModal';
+import { SupportAgentModal } from './components/SupportAgentModal';
 
 import { Calendar, ChevronDown, LogOut } from 'lucide-react';
 import {
@@ -71,10 +72,24 @@ import { PublicWorkerVerificationView } from './components/PublicWorkerVerificat
 function MainAppContent() {
   const { isAuthenticated, isValidating, sessionExpired, clearExpired, user, role, login, logout, hasPermission } = useAuth();
   
+  const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
+  const [currentSearch, setCurrentSearch] = useState(() => window.location.search);
+
+  useEffect(() => {
+    const handleLocationChange = () => {
+      setCurrentPath(window.location.pathname);
+      setCurrentSearch(window.location.search);
+    };
+    window.addEventListener('popstate', handleLocationChange);
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+    };
+  }, []);
+
   // Public QR Code Worker Identity Verification Route (No Authentication Required)
-  const urlParams = new URLSearchParams(window.location.search);
+  const urlParams = new URLSearchParams(currentSearch);
   const verifyWorkerIdParam = urlParams.get('verifyWorkerId') || urlParams.get('workerId');
-  const isPublicVerifyRoute = window.location.pathname.startsWith('/verify-worker') || Boolean(verifyWorkerIdParam);
+  const isPublicVerifyRoute = currentPath.startsWith('/verify-worker') || Boolean(verifyWorkerIdParam);
 
   if (isPublicVerifyRoute) {
     return <PublicWorkerVerificationView workerId={verifyWorkerIdParam || undefined} />;
@@ -97,6 +112,7 @@ function MainAppContent() {
   const [isQrScannerOpen, setIsQrScannerOpen] = useState<boolean>(false);
   const [scannedWorkerForAttendance, setScannedWorkerForAttendance] = useState<WorkerItem | null>(null);
   const [isScannedAttendanceOpen, setIsScannedAttendanceOpen] = useState<boolean>(false);
+  const [isCreateSupportAgentOpen, setIsCreateSupportAgentOpen] = useState<boolean>(false);
 
   // Date Range Module State
   const [selectedDateRange, setSelectedDateRange] = useState<{
@@ -189,6 +205,7 @@ function MainAppContent() {
         onApprovalDone={() => {
           setApproveToken(null);
           window.history.replaceState({}, document.title, window.location.pathname);
+          setCurrentPath(window.location.pathname);
         }}
       />
     );
@@ -201,37 +218,52 @@ function MainAppContent() {
         onResetSuccess={() => {
           setResetToken(null);
           window.history.replaceState({}, document.title, window.location.pathname);
+          setCurrentPath(window.location.pathname);
         }}
       />
     );
   }
 
-  if (window.location.pathname === '/verify-worker') {
+  if (currentPath === '/verify-worker' || currentPath.startsWith('/verify-worker')) {
     return <WorkerVerifyPage />;
   }
 
-  if (window.location.pathname === '/verify-agent') {
+  if (currentPath === '/verify-agent' || currentPath.startsWith('/verify-agent')) {
     return <AgentVerifyPage />;
   }
 
-  if (window.location.pathname === '/worker-details' || window.location.pathname.includes('worker-details')) {
+  if (currentPath === '/worker-details' || currentPath.includes('worker-details')) {
     return <WorkerDetailPage />;
   }
 
-  if (window.location.pathname === '/agent-details' || window.location.pathname.includes('agent-details')) {
+  if (currentPath === '/agent-details' || currentPath.includes('agent-details')) {
     return <AgentDetailPage />;
   }
 
-  if (window.location.pathname === '/support/login') {
+  if (currentPath === '/support/login' || currentPath === '/support-login') {
     if (isAuthenticated) {
       return <SupportDashboardPage />;
     }
-    return <SupportLoginPage onSuccessNavigate={() => { window.history.pushState({}, '', '/support/dashboard'); window.dispatchEvent(new Event('popstate')); }} />;
+    return (
+      <SupportLoginPage
+        onSuccessNavigate={() => {
+          window.history.pushState({}, '', '/support/dashboard');
+          window.dispatchEvent(new Event('popstate'));
+        }}
+      />
+    );
   }
 
-  if (window.location.pathname === '/support/dashboard' || window.location.pathname === '/support-portal') {
+  if (currentPath === '/support/dashboard' || currentPath === '/support-portal' || currentPath === '/support-dashboard') {
     if (!isAuthenticated) {
-      return <SupportLoginPage onSuccessNavigate={() => { window.history.pushState({}, '', '/support/dashboard'); window.dispatchEvent(new Event('popstate')); }} />;
+      return (
+        <SupportLoginPage
+          onSuccessNavigate={() => {
+            window.history.pushState({}, '', '/support/dashboard');
+            window.dispatchEvent(new Event('popstate'));
+          }}
+        />
+      );
     }
     return <SupportDashboardPage />;
   }
@@ -518,7 +550,20 @@ function MainAppContent() {
             setActiveTab(tab);
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-          onOpenCreate={() => setActiveModal('CREATE_WORKER')}
+          userRole={role || 'AGENT'}
+          isAnyModalActive={Boolean(
+            activeModal !== null ||
+            isQrScannerOpen ||
+            isScannedAttendanceOpen ||
+            isCreateSupportAgentOpen
+          )}
+          onOpenCreateWorker={() => setActiveModal('add_worker')}
+          onOpenQrScanner={() => setIsQrScannerOpen(true)}
+          onOpenCreateAgent={() => setActiveModal('add_agent')}
+          onOpenCreateSupportAgent={() => setIsCreateSupportAgentOpen(true)}
+          onOpenCreateSite={() => setActiveModal('add_site')}
+          onOpenApplyLeave={() => setActiveModal('apply_leave')}
+          onOpenCreateTicket={() => setActiveModal('create_ticket')}
           onOpenMobileDrawer={() => setSidebarCollapsed(false)}
         />
       </div>
@@ -544,6 +589,15 @@ function MainAppContent() {
         onSuccessRefresh={() => setRefreshCounter((prev) => prev + 1)}
         onApplyDateRange={(startDate, endDate, label) => {
           setSelectedDateRange({ startDate, endDate, label });
+        }}
+      />
+
+      <SupportAgentModal
+        isOpen={isCreateSupportAgentOpen}
+        onClose={() => setIsCreateSupportAgentOpen(false)}
+        onSuccess={() => {
+          setIsCreateSupportAgentOpen(false);
+          setRefreshCounter((prev) => prev + 1);
         }}
       />
 

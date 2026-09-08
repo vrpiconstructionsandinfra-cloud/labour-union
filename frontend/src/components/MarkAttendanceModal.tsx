@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Camera, X, Clock, CheckCircle2, UploadCloud } from 'lucide-react';
 import { markAttendanceApi, fetchSitesApi, fetchWorkerAttendanceApi, verifyFacePhotosApi } from '../services/api';
 import type { WorkerItem, SiteItem } from '../types';
@@ -13,7 +14,6 @@ interface MarkAttendanceModalProps {
   mode?: 'CHECK_IN' | 'CHECK_OUT' | 'FULL';
   onSuccess: () => void;
 }
-
 
 export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
   isOpen,
@@ -48,7 +48,7 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
 
   // Worker Detail States for Form
   const workerDailyWage = worker?.dailyWage || 850;
-  const [dailyPay, setDailyPay] = useState<number>(workerDailyWage);
+  const [dailyPay, setDailyPay] = useState<number | string>(workerDailyWage);
   const [isPayOverridden, setIsPayOverridden] = useState(false);
   const [remarks, setRemarks] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,6 +58,18 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
   const [isMatchEvaluating, setIsMatchEvaluating] = useState<boolean>(false);
   const [checkInFaceValid, setCheckInFaceValid] = useState<boolean>(true);
   const [checkInFaceMessage, setCheckInFaceMessage] = useState<string | null>(null);
+
+  // Prevent background scrolling when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
 
   // Evaluate human face detection on Check-In photo
   useEffect(() => {
@@ -167,6 +179,7 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
       };
 
       setDailyPay(worker.dailyWage || 850);
+      setIsPayOverridden(false);
 
       // Fetch live attendance track for this worker from backend
       fetchWorkerAttendanceApi(worker.id)
@@ -393,7 +406,7 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
         checkInPhoto: checkInPhoto || undefined,
         checkOutPhoto: checkOutPhoto || undefined,
         siteId: selectedSiteId ? Number(selectedSiteId) : undefined,
-        dailyPay: Number(dailyPay),
+        dailyPay: dailyPay === '' ? 0 : Number(dailyPay),
         remarks: remarks || `Worker ${isCheckIn ? 'Check-In' : 'Check-Out'} recorded by Agent`
       });
 
@@ -416,64 +429,66 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
   const isUnassignedToThisAgent = isAgentRole && currentAgentId && (!workerAgentId || workerAgentId !== Number(currentAgentId));
 
   if (isUnassignedToThisAgent) {
-    return (
-      <div className="att-modal-backdrop" style={{ zIndex: 1200 }}>
-        <div className="att-modal-card" style={{ maxWidth: '480px', width: '92%', borderRadius: '20px', padding: '24px', textAlign: 'center', backgroundColor: '#FFFFFF', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+    return createPortal(
+      <div className="att-modal-backdrop">
+        <div className="att-modal-card" style={{ maxWidth: '460px', padding: '24px', textAlign: 'center' }}>
           <div style={{ backgroundColor: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '16px', padding: '24px', color: '#DC2626' }}>
-            <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#FEE2E2', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-              <X size={30} />
+            <div style={{ width: '54px', height: '54px', borderRadius: '50%', backgroundColor: '#FEE2E2', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <X size={28} />
             </div>
-            <h3 style={{ fontSize: '18px', fontWeight: 900, margin: '0 0 8px', color: '#991B1B' }}>
+            <h3 style={{ fontSize: '17px', fontWeight: 800, margin: '0 0 8px', color: '#991B1B' }}>
               Access Denied: Unassigned Worker
             </h3>
             <p style={{ fontSize: '13px', margin: 0, lineHeight: 1.5, color: '#7F1D1D' }}>
-              Worker <strong>{worker.name}</strong> ({worker.employeeCode || `WRK-${worker.id}`}) is unassigned or assigned to another field agent. Only the assigned agent (or Super Agent) can scan or mark attendance.
+              Worker <strong>{worker.name}</strong> ({worker.employeeCode || `WRK-${worker.id}`}) is unassigned or assigned to another field agent. Only the assigned agent can mark attendance.
             </p>
             <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
               <button
                 type="button"
                 onClick={onClose}
-                style={{ backgroundColor: '#DC2626', color: '#FFFFFF', border: 'none', borderRadius: '10px', padding: '10px 24px', fontSize: '13px', fontWeight: 800, cursor: 'pointer' }}
+                className="att-btn-cancel"
+                style={{ backgroundColor: '#DC2626', color: '#FFFFFF', borderColor: '#DC2626' }}
               >
                 Close & Go Back
               </button>
             </div>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
   const workerCode = worker.employeeCode || `WRK-${String(worker.id).padStart(3, '0')}`;
   const currentPhoto = activeTab === 'CHECK_IN' ? checkInPhoto : checkOutPhoto;
 
-  return (
+  return createPortal(
     <div className="att-modal-backdrop">
       <div className="att-modal-card">
         
-        {/* Header Bar matching Register New Worker */}
+        {/* Fixed Header Bar at Top */}
         <div className="att-header">
           <div className="att-header-title">
-            <span>Mark Live Worker Attendance</span>
+            <span>Mark Worker Attendance</span>
           </div>
 
           <button
             onClick={() => { stopCamera(); onClose(); }}
             className="att-header-close"
             title="Close"
+            type="button"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
+        {/* Scrollable Modal Body */}
         <div className="att-modal-body">
           
           {/* Live Attendance Track Banner */}
           <div
+            className="att-status-track-banner"
             style={{
-              marginBottom: '16px',
-              padding: '12px 16px',
-              borderRadius: '10px',
               border:
                 liveStatus === 'CHECKED_IN'
                   ? '1px solid #BFDBFE'
@@ -498,10 +513,6 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
                   : liveStatus === 'ABSENT'
                   ? '#991B1B'
                   : '#475569',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -529,50 +540,38 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
             </div>
           </div>
 
-          {/* Dedicated Single-Mode Button (Check-In OR Check-Out OR Present) */}
-          <div className="att-segment-tabs" style={{ marginBottom: '20px' }}>
+          {/* Dedicated Single-Mode Button */}
+          <div className="att-segment-tabs">
             {liveStatus === 'PRESENT' ? (
-              <button
-                type="button"
-                className="att-tab-btn active"
-                style={{ width: '100%', cursor: 'default', justifyContent: 'center', backgroundColor: '#ECFDF5', color: '#065F46', borderColor: '#A7F3D0' }}
-              >
+              <div className="att-tab-btn present">
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Present — Shift Completed ({checkInTime} to {checkOutTime})</span>
-              </button>
+              </div>
             ) : activeTab === 'CHECK_IN' ? (
-              <button
-                type="button"
-                className="att-tab-btn active"
-                style={{ width: '100%', cursor: 'default', justifyContent: 'center' }}
-              >
+              <div className="att-tab-btn check-in">
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Check-In</span>
-              </button>
+              </div>
             ) : (
-              <button
-                type="button"
-                className="att-tab-btn active"
-                style={{ width: '100%', cursor: 'default', justifyContent: 'center', backgroundColor: '#EFF6FF', color: '#2563EB', borderColor: '#BFDBFE' }}
-              >
+              <div className="att-tab-btn check-out">
                 <Clock className="w-4 h-4" />
                 <span>Check-Out</span>
-              </button>
+              </div>
             )}
           </div>
 
-          {/* Worker Profile Photo (Camera or Gallery) Card matching Image */}
-          <div style={{ backgroundColor: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '16px', marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 800, color: '#0F172A', marginBottom: '12px' }}>
+          {/* Worker Profile Photo (Camera or Gallery) Card */}
+          <div className="att-photo-card">
+            <label className="att-photo-card-label">
               Worker Profile Photo (Camera or Gallery)
             </label>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <div className="att-photo-container">
               {activeTab === 'CHECK_OUT' ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   {/* Morning Check-In Reference Photo (Left) */}
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                    <div style={{ width: '60px', height: '60px', borderRadius: '50%', overflow: 'hidden', border: '2px solid #2563EB', position: 'relative' }}>
+                    <div style={{ width: '56px', height: '56px', borderRadius: '50%', overflow: 'hidden', border: '2px solid #2563EB', position: 'relative' }}>
                       <img
                         src={checkInPhoto || (worker as any)?.avatar || (worker as any)?.profileImage || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80'}
                         alt="Morning Check-In"
@@ -580,22 +579,22 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
                       />
                     </div>
                     <span style={{ fontSize: '10px', fontWeight: 800, color: '#2563EB', backgroundColor: '#EFF6FF', padding: '2px 6px', borderRadius: '4px' }}>
-                      Check-In Photo
+                      Check-In
                     </span>
                   </div>
 
                   {/* VS Comparison Badge (Middle) */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 900, color: '#64748B', backgroundColor: '#E2E8F0', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 900, color: '#64748B', backgroundColor: '#E2E8F0', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       VS
                     </span>
                   </div>
 
                   {/* Evening Check-Out Captured Photo (Right) */}
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                    <div style={{ position: 'relative', width: '60px', height: '60px' }}>
+                    <div style={{ position: 'relative', width: '56px', height: '56px' }}>
                       {checkOutPhoto ? (
-                        <div style={{ width: '60px', height: '60px', borderRadius: '50%', overflow: 'hidden', border: !isFaceDetected || (matchScore !== null && matchScore < 20) ? '2px solid #EF4444' : '2px solid #059669', position: 'relative' }}>
+                        <div style={{ width: '56px', height: '56px', borderRadius: '50%', overflow: 'hidden', border: !isFaceDetected || (matchScore !== null && matchScore < 20) ? '2px solid #EF4444' : '2px solid #059669', position: 'relative' }}>
                           <img src={checkOutPhoto} alt="Evening Check-Out" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           <button
                             type="button"
@@ -622,21 +621,21 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
                           </button>
                         </div>
                       ) : (
-                        <div style={{ width: '60px', height: '60px', borderRadius: '50%', border: '2px dashed #CBD5E1', backgroundColor: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8', fontSize: '18px' }}>
+                        <div style={{ width: '56px', height: '56px', borderRadius: '50%', border: '2px dashed #CBD5E1', backgroundColor: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8', fontSize: '18px' }}>
                           📷
                         </div>
                       )}
                     </div>
                     <span style={{ fontSize: '10px', fontWeight: 800, color: '#059669', backgroundColor: '#ECFDF5', padding: '2px 6px', borderRadius: '4px' }}>
-                      Check-Out Photo
+                      Check-Out
                     </span>
                   </div>
                 </div>
               ) : (
                 /* CHECK_IN Mode single avatar */
-                <div style={{ position: 'relative', width: '64px', height: '64px', flexShrink: 0 }}>
+                <div style={{ position: 'relative', width: '56px', height: '56px', flexShrink: 0 }}>
                   {currentPhoto ? (
-                    <div style={{ width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden', border: '2px solid #059669', position: 'relative' }}>
+                    <div style={{ width: '56px', height: '56px', borderRadius: '50%', overflow: 'hidden', border: '2px solid #059669', position: 'relative' }}>
                       <img src={currentPhoto} alt="Worker Photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       <button
                         type="button"
@@ -663,13 +662,13 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
                       </button>
                     </div>
                   ) : (
-                    <UserAvatar src={worker.avatar || (worker as any).profileImage} name={worker.name} size={64} />
+                    <UserAvatar src={worker.avatar || (worker as any).profileImage} name={worker.name} size={56} />
                   )}
                 </div>
               )}
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, minWidth: '220px' }}>
+                <div className="att-photo-btn-group">
                   <input
                     type="file"
                     accept="image/*"
@@ -679,19 +678,7 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
                   />
                   <button
                     type="button"
-                    style={{
-                      backgroundColor: '#FFFFFF',
-                      color: '#334155',
-                      border: '1px solid #CBD5E1',
-                      borderRadius: '8px',
-                      padding: '7px 14px',
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
+                    className="att-photo-btn gallery"
                     onClick={() => document.getElementById('att-gallery-input')?.click()}
                   >
                     <UploadCloud className="w-3.5 h-3.5" />
@@ -701,19 +688,7 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
                   {!isCameraActive || activePhotoTarget !== activeTab ? (
                     <button
                       type="button"
-                      style={{
-                        backgroundColor: '#059669',
-                        color: '#FFFFFF',
-                        border: 'none',
-                        borderRadius: '8px',
-                        padding: '7px 14px',
-                        fontSize: '12px',
-                        fontWeight: 800,
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
+                      className="att-photo-btn camera"
                       onClick={() => startCamera(activeTab)}
                     >
                       <Camera className="w-3.5 h-3.5" />
@@ -722,16 +697,7 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
                   ) : (
                     <button
                       type="button"
-                      style={{
-                        backgroundColor: '#64748B',
-                        color: '#FFFFFF',
-                        border: 'none',
-                        borderRadius: '8px',
-                        padding: '7px 14px',
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        cursor: 'pointer'
-                      }}
+                      className="att-photo-btn camera-close"
                       onClick={() => { stopCamera(); setActivePhotoTarget(null); }}
                     >
                       Close Camera
@@ -756,14 +722,14 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
                 <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'center', gap: '10px' }}>
                   <button
                     type="button"
-                    style={{ backgroundColor: '#059669', color: '#FFF', fontSize: '12px', fontWeight: 800, padding: '6px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer' }}
+                    style={{ backgroundColor: '#059669', color: '#FFF', fontSize: '12px', fontWeight: 800, padding: '7px 16px', borderRadius: '7px', border: 'none', cursor: 'pointer' }}
                     onClick={captureSnapshot}
                   >
                     🔴 Take Snapshot Now
                   </button>
                   <button
                     type="button"
-                    style={{ backgroundColor: '#475569', color: '#FFF', fontSize: '12px', padding: '6px 12px', borderRadius: '6px', border: 'none', cursor: 'pointer' }}
+                    style={{ backgroundColor: '#475569', color: '#FFF', fontSize: '12px', padding: '7px 12px', borderRadius: '7px', border: 'none', cursor: 'pointer' }}
                     onClick={() => { stopCamera(); setActivePhotoTarget(null); }}
                   >
                     Cancel
@@ -789,7 +755,7 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span
                     style={{
-                      fontSize: '12.5px',
+                      fontSize: '12px',
                       fontWeight: 800,
                       color: checkInFaceValid ? '#15803D' : '#DC2626'
                     }}
@@ -821,7 +787,7 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span
                     style={{
-                      fontSize: '12.5px',
+                      fontSize: '12px',
                       fontWeight: 800,
                       color: matchScore !== null && matchScore >= 40 && isFaceDetected ? '#15803D' : matchScore !== null ? '#DC2626' : '#B45309'
                     }}
@@ -851,70 +817,71 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
             )}
           </div>
 
-          {/* Form Fields matching Register New Worker Layout */}
-
           {/* Worker Full Name */}
-          <div style={{ marginBottom: '14px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+          <div className="att-form-group">
+            <label className="att-form-label">
               Worker Full Name *
             </label>
             <input
               type="text"
               readOnly
               value={worker.name}
-              style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', backgroundColor: '#F8FAFC', color: '#0F172A', fontWeight: 700, fontSize: '13px' }}
+              className="att-form-input"
+              style={{ fontWeight: 700 }}
             />
           </div>
 
           {/* Email Address */}
-          <div style={{ marginBottom: '14px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+          <div className="att-form-group">
+            <label className="att-form-label">
               Email Address *
             </label>
             <input
               type="email"
               readOnly
               value={worker.email || `${worker.name.toLowerCase().replace(/\s+/g, '.')}@laborunion.com`}
-              style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', backgroundColor: '#F8FAFC', color: '#475569', fontSize: '13px' }}
+              className="att-form-input"
             />
           </div>
 
           {/* 2-Column Row: Employee Code | Skill / Designation */}
           <div className="att-form-row-2col">
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+              <label className="att-form-label">
                 Employee Code *
               </label>
               <input
                 type="text"
                 readOnly
                 value={workerCode}
-                style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', backgroundColor: '#F8FAFC', color: '#0F172A', fontWeight: 700, fontSize: '13px' }}
+                className="att-form-input"
+                style={{ fontWeight: 700 }}
               />
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+              <label className="att-form-label">
                 Skill / Designation
               </label>
               <input
                 type="text"
                 readOnly
                 value={worker.designation || 'Electrician'}
-                style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', backgroundColor: '#F8FAFC', color: '#334155', fontSize: '13px', fontWeight: 600 }}
+                className="att-form-input"
               />
             </div>
           </div>
 
           {/* Assigned Working Site Dropdown */}
-          <div style={{ marginBottom: '14px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+          <div className="att-form-group">
+            <label className="att-form-label">
               Assigned Working Site
             </label>
             <select
               value={selectedSiteId}
               onChange={(e) => setSelectedSiteId(e.target.value)}
-              style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', backgroundColor: '#FFFFFF', color: '#0F172A', fontSize: '13px', fontWeight: 600 }}
+              className="att-form-input"
+              style={{ fontWeight: 600, cursor: 'pointer' }}
             >
               {sites.map((site) => (
                 <option key={site.id} value={site.id}>
@@ -927,50 +894,57 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
           {/* 2-Column Row: That Day Pay | Time */}
           <div className="att-form-row-2col">
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+              <label className="att-form-label">
                 That Day Pay (₹) <span style={{ fontSize: '11px', color: '#059669', fontWeight: 600 }}>Rate: ₹{worker.dailyWage || 850}/day</span>
               </label>
               <input
                 type="number"
+                min="0"
+                step="any"
+                placeholder="Enter amount (₹)"
                 value={dailyPay}
                 onChange={(e) => {
-                  setDailyPay(Number(e.target.value));
+                  setDailyPay(e.target.value);
                   setIsPayOverridden(true);
                 }}
-                style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', backgroundColor: '#FFFFFF', color: '#0F172A', fontWeight: 800, fontSize: '13px' }}
+                onFocus={(e) => {
+                  e.target.select();
+                }}
+                className="att-form-input"
+                style={{ fontWeight: 800 }}
               />
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+              <label className="att-form-label">
                 {activeTab === 'CHECK_IN' ? 'Check-In Time *' : 'Check-Out Time *'}
               </label>
               <input
                 type="text"
                 value={activeTab === 'CHECK_IN' ? checkInTime : checkOutTime}
                 onChange={(e) => activeTab === 'CHECK_IN' ? setCheckInTime(e.target.value) : setCheckOutTime(e.target.value)}
-                style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', backgroundColor: '#FFFFFF', color: '#059669', fontWeight: 800, fontSize: '13px' }}
+                className="att-form-input"
+                style={{ color: '#059669', fontWeight: 800 }}
               />
             </div>
           </div>
 
-          {/* Check-Out Mode: Status Code selection */}
+          {/* Status Code Picker (Check-Out Mode) */}
           {activeTab === 'CHECK_OUT' && (
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                Presence Status Code (1 for Half Day, 2 for Full Day)
+            <div className="att-form-group">
+              <label className="att-form-label">
+                Today Attendance Status *
               </label>
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <button
                   type="button"
-                  onClick={() => { setStatusCode(2); setIsPayOverridden(false); }}
+                  onClick={() => setStatusCode(2)}
                   style={{
-                    flex: 1,
-                    padding: '8px',
+                    padding: '10px',
                     borderRadius: '8px',
                     border: statusCode === 2 ? '2px solid #059669' : '1px solid #CBD5E1',
                     backgroundColor: statusCode === 2 ? '#ECFDF5' : '#FFFFFF',
-                    color: statusCode === 2 ? '#047857' : '#475569',
+                    color: statusCode === 2 ? '#065F46' : '#334155',
                     fontWeight: 700,
                     fontSize: '12px',
                     cursor: 'pointer'
@@ -978,17 +952,15 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
                 >
                   2 - Full Day Present
                 </button>
-
                 <button
                   type="button"
-                  onClick={() => { setStatusCode(1); setIsPayOverridden(false); }}
+                  onClick={() => setStatusCode(1)}
                   style={{
-                    flex: 1,
-                    padding: '8px',
+                    padding: '10px',
                     borderRadius: '8px',
                     border: statusCode === 1 ? '2px solid #D97706' : '1px solid #CBD5E1',
-                    backgroundColor: statusCode === 1 ? '#FEF3C7' : '#FFFFFF',
-                    color: statusCode === 1 ? '#B45309' : '#475569',
+                    backgroundColor: statusCode === 1 ? '#FFFBEB' : '#FFFFFF',
+                    color: statusCode === 1 ? '#92400E' : '#334155',
                     fontWeight: 700,
                     fontSize: '12px',
                     cursor: 'pointer'
@@ -1001,8 +973,8 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
           )}
 
           {/* Remarks / Field Notes */}
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+          <div className="att-form-group">
+            <label className="att-form-label">
               Field Remarks / Notes
             </label>
             <input
@@ -1010,79 +982,50 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
               placeholder="e.g. Shift completed safely. Work verified."
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
-              style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', backgroundColor: '#FFFFFF', color: '#0F172A', fontSize: '13px' }}
+              className="att-form-input"
             />
-          </div>
-
-          {/* Footer Action Buttons matching Register Worker */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '12px', borderTop: '1px solid #F1F5F9' }}>
-            <button
-              type="button"
-              onClick={() => { stopCamera(); onClose(); }}
-              style={{
-                backgroundColor: '#FFFFFF',
-                color: '#475569',
-                border: '1px solid #CBD5E1',
-                borderRadius: '8px',
-                padding: '9px 20px',
-                fontSize: '13px',
-                fontWeight: 700,
-                cursor: 'pointer'
-              }}
-            >
-              Cancel
-            </button>
-
-            {liveStatus === 'PRESENT' ? (
-              <button
-                type="button"
-                disabled
-                style={{
-                  backgroundColor: '#059669',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '9px 24px',
-                  fontSize: '13px',
-                  fontWeight: 800,
-                  cursor: 'not-allowed',
-                  opacity: 0.9,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                <CheckCircle2 size={16} />
-                <span>Present (Shift Completed)</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                style={{
-                  backgroundColor: '#2563EB',
-                  color: '#FFFFFF',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '9px 24px',
-                  fontSize: '13px',
-                  fontWeight: 800,
-                  cursor: 'pointer'
-                }}
-              >
-                {isSubmitting
-                  ? 'Saving...'
-                  : activeTab === 'CHECK_IN'
-                  ? 'Save Check-In'
-                  : 'Save Check-Out'}
-              </button>
-            )}
           </div>
 
         </div>
 
+        {/* Fixed Footer Actions at Bottom */}
+        <div className="att-modal-footer">
+          <button
+            type="button"
+            onClick={() => { stopCamera(); onClose(); }}
+            className="att-btn-cancel"
+          >
+            Cancel
+          </button>
+
+          {liveStatus === 'PRESENT' ? (
+            <button
+              type="button"
+              disabled
+              className="att-btn-submit"
+              style={{ backgroundColor: '#059669', opacity: 0.9 }}
+            >
+              <CheckCircle2 size={16} />
+              <span>Present (Shift Completed)</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="att-btn-submit"
+            >
+              {isSubmitting
+                ? 'Saving...'
+                : activeTab === 'CHECK_IN'
+                ? 'Save Check-In'
+                : 'Save Check-Out'}
+            </button>
+          )}
+        </div>
+
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

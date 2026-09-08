@@ -125,7 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       case 'SUPER_AGENT':
         return module !== 'wallet' && module !== 'my_leaves' && module !== 'insurance' && module !== 'attendance';
       case 'AGENT':
-        return ['dashboard', 'sites', 'workers', 'leaves', 'my_leaves', 'insurance', 'tickets', 'profile', 'my_details', 'settings'].includes(module);
+        return ['dashboard', 'sites', 'workers', 'enquiries', 'leaves', 'my_leaves', 'insurance', 'tickets', 'profile', 'my_details', 'settings'].includes(module);
       case 'WORKER':
         return ['dashboard', 'leaves', 'insurance', 'profile', 'my_details', 'settings'].includes(module);
       case 'CUSTOMER_SUPPORT':

@@ -3,22 +3,21 @@ import {
   Plus,
   Search,
   Filter,
-  Ticket,
-  Clock,
   CheckCircle2,
   X,
   Paperclip,
   Send,
   Download,
-  Star,
+  AlertCircle,
+  Wrench,
   MessageSquare,
   Headset,
-  Lock,
-  History,
+  Calendar,
+  User,
+  ChevronRight,
+  ArrowLeft,
   MoreVertical,
-  TrendingUp,
-  FileText,
-  UserCheck
+  FileText
 } from 'lucide-react';
 import {
   fetchSupportTicketsApi,
@@ -52,11 +51,16 @@ export const WorkerSupportPage: React.FC<WorkerSupportPageProps> = ({
 
   // Filters State
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
+  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Selected Ticket for Right Panel
+  // Selected Ticket for Right Panel / Mobile Full-Screen
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
+  const [activeRightTab, setActiveRightTab] = useState<'conversation' | 'details' | 'attachments'>('conversation');
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 6;
 
   // Assignment Tab Filter State ('ALL' | 'MY' | 'UNASSIGNED')
   const [assignmentTab, setAssignmentTab] = useState<'ALL' | 'MY' | 'UNASSIGNED'>(
@@ -73,7 +77,6 @@ export const WorkerSupportPage: React.FC<WorkerSupportPageProps> = ({
   const [comments, setComments] = useState<TicketComment[]>([]);
   const [newCommentText, setNewCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-  const [feedbackRating, setFeedbackRating] = useState<number>(0);
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
   const isSupportAgentRole =
@@ -170,52 +173,29 @@ export const WorkerSupportPage: React.FC<WorkerSupportPageProps> = ({
     try {
       const data = await fetchSupportTicketsApi();
 
-      // In the Customer Support Portal (isSupportAgentRole), load ALL tickets from all users
-      // For Workers/Agents in their own portal, scope to their own tickets
       let scoped = data;
       if (user && !isSupportAgentRole) {
         const userIdStr = String(user.id || '');
         const userNumId = Number(userIdStr.replace(/\D/g, ''));
-        const userName = (user.name || '').trim().toLowerCase();
+        const myEmpCode = (user.employeeCode || '').toUpperCase();
+        const myName = (user.name || '').trim().toLowerCase();
 
         if (user.role === 'AGENT') {
           scoped = data.filter((t: any) => {
-            const tickWorkerId = String(t.workerId || t.userId || t.createdById || t.worker?.id || '');
-            const tickWorkerNum = Number(tickWorkerId.replace(/\D/g, ''));
-            const tickUserName = (t.createdByName || t.userName || t.agentName || t.workerName || t.worker?.name || '').trim().toLowerCase();
-            const tickCreatorCode = (t.workerCode || t.employeeCode || t.worker?.employeeCode || '').toUpperCase();
-            const myEmpCode = (user.employeeCode || '').toUpperCase();
-            const myName = (user.name || '').trim().toLowerCase();
+            const tickAgentId = String(t.workerId || t.agentId || t.userId || t.createdById || t.worker?.id || '');
+            const tickAgentNum = Number(tickAgentId.replace(/\D/g, ''));
+            const tickCreatorCode = (t.agentCode || t.workerCode || t.employeeCode || t.worker?.employeeCode || '').toUpperCase();
+            const tickUserName = (t.agentName || t.createdByName || t.userName || t.worker?.name || '').trim().toLowerCase();
 
-            // 1. Direct ID match (ticket created directly by this logged-in agent)
-            if (tickWorkerId !== '' && (tickWorkerId === userIdStr || Number(tickWorkerId) === userNumId || (userNumId > 0 && tickWorkerNum === userNumId))) return true;
-
-            // 2. Employee Code match (e.g. AGT-002)
+            if (tickAgentId !== '' && (tickAgentId === userIdStr || Number(tickAgentId) === userNumId || (userNumId > 0 && tickAgentNum === userNumId))) return true;
             if (myEmpCode !== '' && tickCreatorCode !== '' && (myEmpCode === tickCreatorCode || myEmpCode.replace(/\D/g, '') === tickCreatorCode.replace(/\D/g, ''))) return true;
-
-            // 3. Normalized Creator name match (ignoring spaces & special chars, e.g. "Satish 2" vs "Satish2")
-            const cleanMyName = myName.replace(/[^a-z0-9]/g, '');
-            const cleanTickName = tickUserName.replace(/[^a-z0-9]/g, '');
-            if (cleanMyName !== '' && cleanTickName !== '' && (cleanMyName === cleanTickName || cleanMyName.includes(cleanTickName) || cleanTickName.includes(cleanMyName))) return true;
-
-            // 4. Root Creator name prefix match (ignoring trailing digits, e.g. "satish" prefix)
-            const rootMyName = cleanMyName.replace(/\d+/g, '');
-            const rootTickName = cleanTickName.replace(/\d+/g, '');
-            if (rootMyName.length >= 3 && rootTickName.length >= 3 && (rootMyName === rootTickName || rootMyName.startsWith(rootTickName) || rootTickName.startsWith(rootMyName))) return true;
+            if (myName !== '' && tickUserName !== '' && (myName === tickUserName || myName.includes(tickUserName) || tickUserName.includes(myName))) return true;
 
             return false;
           });
-        } else if (user.role === 'WORKER') {
-          scoped = data.filter((t: any) => {
-            const tickWorkerId = String(t.workerId || t.userId || t.createdById || t.worker?.id || '');
-            const tickUserNum = Number(tickWorkerId.replace(/\D/g, ''));
-            const tickUserName = (t.createdByName || t.userName || t.workerName || t.worker?.name || '').trim().toLowerCase();
-            return (
-              (tickWorkerId !== '' && (tickWorkerId === userIdStr || Number(tickWorkerId) === userNumId)) ||
-              (userNumId > 0 && tickUserNum === userNumId) ||
-              (userName !== '' && tickUserName !== '' && (userName === tickUserName || userName.includes(tickUserName) || tickUserName.includes(userName)))
-            );
-          });
+        } else {
+          // If other non-support role, no tickets accessible
+          scoped = [];
         }
       }
 
@@ -225,7 +205,10 @@ export const WorkerSupportPage: React.FC<WorkerSupportPageProps> = ({
           if (prev && scoped.some((t: any) => String(t.id) === String(prev.id))) {
             return scoped.find((t: any) => String(t.id) === String(prev.id)) || prev;
           }
-          return scoped[0];
+          if (window.innerWidth >= 900) {
+            return scoped[0];
+          }
+          return null;
         });
       } else {
         setSelectedTicket(null);
@@ -255,7 +238,7 @@ export const WorkerSupportPage: React.FC<WorkerSupportPageProps> = ({
     };
   }, [refreshTrigger]);
 
-  // 30-second polling for live data
+  // 30-second polling for live updates
   useEffect(() => {
     const interval = setInterval(() => {
       loadTickets(false);
@@ -292,7 +275,9 @@ export const WorkerSupportPage: React.FC<WorkerSupportPageProps> = ({
           }
           return [...prev, commentObj];
         });
-        chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        setTimeout(() => {
+          chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 50);
       }
     };
 
@@ -337,29 +322,140 @@ export const WorkerSupportPage: React.FC<WorkerSupportPageProps> = ({
     }
   };
 
-  // Counts for 5 Stat Filter Cards
-  const totalCount = tickets.length;
-  const openCount = tickets.filter((t) => t.status === 'OPEN').length;
-  const inProgressCount = tickets.filter((t) => t.status === 'IN_PROGRESS').length;
-  const resolvedCount = tickets.filter((t) => t.status === 'RESOLVED').length;
-  const closedCount = tickets.filter((t) => t.status === 'CLOSED').length;
+  // Helper functions for categorization and presentation
+  const getTicketCategory = (t: SupportTicket): 'Emergency' | 'Equipment' | 'General' => {
+    const subj = (t.subject || '').toLowerCase();
+    const cat = ((t as any).category || '').toLowerCase();
+    if (
+      cat.includes('emergency') ||
+      subj.includes('injured') ||
+      subj.includes('emergency') ||
+      subj.includes('safety') ||
+      subj.includes('medical') ||
+      subj.includes('accident') ||
+      subj.includes('hazard')
+    ) {
+      return 'Emergency';
+    }
+    if (
+      cat.includes('equip') ||
+      cat.includes('tool') ||
+      subj.includes('tool') ||
+      subj.includes('equipment') ||
+      subj.includes('machine') ||
+      subj.includes('material') ||
+      subj.includes('ppe')
+    ) {
+      return 'Equipment';
+    }
+    return 'General';
+  };
 
-  // Filtered Tickets Table
+  const getCategorySubtitle = (cat: 'Emergency' | 'Equipment' | 'General') => {
+    if (cat === 'Emergency') return 'Safety, medical assistance';
+    if (cat === 'Equipment') return 'Tools, machines, materials';
+    return 'Other support requests';
+  };
+
+  const formatTicketCode = (t: SupportTicket) => {
+    if (t.ticketId) {
+      if (t.ticketId.startsWith('TK-') || t.ticketId.startsWith('TKT-')) return t.ticketId;
+      return `TK-${t.ticketId.replace(/\D/g, '').padStart(3, '0')}`;
+    }
+    return `TK-${String(t.id).padStart(3, '0')}`;
+  };
+
+  const formatTicketDate = (dateStr?: string) => {
+    if (!dateStr) return 'May 18, 2025';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const formatTicketDateTime = (dateStr?: string) => {
+    if (!dateStr) return 'May 18, 2025, 10:30 AM';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const getCreatorDisplayName = (t: SupportTicket) => {
+    const name = (t as any).agentName || (t as any).createdByName || (t as any).userName || (t as any).worker?.name || (user?.role === 'AGENT' ? user.name : 'Field Agent');
+    const code = (t as any).agentCode || (t as any).creatorCode || (t as any).workerCode || (t as any).employeeCode || (user?.role === 'AGENT' ? user.employeeCode : undefined) || `AGT-${String((t as any).workerId || (t as any).agentId || 1).padStart(3, '0')}`;
+    return `${name} (Agent • ${code})`;
+  };
+
+  const getInitials = (nameStr: string) => {
+    if (!nameStr) return 'AG';
+    const parts = nameStr.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return nameStr.slice(0, 2).toUpperCase();
+  };
+
+  const handleOpenCreateModalWithCategory = (cat: 'Emergency' | 'Equipment' | 'General') => {
+    sessionStorage.setItem('prefill_ticket_category', cat);
+    if (onOpenModal) {
+      onOpenModal('create_ticket');
+    }
+    window.dispatchEvent(new CustomEvent('open-modal', { detail: 'create_ticket' }));
+  };
+
+  const handleStatusChange = async (ticketId: string | number, newStatus: string) => {
+    try {
+      await updateSupportTicketApi(ticketId, { status: newStatus as any });
+      setTickets((prev) =>
+        prev.map((t) => (String(t.id) === String(ticketId) ? { ...t, status: newStatus as any } : t))
+      );
+      if (selectedTicket && String(selectedTicket.id) === String(ticketId)) {
+        setSelectedTicket((prev) => (prev ? { ...prev, status: newStatus as any } : null));
+      }
+    } catch (err: any) {
+      alert(err?.message || 'Failed to update ticket status');
+    }
+  };
+
+  // Filtered Tickets
   const filteredTickets = tickets.filter((t) => {
+    // Status Filter
+    if (statusFilter !== 'ALL' && (t.status || '').toUpperCase() !== statusFilter) {
+      return false;
+    }
+
+    // Category Filter
+    if (categoryFilter !== 'ALL') {
+      const cat = getTicketCategory(t);
+      if (cat.toUpperCase() !== categoryFilter.toUpperCase()) return false;
+    }
+
     // Assignment Tab Filter
     if (assignmentTab === 'MY' || subTabFilter === 'MY') {
       if (!isTicketAssignedToMe(t)) return false;
     } else if (assignmentTab === 'UNASSIGNED' || subTabFilter === 'UNASSIGNED') {
       if (!isTicketUnassigned(t)) return false;
-    } else if (subTabFilter === 'OVERDUE') {
-      if (t.status === 'CLOSED' || t.status === 'RESOLVED') return false;
     }
 
-    // Status & priority dropdowns
-    if (statusFilter !== 'ALL' && t.status !== statusFilter) return false;
-    if (priorityFilter !== 'ALL' && t.priority?.toUpperCase() !== priorityFilter) return false;
-
-    // Date range filter
+    // Date Range Filter
     if (dateFrom || dateTo) {
       const ticketDate = t.createdAt ? new Date(t.createdAt) : null;
       if (ticketDate) {
@@ -372,335 +468,261 @@ export const WorkerSupportPage: React.FC<WorkerSupportPageProps> = ({
       }
     }
 
-    // Search query
+    // Search Query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchSubj = (t.subject || '').toLowerCase().includes(q);
       const matchId = (t.ticketId || '').toLowerCase().includes(q);
-      if (!matchSubj && !matchId) return false;
+      const matchCode = formatTicketCode(t).toLowerCase().includes(q);
+      const matchCreator = ((t as any).agentName || (t as any).createdByName || '').toLowerCase().includes(q);
+      if (!matchSubj && !matchId && !matchCode && !matchCreator) return false;
     }
+
     return true;
   });
 
-  const handleStatusChange = async (ticketId: string | number, newStatus: string) => {
-    try {
-      await updateSupportTicketApi(ticketId, { status: newStatus as any });
-      setTickets((prev) =>
-        prev.map((t) => (String(t.id) === String(ticketId) ? { ...t, status: newStatus as any } : t))
-      );
-      if (selectedTicket && String(selectedTicket.id) === String(ticketId)) {
-        setSelectedTicket((prev) => prev ? { ...prev, status: newStatus as any } : null);
-      }
-    } catch (err: any) {
-      alert(err?.message || 'Failed to update ticket status');
-    }
+  // Pagination calculations
+  const totalPages = Math.max(1, Math.ceil(filteredTickets.length / itemsPerPage));
+  const paginatedTickets = filteredTickets.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const renderStatusBadge = (status?: string) => {
+    const s = (status || 'OPEN').toUpperCase();
+    if (s === 'OPEN') return <span className="cs-badge cs-status-open">Open</span>;
+    if (s === 'IN_PROGRESS' || s === 'IN PROGRESS') return <span className="cs-badge cs-status-in-progress">In Progress</span>;
+    if (s === 'RESOLVED') return <span className="cs-badge cs-status-resolved">Resolved</span>;
+    if (s === 'CLOSED') return <span className="cs-badge cs-status-closed">Closed</span>;
+    return <span className="cs-badge cs-status-default">{status}</span>;
   };
 
-  const getPriorityBadge = (priority?: string) => {
-    const p = (priority || '').toUpperCase();
-    if (p === 'HIGH' || p === 'URGENT') return <span className="p-badge high">↑ High</span>;
-    if (p === 'MEDIUM') return <span className="p-badge medium">Medium</span>;
-    return <span className="p-badge low">Low</span>;
-  };
-
-  const getStatusBadge = (t: SupportTicket | null | undefined) => {
-    if (!t) return null;
-    const s = (t.status || '').toUpperCase();
-
-    if (isSupportAgentRole && isTicketAssignedToMe(t)) {
-      return (
-        <select
-          value={s}
-          onClick={(e) => e.stopPropagation()}
-          onChange={(e) => handleStatusChange(t.id, e.target.value)}
-          style={{
-            padding: '3px 8px',
-            borderRadius: '6px',
-            fontSize: '11.5px',
-            fontWeight: 800,
-            cursor: 'pointer',
-            border: s === 'OPEN' ? '1px solid #FDE68A' : s === 'IN_PROGRESS' ? '1px solid #BFDBFE' : s === 'RESOLVED' ? '1px solid #A7F3D0' : '1px solid #CBD5E1',
-            backgroundColor: s === 'OPEN' ? '#FEF3C7' : s === 'IN_PROGRESS' ? '#EFF6FF' : s === 'RESOLVED' ? '#DCFCE7' : '#F1F5F9',
-            color: s === 'OPEN' ? '#D97706' : s === 'IN_PROGRESS' ? '#2563EB' : s === 'RESOLVED' ? '#15803D' : '#475569'
-          }}
-        >
-          <option value="OPEN">Open</option>
-          <option value="IN_PROGRESS">In Progress</option>
-          <option value="RESOLVED">Resolved</option>
-          <option value="CLOSED">Closed</option>
-        </select>
-      );
-    }
-
-    if (s === 'OPEN') return <span className="s-badge open">Open</span>;
-    if (s === 'IN_PROGRESS') return <span className="s-badge in-progress">In Progress</span>;
-    if (s === 'RESOLVED') return <span className="s-badge resolved">Resolved</span>;
-    if (s === 'CLOSED') return <span className="s-badge closed">Closed</span>;
-    return <span className="s-badge default">{t.status || '—'}</span>;
+  const renderCategoryBadge = (cat: 'Emergency' | 'Equipment' | 'General') => {
+    if (cat === 'Emergency') return <span className="cs-badge cs-cat-emergency">Emergency</span>;
+    if (cat === 'Equipment') return <span className="cs-badge cs-cat-equipment">Equipment</span>;
+    return <span className="cs-badge cs-cat-general">General</span>;
   };
 
   return (
-    <div className="worker-support-layout animate-fade-in">
-      {/* Main Left Content Column */}
-      <div className="worker-support-left-col">
-        {/* Header Bar */}
-        <div className="worker-support-header">
-          <div>
-            <h1>Customer Support</h1>
-            <p>Raise a ticket, track status and get help from our support team.</p>
+    <div className={`cs-page-container ${selectedTicket ? 'ticket-selected-mobile-view' : ''}`}>
+      {/* LEFT COLUMN: Header, Category Cards, Filter Tabs, Search & Table */}
+      <div className="cs-left-pane">
+        {/* Main Page Header */}
+        <div className="cs-header-row">
+          <div className="cs-header-info">
+            <h1 className="cs-main-title">Customer Support</h1>
+            <p className="cs-main-subtitle">
+              Raise a ticket, track status and get help from our support team.
+            </p>
           </div>
 
           <button
-            className="raise-ticket-btn"
+            type="button"
+            className="cs-create-ticket-btn"
             onClick={() => {
-              if (onOpenModal) {
-                onOpenModal('create_ticket');
-              }
+              sessionStorage.removeItem('prefill_ticket_category');
+              if (onOpenModal) onOpenModal('create_ticket');
               window.dispatchEvent(new CustomEvent('open-modal', { detail: 'create_ticket' }));
             }}
           >
-            <Plus size={18} />
-            <span>Raise New Ticket</span>
+            <Plus size={18} strokeWidth={2.5} />
+            <span>Create Ticket</span>
           </button>
         </div>
 
-        {/* Assignment Filter Tabs Row (Reflected from DB) */}
-        {isSupportAgentRole && (
-          <div className="assignment-tabs-container">
-            <button
-              type="button"
-              className={`assignment-tab-btn ${assignmentTab === 'ALL' ? 'active' : ''}`}
-              onClick={() => setAssignmentTab('ALL')}
-            >
-              <Ticket size={16} />
-              <span>All Tickets</span>
-              <span className="assignment-count-badge purple">{tickets.length}</span>
-            </button>
-
-            <button
-              type="button"
-              className={`assignment-tab-btn ${assignmentTab === 'MY' ? 'active' : ''}`}
-              onClick={() => setAssignmentTab('MY')}
-            >
-              <UserCheck size={16} />
-              <span>My Tickets (Assigned)</span>
-              <span className="assignment-count-badge green">{tickets.filter(isTicketAssignedToMe).length}</span>
-            </button>
-
-            <button
-              type="button"
-              className={`assignment-tab-btn ${assignmentTab === 'UNASSIGNED' ? 'active' : ''}`}
-              onClick={() => setAssignmentTab('UNASSIGNED')}
-            >
-              <Clock size={16} />
-              <span>Unassigned Tickets</span>
-              <span className="assignment-count-badge orange">{tickets.filter(isTicketUnassigned).length}</span>
-            </button>
-          </div>
-        )}
-
-        {/* 5 Stat Filter Cards Bar */}
-        <div className="support-stat-filter-row">
+        {/* 3 Top Category Quick-Action Cards */}
+        <div className="cs-category-cards-grid">
+          {/* 1. Emergency Card */}
           <div
-            className={`stat-card ${statusFilter === 'ALL' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('ALL')}
+            className="cs-category-card emergency-card"
+            onClick={() => handleOpenCreateModalWithCategory('Emergency')}
+            role="button"
+            tabIndex={0}
           >
-            <div className="icon-box purple"><Ticket size={18} /></div>
-            <div>
-              <span className="card-lbl">All Tickets</span>
-              <h3 className="card-val">{totalCount}</h3>
+            <div className="cs-cat-icon-wrap emergency-icon">
+              <AlertCircle size={22} strokeWidth={2.2} />
             </div>
+            <div className="cs-cat-text-wrap">
+              <h3 className="cs-cat-title">Emergency</h3>
+              <p className="cs-cat-desc">Safety, medical assistance</p>
+            </div>
+            <ChevronRight size={18} className="cs-cat-arrow" />
           </div>
 
+          {/* 2. Equipment Required Card */}
           <div
-            className={`stat-card ${statusFilter === 'OPEN' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('OPEN')}
+            className="cs-category-card equipment-card"
+            onClick={() => handleOpenCreateModalWithCategory('Equipment')}
+            role="button"
+            tabIndex={0}
           >
-            <div className="icon-box orange"><Clock size={18} /></div>
-            <div>
-              <span className="card-lbl">Open</span>
-              <h3 className="card-val">{openCount}</h3>
+            <div className="cs-cat-icon-wrap equipment-icon">
+              <Wrench size={20} strokeWidth={2.2} />
             </div>
+            <div className="cs-cat-text-wrap">
+              <h3 className="cs-cat-title">Equipment Required</h3>
+              <p className="cs-cat-desc">Tools, machines, materials</p>
+            </div>
+            <ChevronRight size={18} className="cs-cat-arrow" />
           </div>
 
+          {/* 3. General Card */}
           <div
-            className={`stat-card ${statusFilter === 'IN_PROGRESS' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('IN_PROGRESS')}
+            className="cs-category-card general-card"
+            onClick={() => handleOpenCreateModalWithCategory('General')}
+            role="button"
+            tabIndex={0}
           >
-            <div className="icon-box blue"><TrendingUp size={18} /></div>
-            <div>
-              <span className="card-lbl">In Progress</span>
-              <h3 className="card-val">{inProgressCount}</h3>
+            <div className="cs-cat-icon-wrap general-icon">
+              <MessageSquare size={20} strokeWidth={2.2} />
             </div>
-          </div>
-
-          <div
-            className={`stat-card ${statusFilter === 'RESOLVED' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('RESOLVED')}
-          >
-            <div className="icon-box green"><CheckCircle2 size={18} /></div>
-            <div>
-              <span className="card-lbl">Resolved</span>
-              <h3 className="card-val">{resolvedCount}</h3>
+            <div className="cs-cat-text-wrap">
+              <h3 className="cs-cat-title">General</h3>
+              <p className="cs-cat-desc">Other support requests</p>
             </div>
-          </div>
-
-          <div
-            className={`stat-card ${statusFilter === 'CLOSED' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('CLOSED')}
-          >
-            <div className="icon-box grey"><CheckCircle2 size={18} /></div>
-            <div>
-              <span className="card-lbl">Closed</span>
-              <h3 className="card-val">{closedCount}</h3>
-            </div>
+            <ChevronRight size={18} className="cs-cat-arrow" />
           </div>
         </div>
 
-        {/* Search & Filter Controls Bar */}
-        <div className="support-filter-controls">
-          <div className="search-input-box">
-            <Search size={16} className="search-icon" />
-            <input
-              type="text"
-              placeholder="Search tickets..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+        {/* Filter Pills & Search Bar Section */}
+        <div className="cs-filters-and-search-row">
+          {/* Status Filter Pills */}
+          <div className="cs-filter-pills-wrap">
+            <button
+              type="button"
+              className={`cs-filter-pill ${statusFilter === 'ALL' ? 'active' : ''}`}
+              onClick={() => {
+                setStatusFilter('ALL');
+                setCurrentPage(1);
+              }}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              className={`cs-filter-pill ${statusFilter === 'OPEN' ? 'active' : ''}`}
+              onClick={() => {
+                setStatusFilter('OPEN');
+                setCurrentPage(1);
+              }}
+            >
+              Open
+            </button>
+            <button
+              type="button"
+              className={`cs-filter-pill ${statusFilter === 'IN_PROGRESS' ? 'active' : ''}`}
+              onClick={() => {
+                setStatusFilter('IN_PROGRESS');
+                setCurrentPage(1);
+              }}
+            >
+              In Progress
+            </button>
+            <button
+              type="button"
+              className={`cs-filter-pill ${statusFilter === 'RESOLVED' ? 'active' : ''}`}
+              onClick={() => {
+                setStatusFilter('RESOLVED');
+                setCurrentPage(1);
+              }}
+            >
+              Resolved
+            </button>
+            <button
+              type="button"
+              className={`cs-filter-pill ${statusFilter === 'CLOSED' ? 'active' : ''}`}
+              onClick={() => {
+                setStatusFilter('CLOSED');
+                setCurrentPage(1);
+              }}
+            >
+              Closed
+            </button>
           </div>
 
-          <div className="dropdown-filter-group">
-            <select
-              className="filter-select"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="ALL">All Status</option>
-              <option value="OPEN">Open</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="RESOLVED">Resolved</option>
-              <option value="CLOSED">Closed</option>
-            </select>
+          {/* Search Input Box & Filter Button */}
+          <div className="cs-search-filter-controls">
+            <div className="cs-search-input-box">
+              <Search size={16} className="cs-search-icon" />
+              <input
+                type="text"
+                placeholder="Search tickets..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
 
-            <select
-              className="filter-select"
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
+            <button
+              type="button"
+              className="cs-filter-action-btn"
+              onClick={() => {
+                setCategoryFilter((prev) => (prev === 'ALL' ? 'EMERGENCY' : prev === 'EMERGENCY' ? 'EQUIPMENT' : prev === 'EQUIPMENT' ? 'GENERAL' : 'ALL'));
+                setCurrentPage(1);
+              }}
+              title="Filter by Category"
             >
-              <option value="ALL">All Priority</option>
-              <option value="HIGH">High Priority</option>
-              <option value="MEDIUM">Medium Priority</option>
-              <option value="LOW">Low Priority</option>
-            </select>
-
-            <button className="icon-filter-btn" title="Filter Options">
-              <Filter size={16} /> Filters
+              <Filter size={15} />
+              <span>{categoryFilter !== 'ALL' ? categoryFilter : 'Filters'}</span>
             </button>
           </div>
         </div>
 
-        {/* Tickets Data Table */}
-        <div className="support-tickets-table-card">
-          <div className="table-responsive">
-            <table className="worker-tickets-table">
+        {/* DESKTOP TABLE VIEW (≥ 900px) */}
+        <div className="cs-table-card desktop-only">
+          <div className="cs-table-container">
+            <table className="cs-tickets-table">
               <thead>
                 <tr>
-                  <th>Ticket ID</th>
-                  <th>Subject</th>
-                  <th>Priority</th>
-                  <th>Status</th>
-                  <th>Last Updated</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
+                  <th style={{ width: '10%' }}>#</th>
+                  <th style={{ width: '36%' }}>Subject</th>
+                  <th style={{ width: '18%' }}>Category</th>
+                  <th style={{ width: '16%' }}>Status</th>
+                  <th style={{ width: '14%' }}>Created On</th>
+                  <th style={{ width: '6%', textAlign: 'center' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: '#64748B' }}>
-                      Loading tickets database...
+                    <td colSpan={6} className="cs-empty-row">
+                      Loading customer support tickets...
                     </td>
                   </tr>
-                ) : filteredTickets.length === 0 ? (
+                ) : paginatedTickets.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: '#94A3B8' }}>
-                      No support tickets found in database matching criteria.
+                    <td colSpan={6} className="cs-empty-row">
+                      No support tickets found matching your criteria.
                     </td>
                   </tr>
                 ) : (
-                  filteredTickets.map((t) => {
+                  paginatedTickets.map((t) => {
                     const isSelected = selectedTicket && String(selectedTicket.id) === String(t.id);
+                    const cat = getTicketCategory(t);
                     return (
                       <tr
                         key={t.id}
-                        className={`ticket-row ${isSelected ? 'row-selected' : ''}`}
+                        className={`cs-table-row ${isSelected ? 'row-selected' : ''}`}
                         onClick={() => setSelectedTicket(t)}
                       >
-                        <td className="ticket-id-code">{t.ticketId || `#TKT-${t.id}`}</td>
-                        <td className="ticket-subject-title">{t.subject || '—'}</td>
-                        <td>{getPriorityBadge(t.priority)}</td>
-                        <td>{getStatusBadge(t)}</td>
-                        <td className="last-updated-text">{t.createdAt || '10 mins ago'}</td>
-                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          {isSupportAgentRole && (
-                            isTicketAssignedToMe(t) ? (
-                              <>
-                                <span style={{ fontSize: '11px', color: '#059669', fontWeight: 700, marginRight: '6px', backgroundColor: '#ECFDF5', padding: '3px 8px', borderRadius: '6px', border: '1px solid #A7F3D0' }}>
-                                  ✓ Assigned to You
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleUnassignFromMe(t.id, e)}
-                                  style={{
-                                    backgroundColor: '#FEF2F2',
-                                    color: '#DC2626',
-                                    border: '1px solid #FCA5A5',
-                                    borderRadius: '6px',
-                                    padding: '3px 8px',
-                                    fontSize: '11px',
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '3px',
-                                    marginRight: '6px'
-                                  }}
-                                >
-                                  <X size={11} /> Unassign
-                                </button>
-                              </>
-                            ) : isTicketUnassigned(t) ? (
-                              <button
-                                type="button"
-                                onClick={(e) => handleAssignToMe(t.id, e)}
-                                style={{
-                                  backgroundColor: '#2563EB',
-                                  color: '#FFFFFF',
-                                  border: 'none',
-                                  borderRadius: '6px',
-                                  padding: '4px 10px',
-                                  fontSize: '11.5px',
-                                  fontWeight: 700,
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  marginRight: '8px'
-                                }}
-                              >
-                                <UserCheck size={13} /> Assign to Me
-                              </button>
-                            ) : (
-                              <span style={{ fontSize: '11px', color: '#6B7280', fontWeight: 600, marginRight: '8px', backgroundColor: '#F3F4F6', padding: '3px 8px', borderRadius: '6px' }}>
-                                Assigned: {typeof t.handledBy === 'object' && t.handledBy !== null ? (t.handledBy as any).name : String(t.handledBy || '')}
-                              </span>
-                            )
-                          )}
+                        <td className="cs-ticket-code">{formatTicketCode(t)}</td>
+                        <td className="cs-ticket-subj">
+                          <span className="cs-subj-text">{t.subject || 'Support Inquiry'}</span>
+                        </td>
+                        <td>{renderCategoryBadge(cat)}</td>
+                        <td>{renderStatusBadge(t.status)}</td>
+                        <td className="cs-created-date">{formatTicketDate(t.createdAt)}</td>
+                        <td style={{ textAlign: 'center' }}>
                           <button
-                            className="action-dots-btn"
+                            type="button"
+                            className="cs-dots-btn"
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedTicket(t);
                             }}
+                            title="View Ticket Conversation"
                           >
                             <MoreVertical size={16} />
                           </button>
@@ -714,273 +736,393 @@ export const WorkerSupportPage: React.FC<WorkerSupportPageProps> = ({
           </div>
 
           {/* Table Pagination Footer */}
-          <div className="table-pagination-footer">
-            <span className="pagination-info">
-              Showing 1 to {filteredTickets.length} of {tickets.length} tickets
+          <div className="cs-pagination-footer">
+            <span className="cs-pagination-info">
+              Showing {filteredTickets.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to{' '}
+              {Math.min(currentPage * itemsPerPage, filteredTickets.length)} of {filteredTickets.length} tickets
             </span>
-            <div className="pagination-pages">
-              <button className="page-nav-btn">&lt;</button>
-              <button className="page-num-btn active">1</button>
-              <button className="page-num-btn">2</button>
-              <button className="page-nav-btn">&gt;</button>
+
+            <div className="cs-pagination-controls">
+              <button
+                type="button"
+                className="cs-page-arrow-btn"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              >
+                &lt;
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  className={`cs-page-num-btn ${currentPage === p ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(p)}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="cs-page-arrow-btn"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              >
+                &gt;
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Bottom Help Banner */}
-        <div className="support-help-banner">
-          <div className="banner-title-row">
-            <h3>We are here to help you</h3>
+        {/* MOBILE CARDS LIST VIEW (< 900px) */}
+        <div className="cs-mobile-cards-list mobile-only">
+          {loading ? (
+            <div className="cs-empty-mobile-card">Loading support tickets...</div>
+          ) : filteredTickets.length === 0 ? (
+            <div className="cs-empty-mobile-card">No support tickets found matching criteria.</div>
+          ) : (
+            filteredTickets.map((t) => {
+              const cat = getTicketCategory(t);
+              return (
+                <div
+                  key={t.id}
+                  className="cs-mobile-ticket-card"
+                  onClick={() => setSelectedTicket(t)}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="cs-mob-top-row">
+                    <span className="cs-mob-code">{formatTicketCode(t)}</span>
+                    <span className="cs-mob-date">{formatTicketDate(t.createdAt)}</span>
+                  </div>
+
+                  <h4 className="cs-mob-subj">{t.subject || 'Support Inquiry'}</h4>
+
+                  <div className="cs-mob-bottom-row">
+                    <div className="cs-mob-badges">
+                      {renderCategoryBadge(cat)}
+                      {renderStatusBadge(t.status)}
+                    </div>
+                    <ChevronRight size={18} className="cs-mob-chevron" />
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Bottom "We are here to help you" Card */}
+        <div className="cs-bottom-help-card">
+          <div className="cs-help-icon-box">
+            <Headset size={24} strokeWidth={2.2} />
           </div>
-          <div className="help-cards-grid">
-            <div className="help-card">
-              <MessageSquare size={20} color="#2563eb" />
-              <div>
-                <h4>Quick Response</h4>
-                <p>We reply as fast as we can</p>
-              </div>
-            </div>
-
-            <div className="help-card">
-              <Clock size={20} color="#2563eb" />
-              <div>
-                <h4>24/7 Support</h4>
-                <p>Round the clock assistance</p>
-              </div>
-            </div>
-
-            <div className="help-card">
-              <Lock size={20} color="#10b981" />
-              <div>
-                <h4>Secure & Private</h4>
-                <p>Your data is safe with us</p>
-              </div>
-            </div>
-
-            <div className="help-card">
-              <History size={20} color="#3b82f6" />
-              <div>
-                <h4>Track Anytime</h4>
-                <p>Track your ticket anytime</p>
-              </div>
-            </div>
+          <div className="cs-help-text-box">
+            <h4 className="cs-help-title">We are here to help you</h4>
+            <p className="cs-help-subtitle">
+              To keep your tickets safe we back them up on remote servers
+            </p>
           </div>
+          <ChevronRight size={20} className="cs-help-arrow" />
         </div>
       </div>
 
-      {/* Right Column: Ticket Details & Live Conversation Panel */}
-      <div className="worker-support-right-col">
+      {/* RIGHT COLUMN: Ticket Details & Live Conversation Panel */}
+      <div className={`cs-right-pane ${selectedTicket ? 'cs-panel-open' : ''}`}>
         {selectedTicket ? (
-          <div className="ticket-detail-panel animate-fade-in">
-            {/* Panel Top Header */}
-            <div className="panel-header-row">
-              <div className="panel-title-group" style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <h3>Ticket Details</h3>
-                {getStatusBadge(selectedTicket)}
-                {isSupportAgentRole && (
-                  isTicketAssignedToMe(selectedTicket) ? (
-                    <>
-                      <span style={{ fontSize: '11px', color: '#059669', fontWeight: 700, backgroundColor: '#ECFDF5', padding: '3px 8px', borderRadius: '6px', border: '1px solid #A7F3D0' }}>
-                        ✓ Assigned to You
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => handleUnassignFromMe(selectedTicket.id, e)}
-                        style={{
-                          backgroundColor: '#FEF2F2',
-                          color: '#DC2626',
-                          border: '1px solid #FCA5A5',
-                          borderRadius: '6px',
-                          padding: '3px 8px',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '3px'
-                        }}
-                      >
-                        <X size={11} /> Unassign from Me
-                      </button>
-                    </>
-                  ) : isTicketUnassigned(selectedTicket) ? (
-                    <button
-                      type="button"
-                      onClick={(e) => handleAssignToMe(selectedTicket.id, e)}
-                      style={{
-                        backgroundColor: '#2563EB',
-                        color: '#FFFFFF',
-                        border: 'none',
-                        borderRadius: '6px',
-                        padding: '4px 10px',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}
-                    >
-                      <UserCheck size={12} /> Assign to Me
-                    </button>
-                  ) : (
-                    <span style={{ fontSize: '11px', color: '#6B7280', fontWeight: 600, backgroundColor: '#F3F4F6', padding: '3px 8px', borderRadius: '6px' }}>
-                      Assigned: {typeof selectedTicket.handledBy === 'object' && selectedTicket.handledBy !== null ? (selectedTicket.handledBy as any).name : String(selectedTicket.handledBy || '')}
-                    </span>
-                  )
-                )}
-              </div>
-              <button className="close-panel-btn" onClick={() => setSelectedTicket(null)}>
-                <X size={18} />
+          <div className="cs-ticket-detail-card animate-fade-in">
+            {/* Mobile Back Button Header */}
+            <div className="cs-mobile-back-header mobile-only">
+              <button
+                type="button"
+                className="cs-mobile-back-btn"
+                onClick={() => setSelectedTicket(null)}
+              >
+                <ArrowLeft size={18} />
+                <span>Back to tickets</span>
               </button>
             </div>
 
-            {/* Ticket Subject & Meta */}
-            <div className="ticket-header-meta">
-              <div className="ticket-number-row">
-                <span className="t-number">{selectedTicket.ticketId || `#TKT-${selectedTicket.id}`}</span>
-                {getPriorityBadge(selectedTicket.priority)}
+            {/* Ticket Header (Code + Status + Close) */}
+            <div className="cs-detail-header-row">
+              <div className="cs-detail-code-wrap">
+                <span className="cs-detail-ticket-id">{formatTicketCode(selectedTicket)}</span>
+                {renderStatusBadge(selectedTicket.status)}
               </div>
-              <h2 className="t-subject">{selectedTicket.subject}</h2>
 
-              <div className="meta-info-grid">
-                <div>
-                  <span className="meta-lbl">Category</span>
-                  <span className="meta-val">Payroll & Grievance</span>
-                </div>
-                <div>
-                  <span className="meta-lbl">Created On</span>
-                  <span className="meta-val">{selectedTicket.createdAt || 'May 21, 2026 09:15 AM'}</span>
-                </div>
-                <div>
-                  <span className="meta-lbl">Last Updated</span>
-                  <span className="meta-val">10 mins ago</span>
-                </div>
+              <div className="cs-detail-header-actions">
+                {isSupportAgentRole && (
+                  isTicketAssignedToMe(selectedTicket) ? (
+                    <button
+                      type="button"
+                      className="cs-unassign-btn"
+                      onClick={(e) => handleUnassignFromMe(selectedTicket.id, e)}
+                    >
+                      <X size={12} /> Unassign
+                    </button>
+                  ) : isTicketUnassigned(selectedTicket) ? (
+                    <button
+                      type="button"
+                      className="cs-assign-btn"
+                      onClick={(e) => handleAssignToMe(selectedTicket.id, e)}
+                    >
+                      <CheckCircle2 size={13} /> Assign to Me
+                    </button>
+                  ) : null
+                )}
+
+                <button
+                  type="button"
+                  className="cs-close-panel-btn"
+                  onClick={() => setSelectedTicket(null)}
+                  title="Close Panel"
+                >
+                  <X size={18} />
+                </button>
               </div>
             </div>
 
-            {/* Description Section */}
-            <div className="ticket-section-block">
-              <span className="section-title">Description</span>
-              <p className="description-text">
-                {selectedTicket.description || 'My salary for the month of May has not been credited yet. Please check and resolve this issue.'}
+            {/* Ticket Title & Category Subtitle */}
+            <div className="cs-detail-title-block">
+              <h2 className="cs-detail-subject">{selectedTicket.subject || 'Support Ticket'}</h2>
+              <p className="cs-detail-subtitle">
+                {getCategorySubtitle(getTicketCategory(selectedTicket))}
               </p>
             </div>
 
-            {/* Attachments Section */}
-            {selectedTicket.attachmentUrl && (
-              <div className="ticket-section-block">
-                <span className="section-title">Attachments (1)</span>
-                <div className="attachment-card">
-                  <FileText size={22} color="#ef4444" />
-                  <div className="attachment-info">
-                    <span className="doc-name">May_Payslip_Proof.pdf</span>
-                    <span className="doc-size">245 KB</span>
+            {/* 2 Metadata Cards: Created On & Created By */}
+            <div className="cs-detail-meta-grid">
+              <div className="cs-meta-card">
+                <div className="cs-meta-icon orange-tint">
+                  <Calendar size={18} />
+                </div>
+                <div>
+                  <span className="cs-meta-label">Created On</span>
+                  <span className="cs-meta-value">{formatTicketDateTime(selectedTicket.createdAt)}</span>
+                </div>
+              </div>
+
+              <div className="cs-meta-card">
+                <div className="cs-meta-icon orange-tint">
+                  <User size={18} />
+                </div>
+                <div>
+                  <span className="cs-meta-label">Created By</span>
+                  <span className="cs-meta-value">{getCreatorDisplayName(selectedTicket)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Conversation / Details / Attachments Tabs */}
+            <div className="cs-panel-nav-tabs">
+              <button
+                type="button"
+                className={`cs-panel-tab-btn ${activeRightTab === 'conversation' ? 'active' : ''}`}
+                onClick={() => setActiveRightTab('conversation')}
+              >
+                Conversation
+              </button>
+              <button
+                type="button"
+                className={`cs-panel-tab-btn ${activeRightTab === 'details' ? 'active' : ''}`}
+                onClick={() => setActiveRightTab('details')}
+              >
+                Details
+              </button>
+              <button
+                type="button"
+                className={`cs-panel-tab-btn ${activeRightTab === 'attachments' ? 'active' : ''}`}
+                onClick={() => setActiveRightTab('attachments')}
+              >
+                Attachments
+              </button>
+            </div>
+
+            {/* Tab 1: Conversation View */}
+            {activeRightTab === 'conversation' && (
+              <div className="cs-conversation-container">
+                <div className="cs-messages-scroll-area">
+                  {/* Message 1: Initial Creator Description */}
+                  <div className="cs-chat-message-row other-user">
+                    <div className="cs-avatar-bubble">
+                      {getInitials(
+                        (selectedTicket as any).agentName || (selectedTicket as any).createdByName || 'Agent'
+                      )}
+                    </div>
+                    <div className="cs-message-content-wrap">
+                      <div className="cs-msg-header">
+                        <span className="cs-msg-author">
+                          {getCreatorDisplayName(selectedTicket)}
+                        </span>
+                        <span className="cs-msg-time">
+                          {formatTicketDateTime(selectedTicket.createdAt)}
+                        </span>
+                      </div>
+                      <div className="cs-msg-bubble light-bubble">
+                        <p>{selectedTicket.description || selectedTicket.subject || 'Support assistance needed.'}</p>
+                      </div>
+                    </div>
                   </div>
-                  <a
-                    href={selectedTicket.attachmentUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="download-attachment-btn"
-                    title="Download Proof Attachment"
+
+                  {/* Official Agent Reply if available */}
+                  {selectedTicket.reply && (
+                    <div className="cs-chat-message-row current-user">
+                      <div className="cs-avatar-bubble agent-avatar">
+                        {getInitials(selectedTicket.handledBy || 'Support Agent')}
+                      </div>
+                      <div className="cs-message-content-wrap">
+                        <div className="cs-msg-header">
+                          <span className="cs-msg-author">{selectedTicket.handledBy || 'Support Agent (CSA)'}</span>
+                          <span className="cs-msg-time">Reply</span>
+                        </div>
+                        <div className="cs-msg-bubble blue-tint-bubble">
+                          <p>{selectedTicket.reply}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Thread Comments */}
+                  {comments.map((c, idx) => {
+                    const isCurrentUser =
+                      String((c as any).senderId || c.authorId) === String(user?.id) ||
+                      (c as any).senderName === user?.name ||
+                      c.authorName === user?.name;
+                    
+                    const code = (c as any).authorCode || ((c as any).authorRole === 'CUSTOMER_SUPPORT' ? `CSA-${c.authorId}` : `AGT-${c.authorId}`);
+                    const roleLabel = (c as any).authorRole === 'CUSTOMER_SUPPORT' ? 'Support Agent' : 'Field Agent';
+                    const authorName = (c as any).senderName || c.authorName || (isCurrentUser ? `${user?.name || 'You'} (${roleLabel})` : `${roleLabel} (${code})`);
+
+                    return (
+                      <div
+                        key={c.id || idx}
+                        className={`cs-chat-message-row ${isCurrentUser ? 'current-user' : 'other-user'}`}
+                      >
+                        <div className={`cs-avatar-bubble ${(c as any).authorRole === 'CUSTOMER_SUPPORT' ? 'agent-avatar' : ''}`}>
+                          {getInitials(authorName)}
+                        </div>
+                        <div className="cs-message-content-wrap">
+                          <div className="cs-msg-header">
+                            <span className="cs-msg-author">{authorName}</span>
+                            <span className="cs-msg-time">
+                              {c.createdAt ? formatTicketDateTime(c.createdAt) : 'Just now'}
+                            </span>
+                          </div>
+                          <div className={`cs-msg-bubble ${isCurrentUser ? 'blue-tint-bubble' : 'light-bubble'}`}>
+                            <p>{c.message}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div ref={chatBottomRef} />
+                </div>
+
+                {/* Message Input Form */}
+                <form className="cs-chat-input-form" onSubmit={handleSendComment}>
+                  <input
+                    type="text"
+                    placeholder="Type a message..."
+                    value={newCommentText}
+                    onChange={(e) => setNewCommentText(e.target.value)}
+                  />
+                  <button type="button" className="cs-attach-btn" title="Attach Document / Photo">
+                    <Paperclip size={18} />
+                  </button>
+                  <button
+                    type="submit"
+                    className="cs-send-btn"
+                    disabled={!newCommentText.trim() || isSubmittingComment}
+                    title="Send Message"
                   >
-                    <Download size={16} />
-                  </a>
+                    <Send size={16} />
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* Tab 2: Details View */}
+            {activeRightTab === 'details' && (
+              <div className="cs-tab-details-container">
+                <div className="cs-details-block">
+                  <h4 className="cs-details-section-title">Issue Description</h4>
+                  <p className="cs-details-desc-text">
+                    {selectedTicket.description || 'No detailed description provided.'}
+                  </p>
+                </div>
+
+                <div className="cs-details-block">
+                  <h4 className="cs-details-section-title">Ticket Information</h4>
+                  <div className="cs-info-row">
+                    <span className="cs-info-label">Category:</span>
+                    <span className="cs-info-val">{getTicketCategory(selectedTicket)}</span>
+                  </div>
+                  <div className="cs-info-row">
+                    <span className="cs-info-label">Priority:</span>
+                    <span className="cs-info-val">{selectedTicket.priority || 'MEDIUM'}</span>
+                  </div>
+                  <div className="cs-info-row">
+                    <span className="cs-info-label">Assigned Agent:</span>
+                    <span className="cs-info-val">
+                      {typeof selectedTicket.handledBy === 'object' && selectedTicket.handledBy !== null
+                        ? (selectedTicket.handledBy as any).name
+                        : String(selectedTicket.handledBy || 'Unassigned')}
+                    </span>
+                  </div>
+                  {isSupportAgentRole && (
+                    <div className="cs-info-row" style={{ marginTop: '12px' }}>
+                      <span className="cs-info-label">Change Status:</span>
+                      <select
+                        className="cs-status-select"
+                        value={(selectedTicket.status || 'OPEN').toUpperCase()}
+                        onChange={(e) => handleStatusChange(selectedTicket.id, e.target.value)}
+                      >
+                        <option value="OPEN">Open</option>
+                        <option value="IN_PROGRESS">In Progress</option>
+                        <option value="RESOLVED">Resolved</option>
+                        <option value="CLOSED">Closed</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* Conversation Stream */}
-            <div className="conversation-section-block">
-              <div className="conversation-header">
-                <span>Conversation</span>
-                <span className="live-pill"><span className="green-dot"></span> Live</span>
-              </div>
-
-              <div className="conversation-messages-list">
-                {/* Initial Description as first message */}
-                <div className="chat-bubble worker">
-                  <div className="bubble-header">
-                    <span className="user-name">
-                      {(selectedTicket as any).createdByName || selectedTicket.workerName || (selectedTicket as any).userName || user?.name || 'Agent'}
-                    </span>
-                    <span className="time-text">{selectedTicket.createdAt || '09:15 AM'}</span>
-                  </div>
-                  <p>{selectedTicket.description || 'Safety equipment & PPE request'}</p>
-                </div>
-
-                {/* Official Support Agent Reply if available */}
-                {selectedTicket.reply && (
-                  <div className="chat-bubble agent">
-                    <div className="bubble-header">
-                      <span className="user-name">{selectedTicket.handledBy || 'Support Agent'}</span>
-                      <span className="time-text">09:20 AM</span>
+            {/* Tab 3: Attachments View */}
+            {activeRightTab === 'attachments' && (
+              <div className="cs-tab-attachments-container">
+                {selectedTicket.attachmentUrl ? (
+                  <div className="cs-attachment-item">
+                    <FileText size={22} className="cs-file-icon" />
+                    <div className="cs-attachment-info">
+                      <span className="cs-file-name">Support_Proof_Attachment.pdf</span>
+                      <span className="cs-file-size">Attached Evidence</span>
                     </div>
-                    <p>{selectedTicket.reply}</p>
+                    <a
+                      href={selectedTicket.attachmentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="cs-download-btn"
+                      title="Download Attachment"
+                    >
+                      <Download size={16} />
+                    </a>
+                  </div>
+                ) : (
+                  <div className="cs-no-attachments">
+                    <Paperclip size={32} />
+                    <p>No attachments uploaded for this support ticket.</p>
                   </div>
                 )}
-
-                {/* Additional Thread Comments */}
-                {comments.map((c, idx) => {
-                  const isUserMsg =
-                    String((c as any).senderId || c.authorId) === String(user?.id) ||
-                    (c as any).senderName === user?.name ||
-                    c.authorName === user?.name ||
-                    (c as any).senderRole === user?.role;
-                  return (
-                    <div className={`chat-bubble ${isUserMsg ? 'worker' : 'agent'}`} key={c.id || idx}>
-                      <div className="bubble-header">
-                        <span className="user-name">
-                          {(c as any).senderName || c.authorName || (isUserMsg ? user?.name || 'Agent' : 'Support Agent')}
-                        </span>
-                        <span className="time-text">
-                          {c.createdAt ? new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
-                        </span>
-                      </div>
-                      <p>{c.message}</p>
-                    </div>
-                  );
-                })}
-                <div ref={chatBottomRef} />
               </div>
-
-              {/* Live Chat Message Input Form */}
-              <form className="chat-input-form" onSubmit={handleSendComment}>
-                <input
-                  type="text"
-                  placeholder="Type your message..."
-                  value={newCommentText}
-                  onChange={(e) => setNewCommentText(e.target.value)}
-                />
-                <button type="button" className="attach-btn" title="Attach file">
-                  <Paperclip size={18} />
-                </button>
-                <button type="submit" className="send-btn" disabled={!newCommentText.trim() || isSubmittingComment}>
-                  <Send size={16} />
-                </button>
-              </form>
-            </div>
-
-            {/* Bottom 5-Star Feedback Section */}
-            <div className="feedback-rating-widget">
-              <span className="feedback-title">How was your support experience?</span>
-              <span className="feedback-sub">Your feedback helps us improve.</span>
-              <div className="star-rating-row">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star
-                    key={star}
-                    size={22}
-                    className={`star-icon ${star <= feedbackRating ? 'filled' : ''}`}
-                    onClick={() => setFeedbackRating(star)}
-                  />
-                ))}
-              </div>
-            </div>
+            )}
           </div>
         ) : (
-          <div className="no-ticket-selected-card">
-            <Headset size={40} color="#94A3B8" />
-            <p>Select a support ticket from the table to view conversation history and reply in real-time.</p>
+          <div className="cs-no-selection-card desktop-only">
+            <Headset size={44} className="cs-empty-icon" />
+            <h3>Select a Support Ticket</h3>
+            <p>
+              Click any ticket from the list to inspect details, review worker grievances, and reply
+              in real-time.
+            </p>
           </div>
         )}
       </div>

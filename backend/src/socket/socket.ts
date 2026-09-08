@@ -2,6 +2,12 @@ import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
 
 let io: Server | null = null;
+const socketUserMap = new Map<string, number>();
+const userSocketsMap = new Map<number, Set<string>>();
+
+export const getOnlineUserIds = (): number[] => {
+  return Array.from(userSocketsMap.keys());
+};
 
 export const initSocket = (server: HttpServer) => {
   io = new Server(server, {
@@ -15,6 +21,9 @@ export const initSocket = (server: HttpServer) => {
   io.on("connection", (socket: Socket) => {
     console.log(`[Socket.io] Client connected: ${socket.id}`);
 
+    // Send current online user IDs immediately to connected socket
+    socket.emit("users:online", Array.from(userSocketsMap.keys()));
+
     // Join room based on user role or ID
     socket.on("join", (data: { userId: number; role: string }) => {
       if (data?.role) {
@@ -22,12 +31,41 @@ export const initSocket = (server: HttpServer) => {
         console.log(`Socket ${socket.id} joined role:${data.role}`);
       }
       if (data?.userId) {
-        socket.join(`user:${data.userId}`);
-        console.log(`Socket ${socket.id} joined user:${data.userId}`);
+        const uid = Number(data.userId);
+        if (!isNaN(uid)) {
+          socket.join(`user:${uid}`);
+          socketUserMap.set(socket.id, uid);
+
+          if (!userSocketsMap.has(uid)) {
+            userSocketsMap.set(uid, new Set());
+          }
+          userSocketsMap.get(uid)!.add(socket.id);
+
+          console.log(`Socket ${socket.id} joined user:${uid}`);
+          io?.emit("users:online", Array.from(userSocketsMap.keys()));
+          io?.emit("user:status:changed", { userId: uid, isOnline: true });
+        }
       }
     });
 
+    socket.on("get:online_users", () => {
+      socket.emit("users:online", Array.from(userSocketsMap.keys()));
+    });
+
     socket.on("disconnect", () => {
+      const uid = socketUserMap.get(socket.id);
+      if (uid !== undefined) {
+        socketUserMap.delete(socket.id);
+        const userSockets = userSocketsMap.get(uid);
+        if (userSockets) {
+          userSockets.delete(socket.id);
+          if (userSockets.size === 0) {
+            userSocketsMap.delete(uid);
+            io?.emit("users:online", Array.from(userSocketsMap.keys()));
+            io?.emit("user:status:changed", { userId: uid, isOnline: false });
+          }
+        }
+      }
       console.log(`[Socket.io] Client disconnected: ${socket.id}`);
     });
   });
@@ -105,3 +143,10 @@ export const emitInsuranceUpdate = (data: any) => {
     io.emit("insurance:updated", data);
   }
 };
+
+export const emitSupportMessage = (data: any) => {
+  if (io) {
+    io.emit("support_message", data);
+  }
+};
+

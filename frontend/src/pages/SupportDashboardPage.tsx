@@ -22,6 +22,7 @@ import { LeavePage } from './LeavePage';
 import { AgentMyDetailsView } from '../components/AgentMyDetailsView';
 import { SupportFieldAgentsView } from '../components/SupportFieldAgentsView';
 import { ActionModal } from '../components/ActionModal';
+import { MobileBottomNav } from '../components/MobileBottomNav';
 import { UserAvatar } from '../components/UserAvatar';
 import {
   Headset,
@@ -46,7 +47,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Clock3,
-  Star,
   ShieldCheck,
   Menu,
   RefreshCw,
@@ -63,8 +63,9 @@ import './SupportDashboardPage.css';
 export const SupportDashboardPage: React.FC = () => {
   const { user, role, logout } = useAuth();
 
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => window.innerWidth <= 768);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeModal, setActiveModal] = useState<string | null>(null);
 
   // Dark / Light Theme Toggle State
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -98,6 +99,14 @@ export const SupportDashboardPage: React.FC = () => {
   const [isSubmittingPassword, setIsSubmittingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+
+  const handleNavTabClick = (tab: string) => {
+    setActiveTab(tab);
+    if (window.innerWidth <= 768) {
+      setSidebarCollapsed(true);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const handleChangePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -409,9 +418,6 @@ export const SupportDashboardPage: React.FC = () => {
   };
 
   const stats = analyticsData?.stats || {};
-  const ticketsOverview = analyticsData?.ticketsOverview || [];
-  const ticketsByPriority = analyticsData?.ticketsByPriority || [];
-  const liveTicketFeed = analyticsData?.liveTicketFeed || [];
   const recentTickets = analyticsData?.recentTickets || [];
   const performanceSummary = analyticsData?.performanceSummary || {};
 
@@ -454,10 +460,10 @@ export const SupportDashboardPage: React.FC = () => {
 
   // Render standalone view based on activeTab
   const renderTabContent = () => {
-    if (activeTab === 'field_agents') {
+    if (activeTab === 'field_agents' || activeTab === 'agents') {
       return (
         <div className="tab-standalone-page animate-fade-in" style={{ padding: 0, backgroundColor: 'transparent', border: 'none', boxShadow: 'none' }}>
-          <SupportFieldAgentsView onOpenRegisterModal={() => setIsAddAgentModalOpen(true)} />
+          <SupportFieldAgentsView onOpenRegisterModal={() => setActiveModal('add_agent')} />
         </div>
       );
     }
@@ -470,7 +476,7 @@ export const SupportDashboardPage: React.FC = () => {
       );
     }
 
-    if (activeTab === 'my_leaves') {
+    if (activeTab === 'my_leaves' || activeTab === 'leaves') {
       return (
         <div className="tab-standalone-page animate-fade-in" style={{ padding: '0 0 24px 0' }}>
           <LeavePage
@@ -781,136 +787,6 @@ export const SupportDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Charts & Live Feed Section */}
-        <div className="charts-feed-row">
-          {/* Chart 1: Tickets Overview Line Graph */}
-          <div className="dashboard-widget-card line-chart-widget">
-            <div className="widget-card-header">
-              <h3>Tickets Overview</h3>
-              <select className="widget-select-dropdown">
-                <option>Last 7 Days</option>
-                <option>Last 30 Days</option>
-              </select>
-            </div>
-
-            <div className="chart-legend-row">
-              <span className="legend-item"><span className="dot blue"></span> Opened</span>
-              <span className="legend-item"><span className="dot green"></span> Resolved</span>
-              <span className="legend-item"><span className="dot red"></span> Overdue</span>
-            </div>
-
-            {/* Custom SVG Line Chart */}
-            <div className="svg-chart-container">
-              <svg viewBox="0 0 500 200" className="trend-line-svg">
-                <line x1="0" y1="40" x2="500" y2="40" stroke="#f1f5f9" strokeDasharray="4 4" />
-                <line x1="0" y1="80" x2="500" y2="80" stroke="#f1f5f9" strokeDasharray="4 4" />
-                <line x1="0" y1="120" x2="500" y2="120" stroke="#f1f5f9" strokeDasharray="4 4" />
-                <line x1="0" y1="160" x2="500" y2="160" stroke="#f1f5f9" strokeDasharray="4 4" />
-
-                <path d="M 20 120 Q 90 60, 160 90 T 300 65 T 440 85 T 480 95" fill="none" stroke="#3b82f6" strokeWidth="3" />
-                <path d="M 20 150 Q 90 120, 160 140 T 300 120 T 440 130 T 480 140" fill="none" stroke="#10b981" strokeWidth="3" />
-                <path d="M 20 180 Q 90 170, 160 175 T 300 165 T 440 170 T 480 175" fill="none" stroke="#ef4444" strokeWidth="3" />
-
-                <circle cx="20" cy="120" r="4" fill="#3b82f6" />
-                <circle cx="90" cy="60" r="4" fill="#3b82f6" />
-                <circle cx="160" cy="90" r="4" fill="#3b82f6" />
-                <circle cx="230" cy="115" r="4" fill="#3b82f6" />
-                <circle cx="300" cy="65" r="4" fill="#3b82f6" />
-                <circle cx="370" cy="75" r="4" fill="#3b82f6" />
-                <circle cx="440" cy="85" r="4" fill="#3b82f6" />
-              </svg>
-
-              <div className="chart-x-axis">
-                {ticketsOverview.map((item: any, idx: number) => (
-                  <span key={idx}>{item.day || `Day ${idx + 1}`}</span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Chart 2: Tickets by Priority Donut Chart */}
-          <div className="dashboard-widget-card donut-chart-widget">
-            <div className="widget-card-header">
-              <h3>Tickets by Priority</h3>
-              <select className="widget-select-dropdown">
-                <option>All Priorities</option>
-                <option>High Priority</option>
-              </select>
-            </div>
-
-            <div className="donut-wrapper">
-              <svg viewBox="0 0 160 160" className="donut-svg">
-                <circle cx="80" cy="80" r="60" fill="none" stroke="#f1f5f9" strokeWidth="20" />
-                <circle cx="80" cy="80" r="60" fill="none" stroke="#ef4444" strokeWidth="20" strokeDasharray="110 376" strokeDashoffset="0" />
-                <circle cx="80" cy="80" r="60" fill="none" stroke="#f59e0b" strokeWidth="20" strokeDasharray="180 376" strokeDashoffset="-110" />
-                <circle cx="80" cy="80" r="60" fill="none" stroke="#10b981" strokeWidth="20" strokeDasharray="86 376" strokeDashoffset="-290" />
-              </svg>
-              <div className="donut-center-text">
-                <span className="donut-number">{stats.totalTickets !== undefined ? stats.totalTickets : "0"}</span>
-                <span className="donut-label">Total</span>
-              </div>
-            </div>
-
-            <div className="priority-legend-list">
-              {ticketsByPriority.map((item: any, idx: number) => {
-                const color = item.priority === 'High' ? '#ef4444' : item.priority === 'Medium' ? '#f59e0b' : '#10b981';
-                return (
-                  <div className="priority-item" key={idx}>
-                    <span className="priority-dot" style={{ backgroundColor: color }}></span>
-                    <span className="priority-name">{item.priority}</span>
-                    <span className="priority-val">{item.count !== undefined ? `${item.count} (${item.percentage || 0}%)` : "—"}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Right Section: Live Ticket Feed */}
-          <div className="dashboard-widget-card live-feed-widget">
-            <div className="widget-card-header">
-              <h3>Live Ticket Feed</h3>
-              <span className="live-indicator">
-                <span className="green-pulse"></span> Live
-              </span>
-            </div>
-
-            <div className="live-feed-list">
-              {liveTicketFeed.length === 0 ? (
-                <div className="feed-empty-state">
-                  <span>No recent ticket events in feed</span>
-                </div>
-              ) : (
-                liveTicketFeed.map((item: any, idx: number) => (
-                  <div
-                    className="feed-item clickable-ticket-row"
-                    key={idx}
-                    onClick={() => setSelectedTicketModal(item)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <div className="feed-avatar">
-                      <img
-                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${item.customerName || idx}`}
-                        alt="User"
-                      />
-                    </div>
-                    <div className="feed-details">
-                      <p className="feed-action-text">{item.action}</p>
-                      <p className="feed-subject">
-                        {item.customerName ? <strong>{item.customerName}</strong> : <span className="blank-dash">—</span>}: {item.subject || "—"} <span className="feed-ticket-id">{item.ticketNumber}</span>
-                      </p>
-                    </div>
-                    <span className="feed-time">{item.timeAgo}</span>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="feed-footer-link">
-              <a href="#view-all-feed" onClick={(e) => { e.preventDefault(); setActiveTab('tickets'); }}>View All Feed →</a>
-            </div>
-          </div>
-        </div>
-
         {/* Bottom Section: Recent Tickets & Performance Summary */}
         <div className="recent-performance-row">
           {/* Recent Tickets Table Container */}
@@ -944,7 +820,8 @@ export const SupportDashboardPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="table-responsive-wrapper">
+            {/* Desktop Table View */}
+            <div className="table-responsive-wrapper tickets-desktop-view">
               <table className="tickets-data-table">
                 <thead>
                   <tr>
@@ -1082,6 +959,96 @@ export const SupportDashboardPage: React.FC = () => {
               </table>
             </div>
 
+            {/* Mobile Cards View */}
+            <div className="tickets-mobile-view">
+              {filteredRecentTickets.length === 0 ? (
+                <div className="mobile-tickets-empty-state">
+                  <Ticket size={28} color="#94a3b8" />
+                  <p>No support tickets found matching criteria.</p>
+                </div>
+              ) : (
+                filteredRecentTickets.map((t: any) => (
+                  <div
+                    key={t.id}
+                    className="mobile-ticket-card"
+                    onClick={() => setSelectedTicketModal(t)}
+                  >
+                    <div className="mobile-ticket-card-header">
+                      <div className="mobile-ticket-id-badge">
+                        <Ticket size={13} />
+                        <span>{t.ticketNumber || `#TKT-${t.id}`}</span>
+                      </div>
+                      <div className="mobile-ticket-badges">
+                        <span className={getPriorityBadgeClass(t.priority)}>
+                          {t.priority || "MEDIUM"}
+                        </span>
+                        <span className={getStatusBadgeClass(t.status)}>
+                          {getStatusLabel(t.status)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <h4 className="mobile-ticket-subject">{t.subject || "No Subject"}</h4>
+
+                    <div className="mobile-ticket-meta-grid">
+                      <div className="mobile-meta-item">
+                        <span className="mobile-meta-label">Customer</span>
+                        <span className="mobile-meta-value">{t.customerName || "—"}</span>
+                      </div>
+                      <div className="mobile-meta-item">
+                        <span className="mobile-meta-label">Updated</span>
+                        <span className="mobile-meta-value">{t.timeAgo || "Recently"}</span>
+                      </div>
+                    </div>
+
+                    <div className="mobile-ticket-actions" onClick={(e) => e.stopPropagation()}>
+                      {isTicketAssignedToMe(t) ? (
+                        <>
+                          <select
+                            className="mobile-status-select"
+                            value={(t.status || 'OPEN').toUpperCase()}
+                            onChange={(e) => handleDashboardStatusChange(t.id, e.target.value, e)}
+                          >
+                            <option value="OPEN">Open</option>
+                            <option value="IN_PROGRESS">In Progress</option>
+                            <option value="RESOLVED">Resolved</option>
+                            <option value="CLOSED">Closed</option>
+                          </select>
+                          <button
+                            type="button"
+                            className="mobile-unassign-btn"
+                            onClick={(e) => handleUnassignFromMe(t.id, e)}
+                          >
+                            <X size={12} /> Unassign
+                          </button>
+                        </>
+                      ) : isTicketUnassigned(t) ? (
+                        <button
+                          type="button"
+                          className="mobile-assign-me-btn"
+                          onClick={(e) => handleAssignToMe(t.id, e)}
+                        >
+                          <UserCheck size={13} /> Assign to Me
+                        </button>
+                      ) : (
+                        <span className="mobile-assigned-pill">
+                          Assigned: {typeof t.handledBy === 'object' && t.handledBy !== null ? t.handledBy.name : String(t.handledBy || 'Agent')}
+                        </span>
+                      )}
+
+                      <button
+                        type="button"
+                        className="mobile-details-btn"
+                        onClick={() => setSelectedTicketModal(t)}
+                      >
+                        Details
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
             <div className="table-pagination-footer">
               <span className="pagination-info">
                 Showing 1 to {filteredRecentTickets.length} of {stats.totalTickets !== undefined ? stats.totalTickets : filteredRecentTickets.length} tickets
@@ -1098,56 +1065,6 @@ export const SupportDashboardPage: React.FC = () => {
               </div>
             </div>
           </div>
-
-          {/* Performance Summary Card */}
-          <div className="dashboard-widget-card performance-summary-widget">
-            <div className="widget-card-header">
-              <h3>Performance Summary</h3>
-              <select className="widget-select-dropdown">
-                <option>This Week</option>
-                <option>This Month</option>
-              </select>
-            </div>
-
-            <div className="performance-metrics-list">
-              <div className="perf-item">
-                <div className="perf-icon-circle blue">
-                  <Clock size={20} color="#2563eb" />
-                </div>
-                <div className="perf-details">
-                  <span className="perf-label">Avg. Response Time</span>
-                  <h4 className="perf-value">{performanceSummary.avgResponseTime || "—"}</h4>
-                  <span className="perf-trend positive">↓ 15m from last week</span>
-                </div>
-              </div>
-
-              <div className="perf-item">
-                <div className="perf-icon-circle green">
-                  <ShieldCheck size={20} color="#10b981" />
-                </div>
-                <div className="perf-details">
-                  <span className="perf-label">Resolution Rate</span>
-                  <h4 className="perf-value">{performanceSummary.resolutionRate || "—"}</h4>
-                  <span className="perf-trend positive">↑ 4.2% from last week</span>
-                </div>
-              </div>
-
-              <div className="perf-item">
-                <div className="perf-icon-circle orange">
-                  <Star size={20} color="#f59e0b" />
-                </div>
-                <div className="perf-details">
-                  <span className="perf-label">Customer Satisfaction</span>
-                  <h4 className="perf-value">{performanceSummary.customerSatisfaction || "—"}</h4>
-                  <span className="perf-trend positive">↑ 0.3 from last week</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="feed-footer-link">
-              <a href="#full-report" onClick={(e) => { e.preventDefault(); setActiveTab('reports'); }}>View Full Report →</a>
-            </div>
-          </div>
         </div>
       </>
     );
@@ -1155,8 +1072,17 @@ export const SupportDashboardPage: React.FC = () => {
 
   return (
     <div className={`support-dashboard-layout ${sidebarCollapsed ? 'sidebar-mini' : ''}`}>
+      {/* Mobile Drawer Backdrop */}
+      {!sidebarCollapsed && (
+        <div
+          className="mobile-drawer-backdrop"
+          onClick={() => setSidebarCollapsed(true)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Sidebar Navigation */}
-      <aside className="support-sidebar">
+      <aside className={`support-sidebar ${!sidebarCollapsed ? 'mobile-open' : ''}`}>
         <div className="sidebar-brand">
           <div className="brand-icon-wrapper">
             <Headset size={24} color="#ffffff" />
@@ -1172,15 +1098,15 @@ export const SupportDashboardPage: React.FC = () => {
         <nav className="sidebar-nav">
           <button
             className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => setActiveTab('dashboard')}
+            onClick={() => handleNavTabClick('dashboard')}
           >
             <LayoutDashboard size={18} />
             {!sidebarCollapsed && <span>Dashboard</span>}
           </button>
 
           <button
-            className={`nav-item ${activeTab === 'field_agents' ? 'active' : ''}`}
-            onClick={() => setActiveTab('field_agents')}
+            className={`nav-item ${activeTab === 'field_agents' || activeTab === 'agents' ? 'active' : ''}`}
+            onClick={() => handleNavTabClick('field_agents')}
           >
             <Users size={18} />
             {!sidebarCollapsed && <span>Field Agents</span>}
@@ -1188,7 +1114,7 @@ export const SupportDashboardPage: React.FC = () => {
 
           <button
             className={`nav-item ${activeTab === 'my_tickets' ? 'active' : ''}`}
-            onClick={() => setActiveTab('my_tickets')}
+            onClick={() => handleNavTabClick('my_tickets')}
           >
             <UserCheck size={18} />
             {!sidebarCollapsed && (
@@ -1203,27 +1129,27 @@ export const SupportDashboardPage: React.FC = () => {
             )}
           </button>
 
-          <button className={`nav-item ${activeTab === 'my_leaves' ? 'active' : ''}`} onClick={() => setActiveTab('my_leaves')}>
+          <button className={`nav-item ${activeTab === 'my_leaves' || activeTab === 'leaves' ? 'active' : ''}`} onClick={() => handleNavTabClick('my_leaves')}>
             <FileText size={18} />
             {!sidebarCollapsed && <span>My Leaves</span>}
           </button>
 
-          <button className={`nav-item ${activeTab === 'my_details' ? 'active' : ''}`} onClick={() => setActiveTab('my_details')}>
+          <button className={`nav-item ${activeTab === 'my_details' ? 'active' : ''}`} onClick={() => handleNavTabClick('my_details')}>
             <User size={18} />
             {!sidebarCollapsed && <span>My Details</span>}
           </button>
 
-          <button className={`nav-item ${activeTab === 'reports' ? 'active' : ''}`} onClick={() => setActiveTab('reports')}>
+          <button className={`nav-item ${activeTab === 'reports' ? 'active' : ''}`} onClick={() => handleNavTabClick('reports')}>
             <BarChart3 size={18} />
             {!sidebarCollapsed && <span>Reports</span>}
           </button>
 
-          <button className={`nav-item ${activeTab === 'notifications' ? 'active' : ''}`} onClick={() => setActiveTab('notifications')}>
+          <button className={`nav-item ${activeTab === 'notifications' ? 'active' : ''}`} onClick={() => handleNavTabClick('notifications')}>
             <Bell size={18} />
             {!sidebarCollapsed && (
               <>
                 <span>Notifications</span>
-                <span className="nav-badge red">12</span>
+                {unreadNotifCount > 0 && <span className="nav-badge red">{unreadNotifCount}</span>}
               </>
             )}
           </button>
@@ -1232,9 +1158,10 @@ export const SupportDashboardPage: React.FC = () => {
         {/* Logged in User Profile Footer */}
         <div className="sidebar-profile-footer">
           <div className="profile-avatar-box">
-            <img
-              src={user?.profileImage || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80"}
-              alt="Support Agent"
+            <UserAvatar
+              src={user?.profileImage}
+              name={user?.name || "Support Agent"}
+              size={36}
               className="profile-avatar"
             />
             <span className="online-dot-badge"></span>
@@ -1931,6 +1858,29 @@ export const SupportDashboardPage: React.FC = () => {
           </div>
         )}
       </main>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        setActiveTab={handleNavTabClick}
+        userRole="CUSTOMER_SUPPORT"
+        isAnyModalActive={!!activeModal || isCreateTicketModalOpen}
+        onOpenCreateAgent={() => setActiveModal('add_agent')}
+        onOpenCreateSite={() => setActiveModal('add_site')}
+        onOpenCreateTicket={() => setIsCreateTicketModalOpen(true)}
+        onOpenMobileDrawer={() => setSidebarCollapsed(false)}
+      />
+
+      {/* Dynamic Action Modal for Quick Actions */}
+      <ActionModal
+        isOpen={!!activeModal}
+        onClose={() => setActiveModal(null)}
+        type={activeModal || ''}
+        onSuccessRefresh={() => {
+          setActiveModal(null);
+          loadAnalytics();
+        }}
+      />
     </div>
   );
 };

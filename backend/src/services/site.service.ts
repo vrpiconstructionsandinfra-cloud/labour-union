@@ -6,20 +6,22 @@ export const createSite = async (
   data: CreateSiteInput,
   createdById: number
 ) => {
+  let siteCode = data.siteCode?.trim() || `SITE-${Date.now().toString().slice(-4)}`;
 
   const exists = await prisma.site.findUnique({
     where: {
-      siteCode: data.siteCode
+      siteCode
     }
   });
 
   if (exists) {
-    throw new Error("Site code already exists");
+    siteCode = `SITE-${Date.now().toString().slice(-6)}`;
   }
 
   return prisma.site.create({
     data: {
       ...data,
+      siteCode,
       createdById
     }
   });
