@@ -312,6 +312,20 @@ export const WorkerQrCardsView: React.FC<WorkerQrCardsViewProps> = ({
     }, 300);
   };
 
+  if (user?.role !== 'AGENT') {
+    return (
+      <div className="worker-qr-view" style={{ padding: '32px', textAlign: 'center' }}>
+        <div style={{ maxWidth: '500px', margin: '40px auto', padding: '24px', backgroundColor: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+          <AlertCircle size={40} color="#EF4444" style={{ margin: '0 auto 16px auto' }} />
+          <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px', color: 'var(--text-primary)' }}>Access Restricted</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+            The Worker QR Cards & Attendance Roster is exclusively available for Field Agents to manage their assigned workers.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="worker-qr-view">
       

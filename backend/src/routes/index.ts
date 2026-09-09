@@ -16,6 +16,7 @@ import payrollRoutes from "./payroll.routes";
 import notificationRoutes from "./notification.routes";
 import reportRoutes from "./report.routes";
 import enquiryRoutes from "./enquiry.routes";
+import sitePaymentRoutes from "./sitePayment.routes";
 import {
   createRazorpayOrder,
   verifyRazorpayPayment,
@@ -35,6 +36,8 @@ router.use("/wallet", walletRoutes);
 router.use("/dashboard", dashboardRoutes);
 router.use("/payments", paymentRoutes);
 router.use("/payment", paymentRoutes);
+router.use("/site-payments", sitePaymentRoutes);
+router.use("/site-payment", sitePaymentRoutes);
 router.use("/insurance", insuranceRoutes);
 router.use("/support", supportRoutes);
 router.use("/users", userRoutes);

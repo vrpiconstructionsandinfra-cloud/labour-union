@@ -111,8 +111,12 @@ export interface SiteItem {
   siteCode: string;
   siteName: string;
   companyName: string;
+  address?: string;
   city: string;
   state: string;
+  pincode?: string;
+  contactPerson?: string;
+  contactNumber?: string;
   assignedAgents: number;
   totalWorkers: number;
   status: 'IN_PROGRESS' | 'COMPLETED' | 'ON_HOLD' | 'ACTIVE' | 'INACTIVE' | string;

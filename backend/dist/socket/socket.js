@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.emitSupportMessage = exports.emitInsuranceUpdate = exports.emitPayrollUpdate = exports.emitWalletUpdate = exports.emitTicketComment = exports.emitTicketUpdate = exports.emitLeaveUpdate = exports.emitAttendanceUpdate = exports.getSocketIO = exports.initSocket = exports.getOnlineUserIds = void 0;
+exports.emitSitePaymentUpdate = exports.emitSupportMessage = exports.emitInsuranceUpdate = exports.emitPayrollUpdate = exports.emitWalletUpdate = exports.emitTicketComment = exports.emitTicketUpdate = exports.emitLeaveUpdate = exports.emitAttendanceUpdate = exports.getSocketIO = exports.initSocket = exports.getOnlineUserIds = void 0;
 const socket_io_1 = require("socket.io");
 let io = null;
 const socketUserMap = new Map();
@@ -142,3 +142,10 @@ const emitSupportMessage = (data) => {
     }
 };
 exports.emitSupportMessage = emitSupportMessage;
+const emitSitePaymentUpdate = (data) => {
+    if (io) {
+        io.emit("sitePayment:created", data);
+        io.emit("sitePayment:updated", data);
+    }
+};
+exports.emitSitePaymentUpdate = emitSitePaymentUpdate;

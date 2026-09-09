@@ -106,6 +106,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'agents', label: 'Agents', description: 'Field agents directory and site assignments', icon: Users, tabKey: 'agents' },
     { id: 'workers', label: 'Workers', description: 'Complete workers roster, trade and wages', icon: UserCheck, tabKey: 'workers' },
     { id: 'worker_qrs', label: 'Worker QRs', description: 'Assigned worker digital QR cards and roster', icon: QrCode, tabKey: 'worker_qrs' },
+    { id: 'site_payments', label: role === 'SUPER_AGENT' ? 'Site Payments' : 'Pay Site Bills', description: 'Site bills, utilities, and fee payments ledger', icon: CreditCard, tabKey: 'site_payments' },
     { id: 'enquiries', label: 'Enquired', description: 'Candidate leads, applications and follow-ups', icon: FileSpreadsheet, tabKey: 'enquiries' },
     { id: 'attendance', label: 'Attendance', description: 'Daily attendance logs & overtime records', icon: CalendarCheck, tabKey: 'attendance' },
     { id: 'leaves', label: 'Leave Requests', description: 'Leave requests, applications and approvals', icon: FileText, tabKey: 'leaves' },

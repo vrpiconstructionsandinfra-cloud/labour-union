@@ -150,3 +150,11 @@ export const emitSupportMessage = (data: any) => {
   }
 };
 
+export const emitSitePaymentUpdate = (data: any) => {
+  if (io) {
+    io.emit("sitePayment:created", data);
+    io.emit("sitePayment:updated", data);
+  }
+};
+
+

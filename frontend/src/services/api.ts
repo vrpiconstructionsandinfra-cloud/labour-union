@@ -1291,4 +1291,128 @@ export const raiseTicketFromChatApi = async (data: {
   return res;
 };
 
+// ─── Site Payments & Transaction Tracking APIs ──────────────────────────────
+
+export interface SitePaymentItem {
+  id: number;
+  amount: number;
+  paymentMethod: 'UPI' | 'QR_CODE' | 'CARD' | 'RAZORPAY';
+  siteId: number;
+  siteName: string;
+  siteAddress?: string;
+  payerId: number;
+  payerName: string;
+  payerRole: string;
+  assignedAgentId?: number;
+  assignedAgentName?: string;
+  transactionId?: string;
+  upiTransactionId?: string;
+  razorpayPaymentId?: string;
+  razorpayOrderId?: string;
+  status: string;
+  remarks?: string;
+  createdAt: string;
+  site?: {
+    id: number;
+    siteName: string;
+    siteCode?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+  };
+  payer?: {
+    id: number;
+    name: string;
+    role: string;
+    email?: string;
+    phone?: string;
+  };
+}
+
+export const createSitePaymentApi = async (data: {
+  amount: number;
+  paymentMethod: 'UPI' | 'QR_CODE' | 'CARD' | 'RAZORPAY';
+  siteId: number;
+  upiTransactionId?: string;
+  transactionId?: string;
+  razorpayPaymentId?: string;
+  razorpayOrderId?: string;
+  razorpaySignature?: string;
+  remarks?: string;
+}): Promise<{ success: boolean; message: string; data: SitePaymentItem }> => {
+  const res = await fetchWithAuth('/api/site-payments', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  return res;
+};
+
+export const fetchSitePaymentsApi = async (filters: {
+  siteId?: number | string;
+  agentId?: number | string;
+  paymentMethod?: string;
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+} = {}): Promise<SitePaymentItem[]> => {
+  const params = new URLSearchParams();
+  if (filters.siteId) params.append('siteId', String(filters.siteId));
+  if (filters.agentId) params.append('agentId', String(filters.agentId));
+  if (filters.paymentMethod && filters.paymentMethod !== 'ALL') params.append('paymentMethod', filters.paymentMethod);
+  if (filters.status && filters.status !== 'ALL') params.append('status', filters.status);
+  if (filters.startDate) params.append('startDate', filters.startDate);
+  if (filters.endDate) params.append('endDate', filters.endDate);
+  if (filters.search) params.append('search', filters.search);
+
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+  const res = await fetchWithAuth(`/api/site-payments${queryString}`);
+  return res.data || [];
+};
+
+export const exportSitePaymentsExcelApi = async (filters: {
+  siteId?: number | string;
+  agentId?: number | string;
+  paymentMethod?: string;
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+} = {}): Promise<void> => {
+  const params = new URLSearchParams();
+  if (filters.siteId) params.append('siteId', String(filters.siteId));
+  if (filters.agentId) params.append('agentId', String(filters.agentId));
+  if (filters.paymentMethod && filters.paymentMethod !== 'ALL') params.append('paymentMethod', filters.paymentMethod);
+  if (filters.status && filters.status !== 'ALL') params.append('status', filters.status);
+  if (filters.startDate) params.append('startDate', filters.startDate);
+  if (filters.endDate) params.append('endDate', filters.endDate);
+  if (filters.search) params.append('search', filters.search);
+
+  const token = sessionStorage.getItem('token');
+  const headers: HeadersInit = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+  const response = await fetch(`/api/site-payments/export-excel${queryString}`, {
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to export site payments Excel audit report');
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Site_Payments_Audit_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+};
+
+
 

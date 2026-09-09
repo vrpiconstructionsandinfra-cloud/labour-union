@@ -12,7 +12,8 @@ import {
   Headphones,
   CheckCircle2,
   LogOut,
-  QrCode
+  QrCode,
+  CreditCard
 } from 'lucide-react';
 import {
   fetchWorkersApi,
@@ -832,6 +833,21 @@ export const AgentDashboardView: React.FC<AgentDashboardProps> = ({
                   <div style={{ textAlign: 'left' }}>
                     <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-primary)' }}>Worker QR Cards & Roster</div>
                     <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>View assigned QR badges, download & print</div>
+                  </div>
+                </div>
+                <ChevronRight size={16} style={{ color: 'var(--text-secondary)' }} />
+              </button>
+
+              <button
+                className="quick-action-item"
+                onClick={() => onNavigateTab('site_payments')}
+                style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'var(--bg-main)', cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <CreditCard size={18} style={{ color: '#059669' }} />
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-primary)' }}>Pay Site Bills & Fees</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>UPI, QR Scan & Razorpay card payment</div>
                   </div>
                 </div>
                 <ChevronRight size={16} style={{ color: 'var(--text-secondary)' }} />

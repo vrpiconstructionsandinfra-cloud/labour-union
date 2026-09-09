@@ -46,6 +46,7 @@ import { ScanWorkerQrModal } from './components/ScanWorkerQrModal';
 import { MarkAttendanceModal } from './components/MarkAttendanceModal';
 import { SupportAgentModal } from './components/SupportAgentModal';
 import { WorkerQrCardsView } from './components/WorkerQrCardsView';
+import { SitePaymentsView } from './components/SitePaymentsView';
 
 import { Calendar, ChevronDown, LogOut } from 'lucide-react';
 import {
@@ -361,12 +362,18 @@ function MainAppContent() {
           />
         );
       case 'worker_qrs':
+        if (role !== 'AGENT') {
+          break;
+        }
         return (
           <WorkerQrCardsView
             onOpenModal={(modal) => setActiveModal(modal)}
             onOpenQrScanner={() => setIsQrScannerOpen(true)}
           />
         );
+      case 'site_payments':
+      case 'payments':
+        return <SitePaymentsView onNavigateTab={(tab) => setActiveTab(tab)} />;
       case 'enquiries':
         return <EnquiriesPage />;
       case 'attendance':

@@ -144,6 +144,7 @@ model User {
   disbursementsReceived  DisbursementRequest[] @relation("WorkerDisbursements")
 
   notifications  Notification[]
+  sitePayments   SitePayment[] @relation("PayerSitePayments")
 
   resetToken      String?
   resetTokenExpiry DateTime?
@@ -176,6 +177,7 @@ model Site {
   users User[]
   attendances Attendance[]
   siteAssignments SiteAssignment[]
+  sitePayments SitePayment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -443,6 +445,36 @@ model SupportAgentMessage {
   messageType    String   @default("TEXT")
   ticketId       Int?
   createdAt      DateTime @default(now())
+}
+
+model SitePayment {
+  id                Int      @id @default(autoincrement())
+  amount            Float
+  paymentMethod     String   // UPI, QR_CODE, CARD, RAZORPAY
+
+  siteId            Int
+  site              Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  siteName          String
+  siteAddress       String?
+
+  payerId           Int
+  payer             User     @relation("PayerSitePayments", fields: [payerId], references: [id], onDelete: Cascade)
+  payerName         String
+  payerRole         String   // AGENT, CUSTOMER_SUPPORT, SUPER_AGENT
+
+  assignedAgentId   Int?
+  assignedAgentName String?
+
+  transactionId     String?
+  upiTransactionId  String?
+  razorpayPaymentId String?
+  razorpayOrderId   String?
+
+  status            String   @default("SUCCESS") // SUCCESS, PENDING, FAILED
+  remarks           String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 
