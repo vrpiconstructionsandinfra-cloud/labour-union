@@ -11,7 +11,8 @@ import {
   ChevronLeft,
   Headphones,
   CheckCircle2,
-  LogOut
+  LogOut,
+  QrCode
 } from 'lucide-react';
 import {
   fetchWorkersApi,
@@ -435,9 +436,28 @@ export const AgentDashboardView: React.FC<AgentDashboardProps> = ({
             <h3 className="card-title" style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
               My Assigned Workers Roster <span style={{ color: '#EA580C', fontSize: '13px', fontWeight: 700 }}>• {todayDateStr}</span>
             </h3>
-            <button className="secondary-btn" onClick={() => onNavigateTab('workers')} style={{ fontSize: '12px', padding: '6px 12px' }}>
-              View All Workers
-            </button>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button
+                className="secondary-btn"
+                onClick={() => onNavigateTab('worker_qrs')}
+                style={{
+                  fontSize: '12px',
+                  padding: '6px 12px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  backgroundColor: '#EFF6FF',
+                  color: '#2563EB',
+                  borderColor: '#BFDBFE'
+                }}
+              >
+                <QrCode size={14} />
+                <span>Worker QR Cards</span>
+              </button>
+              <button className="secondary-btn" onClick={() => onNavigateTab('workers')} style={{ fontSize: '12px', padding: '6px 12px' }}>
+                View All Workers
+              </button>
+            </div>
           </div>
 
           {/* Desktop Data Table View */}
@@ -797,6 +817,21 @@ export const AgentDashboardView: React.FC<AgentDashboardProps> = ({
                   <div style={{ textAlign: 'left' }}>
                     <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-primary)' }}>Mark Daily Attendance</div>
                     <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Log photos, check-in/out, status (1/2), and site</div>
+                  </div>
+                </div>
+                <ChevronRight size={16} style={{ color: 'var(--text-secondary)' }} />
+              </button>
+
+              <button
+                className="quick-action-item"
+                onClick={() => onNavigateTab('worker_qrs')}
+                style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'var(--bg-main)', cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <QrCode size={18} style={{ color: '#2563EB' }} />
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-primary)' }}>Worker QR Cards & Roster</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>View assigned QR badges, download & print</div>
                   </div>
                 </div>
                 <ChevronRight size={16} style={{ color: 'var(--text-secondary)' }} />

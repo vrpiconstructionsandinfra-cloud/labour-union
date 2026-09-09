@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Search, Check, AlertCircle, CheckCircle2, Loader2, UserCheck, MapPin, Mail, Shield } from 'lucide-react';
 import { fetchAgentsApi, assignWorkerToAgentApi } from '../services/api';
 import type { AgentItem } from '../types';
@@ -87,20 +88,20 @@ export const AssignAgentModal: React.FC<AssignAgentModalProps> = ({
     }
   };
 
-  return (
+  const modalMarkup = (
     <div className="modal-backdrop" onClick={onClose}>
       <div
         className="modal-container animate-fade-in"
-        style={{ maxWidth: '620px', width: '90%' }}
+        style={{ maxWidth: '620px', width: '100%' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="modal-header flex-between border-b">
+        <div className="modal-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <UserCheck size={20} color="#2563EB" />
             <div>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>Assign Field Agent</h3>
-              <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)' }}>
+              <h3 style={{ margin: 0, fontSize: '16.5px', fontWeight: 800 }}>Assign Field Agent</h3>
+              <p style={{ margin: '2px 0 0 0', fontSize: '12.5px', color: 'var(--text-muted)' }}>
                 Target Worker: <strong>{workerName}</strong> (ID: #{workerId})
               </p>
             </div>
@@ -111,10 +112,10 @@ export const AssignAgentModal: React.FC<AssignAgentModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="modal-body" style={{ padding: '20px' }}>
+        <div className="modal-body">
           {/* Toast Error Banner */}
           {errorMsg && (
-            <div className="toast-banner toast-error mb-16 animate-fade-in" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="toast-banner toast-error animate-fade-in" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <AlertCircle size={18} />
               <span>{errorMsg}</span>
             </div>
@@ -122,14 +123,14 @@ export const AssignAgentModal: React.FC<AssignAgentModalProps> = ({
 
           {/* Toast Success Banner */}
           {successMsg && (
-            <div className="toast-banner toast-success mb-16 animate-fade-in" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div className="toast-banner toast-success animate-fade-in" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <CheckCircle2 size={18} />
               <span>{successMsg}</span>
             </div>
           )}
 
           {/* Search Box */}
-          <div className="search-input-wrap mb-16" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--card-bg)' }}>
+          <div className="search-input-wrap" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--card-bg)' }}>
             <Search size={16} style={{ color: 'var(--text-muted)' }} />
             <input
               type="text"
@@ -186,7 +187,7 @@ export const AssignAgentModal: React.FC<AssignAgentModalProps> = ({
                           <span style={{ fontWeight: 700, fontSize: '14px', color: 'var(--text-main)' }}>{agent.name}</span>
                           <span className="code-badge" style={{ fontSize: '11px', padding: '2px 6px' }}>{agent.employeeCode}</span>
                         </div>
-                        <div style={{ display: 'flex', gap: '14px', marginTop: '4px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                        <div style={{ display: 'flex', gap: '14px', marginTop: '4px', fontSize: '12px', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
                           {agent.email && (
                             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <Mail size={12} /> {agent.email}
@@ -221,10 +222,10 @@ export const AssignAgentModal: React.FC<AssignAgentModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="modal-footer flex-between border-t" style={{ padding: '16px 20px' }}>
+        <div className="modal-footer">
           <button
             type="button"
-            className="secondary-btn"
+            className="btn-cancel"
             onClick={onClose}
             disabled={isSubmitting}
           >
@@ -232,17 +233,13 @@ export const AssignAgentModal: React.FC<AssignAgentModalProps> = ({
           </button>
           <button
             type="button"
-            className="primary-btn"
+            className="btn-submit"
             disabled={!selectedAgentId || isSubmitting || isFetching}
             onClick={handleAssign}
-            style={{
-              opacity: !selectedAgentId || isSubmitting || isFetching ? 0.5 : 1,
-              cursor: !selectedAgentId || isSubmitting || isFetching ? 'not-allowed' : 'pointer'
-            }}
           >
             {isSubmitting ? (
               <span className="btn-loading-content" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Loader2 size={16} className="spinner" /> Assigning Agent...
+                <Loader2 size={16} className="spinner" /> Assigning...
               </span>
             ) : (
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -254,4 +251,7 @@ export const AssignAgentModal: React.FC<AssignAgentModalProps> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalMarkup, document.body) : null;
 };
+

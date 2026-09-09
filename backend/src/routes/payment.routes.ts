@@ -9,14 +9,18 @@ import {
   markAsPaid,
   getWorkerPayments,
   createRazorpayOrder,
+  verifyRazorpayPayment,
 } from "../controllers/payment.controller";
 
 const router = Router();
 
-router.use(authenticate);
-
-// Razorpay Order Creation
+// ─── Razorpay Standard Checkout Endpoints ──────────────────
+router.post("/create-order", createRazorpayOrder);
 router.post("/razorpay-order", createRazorpayOrder);
+router.post("/verify-payment", verifyRazorpayPayment);
+
+// ─── Protected Internal Payroll & Payout Routes ────────────
+router.use(authenticate);
 
 // Super Agent only
 router.post(

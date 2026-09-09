@@ -192,7 +192,7 @@ export const ScanWorkerQrModal: React.FC<ScanWorkerQrModalProps> = ({
           const workerAgentId = Number((matched as any).assignedAgentId || (matched as any).agentId || (matched as any).assignedAgent?.id);
           if (!workerAgentId || workerAgentId !== Number(currentAgentId)) {
             setErrorMessage(
-              `🚫 Access Denied: Worker ${matched.name} (${matched.employeeCode || `WRK-${matched.id}`}) is unassigned or assigned to another agent. Only the assigned agent can scan attendance for this worker.`
+              `Access Denied: Worker ${matched.name} (ID: ${matched.employeeCode || `WRK-${matched.id}`}) is not assigned to you. Only the assigned supervisor can mark attendance.`
             );
             return;
           }

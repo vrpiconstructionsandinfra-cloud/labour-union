@@ -392,7 +392,7 @@ export const AgentsPage: React.FC<AgentsPageProps> = ({
         onFilterSelect={(k) => setActivePreset(k as any)}
         primaryActionLabel="Add Agent"
         primaryActionIcon={<Plus size={16} />}
-        onPrimaryAction={() => onOpenModal('agent')}
+        onPrimaryAction={() => onOpenModal('add_agent')}
         customFilters={
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Building2 size={14} color="#64748B" />
@@ -462,7 +462,7 @@ export const AgentsPage: React.FC<AgentsPageProps> = ({
             setActivePreset('ALL');
           }}
           primaryActionLabel="Add Agent"
-          onPrimaryAction={() => onOpenModal('agent')}
+          onPrimaryAction={() => onOpenModal('add_agent')}
         />
       ) : (
         <>

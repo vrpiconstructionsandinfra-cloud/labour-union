@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   fetchSupportFieldAgentsApi,
@@ -117,46 +118,60 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
         try {
           const fallbackAgents = await fetchAgentsApi();
           if (Array.isArray(fallbackAgents) && fallbackAgents.length > 0) {
-            agentsData = fallbackAgents.map((fa: any) => ({
-              id: Number(fa.id),
-              name: fa.name,
-              employeeCode: fa.employeeCode || `AGT-${fa.id}`,
-              email: fa.email,
-              phone: fa.phone,
-              address: fa.address || '',
-              status: fa.status || 'ACTIVE',
-              active: fa.status === 'ACTIVE' || Boolean(fa.active),
-              workersCount: fa.assignedWorkersCount || fa.assignedWorkers?.length || 0,
-              workers: (fa.assignedWorkers || []).map((w: any) => ({
-                id: Number(w.id),
-                name: w.name,
-                employeeCode: w.employeeCode || `WRK-${w.id}`,
-                phone: w.phone || '',
-                email: w.email || '',
-                status: 'ACTIVE',
-                todayAttendance: 'PRESENT' as const,
-              })),
-              currentSite: fa.siteId ? {
-                id: Number(fa.siteId),
-                siteCode: `SITE-${fa.siteId}`,
-                siteName: fa.assignedSite || 'Working Site',
-                companyName: 'Labor Union Org',
-                city: 'City',
-                state: 'State',
-                status: 'ACTIVE',
-              } : null,
-              activeAssignment: null,
-              isInMyBasket: false,
-              managedBySupportId: null,
-              managedBySupport: null,
-            }));
+            agentsData = fallbackAgents
+              .filter((fa: any) => {
+                const r = String(fa.role || '').toUpperCase();
+                const c = String(fa.employeeCode || '').toUpperCase();
+                return r !== 'SUPER_AGENT' && !c.startsWith('SA-');
+              })
+              .map((fa: any) => ({
+                id: Number(fa.id),
+                name: fa.name,
+                employeeCode: fa.employeeCode || `AGT-${fa.id}`,
+                email: fa.email,
+                phone: fa.phone,
+                address: fa.address || '',
+                status: fa.status || 'ACTIVE',
+                active: fa.status === 'ACTIVE' || Boolean(fa.active),
+                workersCount: fa.assignedWorkersCount || fa.assignedWorkers?.length || 0,
+                workers: (fa.assignedWorkers || []).map((w: any) => ({
+                  id: Number(w.id),
+                  name: w.name,
+                  employeeCode: w.employeeCode || `WRK-${w.id}`,
+                  phone: w.phone || '',
+                  email: w.email || '',
+                  status: 'ACTIVE',
+                  todayAttendance: 'PRESENT' as const,
+                })),
+                currentSite: fa.siteId ? {
+                  id: Number(fa.siteId),
+                  siteCode: `SITE-${fa.siteId}`,
+                  siteName: fa.assignedSite || 'Working Site',
+                  companyName: 'Labor Union Org',
+                  city: 'City',
+                  state: 'State',
+                  status: 'ACTIVE',
+                } : null,
+                activeAssignment: null,
+                isInMyBasket: false,
+                managedBySupportId: null,
+                managedBySupport: null,
+              }));
           }
         } catch (e) {
           console.error('Fallback fetchAgentsApi error:', e);
         }
       }
 
-      setAgents(Array.isArray(agentsData) ? agentsData : []);
+      const rawList = Array.isArray(agentsData) ? agentsData : [];
+      const cleanFieldAgents = rawList.filter((a: any) => {
+        if (!a) return false;
+        const role = String(a.role || '').toUpperCase();
+        const code = String(a.employeeCode || '').toUpperCase();
+        return role !== 'SUPER_AGENT' && !code.startsWith('SA-');
+      });
+
+      setAgents(cleanFieldAgents);
       setSites(Array.isArray(sitesData) ? sitesData : []);
 
       // If drawer is open, keep selectedAgent updated
@@ -402,18 +417,32 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
   // Filter Agents
   const filteredAgents = (agents || []).filter((agent) => {
     if (!agent) return false;
-    const query = (searchQuery || '').toLowerCase().trim();
-    const name = (agent.name || '').toLowerCase();
+    const role = String((agent as any).role || '').toUpperCase();
     const code = (agent.employeeCode || '').toLowerCase();
+    if (role === 'SUPER_AGENT' || code.startsWith('sa-')) return false;
+
+    const query = (searchQuery || '').toLowerCase().trim();
+    const idStr = String(agent.id);
+    const name = (agent.name || '').toLowerCase();
     const phone = (agent.phone || '');
+    const email = (agent.email || '').toLowerCase();
     const address = (agent.address || '').toLowerCase();
     const siteName = (agent.currentSite?.siteName || '').toLowerCase();
 
+    // Enhanced Agent ID matching (e.g. "1", "#1", "AGT-001", "AGT-1", "ID: 1")
+    const cleanIdQuery = query.replace(/^[#\s]*(?:AGT-?|AGENT-?|ID:?\s*)?/i, '').trim();
+    const matchesId =
+      idStr === query ||
+      idStr === cleanIdQuery ||
+      code.includes(query) ||
+      code.includes(cleanIdQuery);
+
     const matchesSearch =
       !query ||
+      matchesId ||
       name.includes(query) ||
-      code.includes(query) ||
       phone.includes(query) ||
+      email.includes(query) ||
       address.includes(query) ||
       siteName.includes(query);
 
@@ -563,10 +592,29 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
           <Search size={16} color="#64748B" />
           <input
             type="text"
-            placeholder="Search by agent name, phone, address, site..."
+            placeholder="Search by Agent ID (AGT-001), name, phone, site..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '2px',
+                color: '#94A3B8'
+              }}
+              title="Clear search"
+            >
+              <X size={15} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -1074,88 +1122,91 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
       {/* ─────────────────────────────────────────────────────────────────────────────
           2. Modal: Assign Site to Field Agent with Duration (Days)
          ───────────────────────────────────────────────────────────────────────────── */}
-      {siteModalAgent && (
+      {siteModalAgent && createPortal(
         <div className="sfa-modal-backdrop" onClick={() => setSiteModalAgent(null)}>
           <div className="sfa-modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="sfa-modal-header">
-              <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0F172A' }}>
-                Assign Working Site to {siteModalAgent.name}
+              <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Building2 size={20} color="#2563EB" />
+                <span>Assign Working Site to {siteModalAgent.name}</span>
               </h3>
               <button type="button" onClick={() => setSiteModalAgent(null)} className="sfa-drawer-close">
                 <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleAssignSiteSubmit} style={{ padding: '20px 24px' }}>
-              <div style={{ marginBottom: '16px' }}>
-                <label className="sfa-form-label">
-                  <Building2 size={14} color="#2563EB" />
-                  <span>Select Working Site *</span>
-                </label>
-                <select
-                  value={selectedSiteId}
-                  onChange={(e) => setSelectedSiteId(e.target.value)}
-                  className="sfa-form-select"
-                  required
-                >
-                  <option value="">-- Choose Working Site --</option>
-                  {sites.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.siteName} ({s.companyName || s.city})
-                    </option>
-                  ))}
-                </select>
+            <form onSubmit={handleAssignSiteSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+              <div className="sfa-modal-body">
+                <div>
+                  <label className="sfa-form-label">
+                    <Building2 size={14} color="#2563EB" />
+                    <span>Select Working Site *</span>
+                  </label>
+                  <select
+                    value={selectedSiteId}
+                    onChange={(e) => setSelectedSiteId(e.target.value)}
+                    className="sfa-form-select"
+                    required
+                  >
+                    <option value="">-- Choose Working Site --</option>
+                    {sites.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.siteName} ({s.companyName || s.city})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="sfa-form-grid-3col">
+                  <div>
+                    <label className="sfa-form-label">
+                      <Clock size={14} color="#2563EB" />
+                      <span>Duration (Days) *</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="365"
+                      value={durationDays}
+                      onChange={(e) => setDurationDays(Number(e.target.value))}
+                      className="sfa-form-input"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="sfa-form-label">
+                      <UserCheck size={14} color="#2563EB" />
+                      <span>Workers Needed *</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="1000"
+                      value={workersNeeded}
+                      onChange={(e) => setWorkersNeeded(Number(e.target.value))}
+                      className="sfa-form-input"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="sfa-form-label">
+                      <Calendar size={14} color="#2563EB" />
+                      <span>Start Date *</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="sfa-form-input"
+                      required
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '14px', marginBottom: '20px' }}>
-                <div>
-                  <label className="sfa-form-label">
-                    <Clock size={14} color="#2563EB" />
-                    <span>Duration (Days) *</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="365"
-                    value={durationDays}
-                    onChange={(e) => setDurationDays(Number(e.target.value))}
-                    className="sfa-form-input"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="sfa-form-label">
-                    <UserCheck size={14} color="#2563EB" />
-                    <span>Workers Needed *</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="1000"
-                    value={workersNeeded}
-                    onChange={(e) => setWorkersNeeded(Number(e.target.value))}
-                    className="sfa-form-input"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="sfa-form-label">
-                    <Calendar size={14} color="#2563EB" />
-                    <span>Start Date *</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="sfa-form-input"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <div className="sfa-modal-footer">
                 <button
                   type="button"
                   onClick={() => setSiteModalAgent(null)}
@@ -1173,13 +1224,14 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
           2b. Modal: Create New Working Site & Assign Field Agent
          ───────────────────────────────────────────────────────────────────────────── */}
-      {isCreateSiteModalOpen && (
+      {isCreateSiteModalOpen && createPortal(
         <div
           className="sfa-modal-backdrop"
           onClick={() => {
@@ -1188,7 +1240,7 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
             setModalAgentSearch('');
           }}
         >
-          <div className="sfa-modal-box" style={{ maxWidth: '640px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="sfa-modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="sfa-modal-header">
               <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Building2 size={20} color="#059669" />
@@ -1207,233 +1259,216 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleCreateSiteSubmit} style={{ padding: '20px 24px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
-                <div>
-                  <label className="sfa-form-label">
-                    <Building2 size={14} color="#2563EB" />
-                    <span>Site Name *</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newSiteName}
-                    onChange={(e) => setNewSiteName(e.target.value)}
-                    className="sfa-form-input"
-                    placeholder="e.g. Metro Line 4 Construction"
-                    required
-                  />
+            <form onSubmit={handleCreateSiteSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+              <div className="sfa-modal-body">
+                <div className="sfa-form-grid-2col">
+                  <div>
+                    <label className="sfa-form-label">
+                      <Building2 size={14} color="#2563EB" />
+                      <span>Site Name *</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newSiteName}
+                      onChange={(e) => setNewSiteName(e.target.value)}
+                      className="sfa-form-input"
+                      placeholder="e.g. Metro Line 4 Construction"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="sfa-form-label">
+                      <Briefcase size={14} color="#2563EB" />
+                      <span>Company / Client Name</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newCompanyName}
+                      onChange={(e) => setNewCompanyName(e.target.value)}
+                      className="sfa-form-input"
+                      placeholder="e.g. L&T Infrastructure"
+                    />
+                  </div>
                 </div>
 
                 <div>
                   <label className="sfa-form-label">
-                    <Briefcase size={14} color="#2563EB" />
-                    <span>Company / Client Name</span>
+                    <MapPin size={14} color="#2563EB" />
+                    <span>Site Address / Landmark</span>
                   </label>
                   <input
                     type="text"
-                    value={newCompanyName}
-                    onChange={(e) => setNewCompanyName(e.target.value)}
+                    value={newAddress}
+                    onChange={(e) => setNewAddress(e.target.value)}
                     className="sfa-form-input"
-                    placeholder="e.g. L&T Infrastructure"
+                    placeholder="e.g. Plot 42, Sector 18, BKC"
                   />
                 </div>
-              </div>
 
-              <div style={{ marginBottom: '14px' }}>
-                <label className="sfa-form-label">
-                  <MapPin size={14} color="#2563EB" />
-                  <span>Site Address / Landmark</span>
-                </label>
-                <input
-                  type="text"
-                  value={newAddress}
-                  onChange={(e) => setNewAddress(e.target.value)}
-                  className="sfa-form-input"
-                  placeholder="e.g. Plot 42, Sector 18, BKC"
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '14px' }}>
-                <div>
-                  <label className="sfa-form-label"><span>City</span></label>
-                  <input
-                    type="text"
-                    value={newCity}
-                    onChange={(e) => setNewCity(e.target.value)}
-                    className="sfa-form-input"
-                    placeholder="Mumbai"
-                  />
+                <div className="sfa-form-grid-3col">
+                  <div>
+                    <label className="sfa-form-label"><span>City</span></label>
+                    <input
+                      type="text"
+                      value={newCity}
+                      onChange={(e) => setNewCity(e.target.value)}
+                      className="sfa-form-input"
+                      placeholder="Mumbai"
+                    />
+                  </div>
+                  <div>
+                    <label className="sfa-form-label"><span>State</span></label>
+                    <input
+                      type="text"
+                      value={newState}
+                      onChange={(e) => setNewState(e.target.value)}
+                      className="sfa-form-input"
+                      placeholder="Maharashtra"
+                    />
+                  </div>
+                  <div>
+                    <label className="sfa-form-label"><span>Pincode</span></label>
+                    <input
+                      type="text"
+                      value={newPincode}
+                      onChange={(e) => setNewPincode(e.target.value)}
+                      className="sfa-form-input"
+                      placeholder="400051"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="sfa-form-label"><span>State</span></label>
-                  <input
-                    type="text"
-                    value={newState}
-                    onChange={(e) => setNewState(e.target.value)}
-                    className="sfa-form-input"
-                    placeholder="Maharashtra"
-                  />
-                </div>
-                <div>
-                  <label className="sfa-form-label"><span>Pincode</span></label>
-                  <input
-                    type="text"
-                    value={newPincode}
-                    onChange={(e) => setNewPincode(e.target.value)}
-                    className="sfa-form-input"
-                    placeholder="400051"
-                  />
-                </div>
-              </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
-                <div>
-                  <label className="sfa-form-label">
-                    <Users size={14} color="#2563EB" />
-                    <span>Site Supervisor / Contact Person</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newContactPerson}
-                    onChange={(e) => setNewContactPerson(e.target.value)}
-                    className="sfa-form-input"
-                    placeholder="e.g. Rajesh Kumar"
-                  />
+                <div className="sfa-form-grid-2col">
+                  <div>
+                    <label className="sfa-form-label">
+                      <Users size={14} color="#2563EB" />
+                      <span>Site Supervisor / Contact Person</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newContactPerson}
+                      onChange={(e) => setNewContactPerson(e.target.value)}
+                      className="sfa-form-input"
+                      placeholder="e.g. Rajesh Kumar"
+                    />
+                  </div>
+                  <div>
+                    <label className="sfa-form-label">
+                      <Phone size={14} color="#2563EB" />
+                      <span>Contact Phone Number</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newContactNumber}
+                      onChange={(e) => setNewContactNumber(e.target.value)}
+                      className="sfa-form-input"
+                      placeholder="e.g. 9876543210"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="sfa-form-label">
-                    <Phone size={14} color="#2563EB" />
-                    <span>Contact Phone Number</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newContactNumber}
-                    onChange={(e) => setNewContactNumber(e.target.value)}
-                    className="sfa-form-input"
-                    placeholder="e.g. 9876543210"
-                  />
-                </div>
-              </div>
 
-              {/* Optional Field Agent Assignment Section */}
-              <div style={{ backgroundColor: '#F8FAFC', border: '1.5px dashed #CBD5E1', borderRadius: '10px', padding: '14px 16px', marginBottom: '20px' }}>
-                <h4 style={{ margin: '0 0 10px 0', fontSize: '13.5px', fontWeight: 800, color: '#1E293B', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <UserCheck size={16} color="#2563EB" />
-                  <span>Assign Field Agent Immediately (Optional)</span>
-                </h4>
+                {/* Optional Field Agent Assignment Section */}
+                <div style={{ backgroundColor: '#F8FAFC', border: '1.5px dashed #CBD5E1', borderRadius: '10px', padding: '14px 16px' }}>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '13.5px', fontWeight: 800, color: '#1E293B', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <UserCheck size={16} color="#2563EB" />
+                    <span>Assign Field Agent Immediately (Optional)</span>
+                  </h4>
 
-                <div style={{ marginBottom: '12px' }}>
-                  <label className="sfa-form-label" style={{ marginBottom: '6px' }}>
-                    <span>Select Field Agent</span>
-                  </label>
+                  <div style={{ marginBottom: '12px' }}>
+                    <label className="sfa-form-label" style={{ marginBottom: '6px' }}>
+                      <span>Select Field Agent</span>
+                    </label>
 
-                  {agents.find((ag) => String(ag.id) === String(newAssignAgentId)) ? (
-                    (() => {
-                      const selectedAssignAgent = agents.find((ag) => String(ag.id) === String(newAssignAgentId))!;
-                      return (
-                        <div className="sfa-selected-agent-card">
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div className="sfa-picker-avatar" style={{ margin: 0 }}>
-                              {selectedAssignAgent.name.charAt(0).toUpperCase()}
+                    {agents.find((ag) => String(ag.id) === String(newAssignAgentId)) ? (
+                      (() => {
+                        const selectedAssignAgent = agents.find((ag) => String(ag.id) === String(newAssignAgentId))!;
+                        return (
+                          <div className="sfa-selected-agent-card">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div className="sfa-picker-avatar" style={{ margin: 0 }}>
+                                {selectedAssignAgent.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="sfa-picker-name">
+                                  {selectedAssignAgent.name}
+                                </div>
+                                <div className="sfa-picker-sub">
+                                  {selectedAssignAgent.employeeCode} {selectedAssignAgent.phone ? `• 📞 ${selectedAssignAgent.phone}` : ''}
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <div className="sfa-picker-name">
-                                {selectedAssignAgent.name}
-                              </div>
-                              <div className="sfa-picker-sub">
-                                {selectedAssignAgent.employeeCode} {selectedAssignAgent.phone ? `• 📞 ${selectedAssignAgent.phone}` : ''}
-                              </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              {selectedAssignAgent.currentSite ? (
+                                <span className="sfa-site-tag active">
+                                  🏗️ {selectedAssignAgent.currentSite.siteName}
+                                </span>
+                              ) : (
+                                <span className="sfa-site-tag unassigned">
+                                  ⏳ Standby
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setNewAssignAgentId('');
+                                  setModalAgentSearch('');
+                                }}
+                                className="sfa-change-agent-btn"
+                                title="Deselect Agent"
+                              >
+                                <X size={13} />
+                                <span>Remove</span>
+                              </button>
                             </div>
                           </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            {selectedAssignAgent.currentSite ? (
-                              <span className="sfa-site-tag active">
-                                🏗️ {selectedAssignAgent.currentSite.siteName}
-                              </span>
-                            ) : (
-                              <span className="sfa-site-tag unassigned">
-                                ⏳ Standby
-                              </span>
-                            )}
+                        );
+                      })()
+                    ) : (
+                      <div className="sfa-searchable-picker">
+                        <div className="sfa-picker-search-bar" onClick={() => setIsAgentDropdownOpen(true)}>
+                          <Search size={15} color="#64748B" />
+                          <input
+                            type="text"
+                            placeholder="Type to search agent by name, code, phone..."
+                            value={modalAgentSearch}
+                            onChange={(e) => {
+                              setModalAgentSearch(e.target.value);
+                              setIsAgentDropdownOpen(true);
+                            }}
+                            onFocus={() => setIsAgentDropdownOpen(true)}
+                            className="sfa-picker-input"
+                          />
+                          {modalAgentSearch && (
                             <button
                               type="button"
-                              onClick={() => {
-                                setNewAssignAgentId('');
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setModalAgentSearch('');
                               }}
-                              className="sfa-change-agent-btn"
-                              title="Deselect Agent"
+                              className="sfa-picker-clear"
                             >
                               <X size={13} />
-                              <span>Remove</span>
                             </button>
-                          </div>
+                          )}
                         </div>
-                      );
-                    })()
-                  ) : (
-                    <div className="sfa-searchable-picker">
-                      <div className="sfa-picker-search-bar" onClick={() => setIsAgentDropdownOpen(true)}>
-                        <Search size={15} color="#64748B" />
-                        <input
-                          type="text"
-                          placeholder="Type to search agent by name, code, phone..."
-                          value={modalAgentSearch}
-                          onChange={(e) => {
-                            setModalAgentSearch(e.target.value);
-                            setIsAgentDropdownOpen(true);
-                          }}
-                          onFocus={() => setIsAgentDropdownOpen(true)}
-                          className="sfa-picker-input"
-                        />
-                        {modalAgentSearch && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setModalAgentSearch('');
-                            }}
-                            className="sfa-picker-clear"
-                          >
-                            <X size={13} />
-                          </button>
-                        )}
-                      </div>
 
-                      {isAgentDropdownOpen && (
-                        <div className="sfa-picker-dropdown">
-                          <div
-                            className="sfa-picker-item unassigned-opt"
-                            onClick={() => {
-                              setNewAssignAgentId('');
-                              setIsAgentDropdownOpen(false);
-                            }}
-                          >
-                            <span style={{ fontWeight: 600, color: '#64748B' }}>
-                              -- No Agent (Keep Unassigned) --
-                            </span>
-                          </div>
-
-                          {agents
-                            .filter((ag) => {
-                              if (!modalAgentSearch.trim()) return true;
-                              const q = modalAgentSearch.toLowerCase().trim();
-                              return (
-                                (ag.name || '').toLowerCase().includes(q) ||
-                                (ag.employeeCode || '').toLowerCase().includes(q) ||
-                                (ag.phone || '').includes(q) ||
-                                (ag.currentSite?.siteName || '').toLowerCase().includes(q)
-                              );
-                            })
-                            .length === 0 ? (
-                            <div className="sfa-picker-empty">
-                              {agents.length === 0
-                                ? 'No field agents available to assign.'
-                                : `No field agents found matching "${modalAgentSearch}".`}
+                        {isAgentDropdownOpen && (
+                          <div className="sfa-picker-dropdown">
+                            <div
+                              className="sfa-picker-item unassigned-opt"
+                              onClick={() => {
+                                setNewAssignAgentId('');
+                                setIsAgentDropdownOpen(false);
+                              }}
+                            >
+                              <span style={{ fontWeight: 600, color: '#64748B' }}>
+                                -- No Agent (Keep Unassigned) --
+                              </span>
                             </div>
-                          ) : (
-                            agents
+
+                            {agents
                               .filter((ag) => {
                                 if (!modalAgentSearch.trim()) return true;
                                 const q = modalAgentSearch.toLowerCase().trim();
@@ -1444,77 +1479,96 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
                                   (ag.currentSite?.siteName || '').toLowerCase().includes(q)
                                 );
                               })
-                              .map((ag) => (
-                                <div
-                                  key={ag.id}
-                                  className="sfa-picker-item"
-                                  onClick={() => {
-                                    setNewAssignAgentId(String(ag.id));
-                                    setIsAgentDropdownOpen(false);
-                                    setModalAgentSearch('');
-                                  }}
-                                >
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <div className="sfa-picker-avatar">
-                                      {ag.name.charAt(0).toUpperCase()}
+                              .length === 0 ? (
+                              <div className="sfa-picker-empty">
+                                {agents.length === 0
+                                  ? 'No field agents available to assign.'
+                                  : `No field agents found matching "${modalAgentSearch}".`}
+                              </div>
+                            ) : (
+                              agents
+                                .filter((ag) => {
+                                  if (!modalAgentSearch.trim()) return true;
+                                  const q = modalAgentSearch.toLowerCase().trim();
+                                  return (
+                                    (ag.name || '').toLowerCase().includes(q) ||
+                                    (ag.employeeCode || '').toLowerCase().includes(q) ||
+                                    (ag.phone || '').includes(q) ||
+                                    (ag.currentSite?.siteName || '').toLowerCase().includes(q)
+                                  );
+                                })
+                                .map((ag) => (
+                                  <div
+                                    key={ag.id}
+                                    className="sfa-picker-item"
+                                    onClick={() => {
+                                      setNewAssignAgentId(String(ag.id));
+                                      setIsAgentDropdownOpen(false);
+                                      setModalAgentSearch('');
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                      <div className="sfa-picker-avatar">
+                                        {ag.name.charAt(0).toUpperCase()}
+                                      </div>
+                                      <div className="sfa-picker-info">
+                                        <span className="sfa-picker-name">{ag.name}</span>
+                                        <span className="sfa-picker-sub">
+                                          {ag.employeeCode} {ag.phone ? `• 📞 ${ag.phone}` : ''}
+                                        </span>
+                                      </div>
                                     </div>
-                                    <div className="sfa-picker-info">
-                                      <span className="sfa-picker-name">{ag.name}</span>
-                                      <span className="sfa-picker-sub">
-                                        {ag.employeeCode} {ag.phone ? `• 📞 ${ag.phone}` : ''}
-                                      </span>
-                                    </div>
-                                  </div>
 
-                                  <div className="sfa-picker-site-tag">
-                                    {ag.currentSite ? `🏗️ ${ag.currentSite.siteName}` : '⏳ Standby'}
+                                    <div className="sfa-picker-site-tag">
+                                      {ag.currentSite ? `🏗️ ${ag.currentSite.siteName}` : '⏳ Standby'}
+                                    </div>
                                   </div>
-                                </div>
-                              ))
-                          )}
-                        </div>
-                      )}
+                                ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {newAssignAgentId && (
+                    <div className="sfa-form-grid-2col">
+                      <div>
+                        <label className="sfa-form-label">
+                          <Clock size={13} color="#2563EB" />
+                          <span>Work Duration (Days) *</span>
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="365"
+                          value={newDurationDays}
+                          onChange={(e) => setNewDurationDays(Number(e.target.value))}
+                          className="sfa-form-input"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="sfa-form-label">
+                          <Users size={13} color="#2563EB" />
+                          <span>Workers Needed *</span>
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="1000"
+                          value={newWorkersNeeded}
+                          onChange={(e) => setNewWorkersNeeded(Number(e.target.value))}
+                          className="sfa-form-input"
+                          required
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
-
-                {newAssignAgentId && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <div>
-                      <label className="sfa-form-label">
-                        <Clock size={13} color="#2563EB" />
-                        <span>Work Duration (Days) *</span>
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="365"
-                        value={newDurationDays}
-                        onChange={(e) => setNewDurationDays(Number(e.target.value))}
-                        className="sfa-form-input"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="sfa-form-label">
-                        <Users size={13} color="#2563EB" />
-                        <span>Workers Needed *</span>
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="1000"
-                        value={newWorkersNeeded}
-                        onChange={(e) => setNewWorkersNeeded(Number(e.target.value))}
-                        className="sfa-form-input"
-                        required
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <div className="sfa-modal-footer">
                 <button
                   type="button"
                   onClick={() => {
@@ -1537,7 +1591,8 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
@@ -1746,8 +1801,8 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
       {/* ─────────────────────────────────────────────────────────────────────────────
           4. Modal: Raise Ticket directly from Chat
          ───────────────────────────────────────────────────────────────────────────── */}
-      {isRaiseTicketOpen && chatAgent && (
-        <div className="sfa-modal-backdrop" style={{ zIndex: 100000 }} onClick={() => setIsRaiseTicketOpen(false)}>
+      {isRaiseTicketOpen && chatAgent && typeof document !== 'undefined' && createPortal(
+        <div className="sfa-modal-backdrop" onClick={() => setIsRaiseTicketOpen(false)}>
           <div className="sfa-modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="sfa-modal-header">
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#DC2626', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1759,45 +1814,47 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleRaiseTicketSubmit} style={{ padding: '20px 24px' }}>
-              <div style={{ marginBottom: '14px' }}>
-                <label className="sfa-form-label">Ticket Subject *</label>
-                <input
-                  type="text"
-                  value={ticketSubject}
-                  onChange={(e) => setTicketSubject(e.target.value)}
-                  className="sfa-form-input"
-                  placeholder="e.g. Concrete Mixer equipment failure at site"
-                  required
-                />
+            <form onSubmit={handleRaiseTicketSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+              <div className="sfa-modal-body">
+                <div style={{ marginBottom: '14px' }}>
+                  <label className="sfa-form-label">Ticket Subject *</label>
+                  <input
+                    type="text"
+                    value={ticketSubject}
+                    onChange={(e) => setTicketSubject(e.target.value)}
+                    className="sfa-form-input"
+                    placeholder="e.g. Concrete Mixer equipment failure at site"
+                    required
+                  />
+                </div>
+
+                <div style={{ marginBottom: '14px' }}>
+                  <label className="sfa-form-label">Priority Level *</label>
+                  <select
+                    value={ticketPriority}
+                    onChange={(e) => setTicketPriority(e.target.value)}
+                    className="sfa-form-select"
+                  >
+                    <option value="HIGH">🔴 High Priority</option>
+                    <option value="MEDIUM">🟡 Medium Priority</option>
+                    <option value="LOW">🟢 Low Priority</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="sfa-form-label">Issue Details & Instructions *</label>
+                  <textarea
+                    rows={3}
+                    value={ticketDescription}
+                    onChange={(e) => setTicketDescription(e.target.value)}
+                    className="sfa-form-input"
+                    placeholder="Provide complete breakdown of the equipment issue or emergency requirement..."
+                    required
+                  />
+                </div>
               </div>
 
-              <div style={{ marginBottom: '14px' }}>
-                <label className="sfa-form-label">Priority Level *</label>
-                <select
-                  value={ticketPriority}
-                  onChange={(e) => setTicketPriority(e.target.value)}
-                  className="sfa-form-select"
-                >
-                  <option value="HIGH">🔴 High Priority</option>
-                  <option value="MEDIUM">🟡 Medium Priority</option>
-                  <option value="LOW">🟢 Low Priority</option>
-                </select>
-              </div>
-
-              <div style={{ marginBottom: '20px' }}>
-                <label className="sfa-form-label">Issue Details & Instructions *</label>
-                <textarea
-                  rows={3}
-                  value={ticketDescription}
-                  onChange={(e) => setTicketDescription(e.target.value)}
-                  className="sfa-form-input"
-                  placeholder="Provide complete breakdown of the equipment issue or emergency requirement..."
-                  required
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <div className="sfa-modal-footer">
                 <button
                   type="button"
                   onClick={() => setIsRaiseTicketOpen(false)}
@@ -1816,7 +1873,8 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

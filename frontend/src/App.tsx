@@ -45,12 +45,14 @@ import { SaturdayReportBanner } from './components/SaturdayReportBanner';
 import { ScanWorkerQrModal } from './components/ScanWorkerQrModal';
 import { MarkAttendanceModal } from './components/MarkAttendanceModal';
 import { SupportAgentModal } from './components/SupportAgentModal';
+import { WorkerQrCardsView } from './components/WorkerQrCardsView';
 
 import { Calendar, ChevronDown, LogOut } from 'lucide-react';
 import {
   fetchDashboardStatsApi,
   fetchPayrollsApi,
-  fetchWorkersApi
+  fetchWorkersApi,
+  fetchWorkerAttendanceApi
 } from './services/api';
 import type {
   MetricData,
@@ -111,6 +113,7 @@ function MainAppContent() {
   // QR Scanner State & Scanned Attendance Trigger State
   const [isQrScannerOpen, setIsQrScannerOpen] = useState<boolean>(false);
   const [scannedWorkerForAttendance, setScannedWorkerForAttendance] = useState<WorkerItem | null>(null);
+  const [scannedAttendanceMode, setScannedAttendanceMode] = useState<'CHECK_IN' | 'CHECK_OUT'>('CHECK_IN');
   const [isScannedAttendanceOpen, setIsScannedAttendanceOpen] = useState<boolean>(false);
   const [isCreateSupportAgentOpen, setIsCreateSupportAgentOpen] = useState<boolean>(false);
 
@@ -355,6 +358,13 @@ function MainAppContent() {
               setActiveModal('edit_worker');
             }}
             refreshTrigger={refreshCounter}
+          />
+        );
+      case 'worker_qrs':
+        return (
+          <WorkerQrCardsView
+            onOpenModal={(modal) => setActiveModal(modal)}
+            onOpenQrScanner={() => setIsQrScannerOpen(true)}
           />
         );
       case 'enquiries':
@@ -604,16 +614,46 @@ function MainAppContent() {
       <ScanWorkerQrModal
         isOpen={isQrScannerOpen}
         onClose={() => setIsQrScannerOpen(false)}
-        onWorkerScanned={(worker) => {
+        onWorkerScanned={async (worker) => {
           if (role === 'AGENT' && user?.id) {
             const workerAgentId = Number((worker as any).assignedAgentId || (worker as any).agentId || (worker as any).assignedAgent?.id);
             if (!workerAgentId || workerAgentId !== Number(user.id)) {
-              alert(`Access Denied: Worker ${worker.name} (${worker.employeeCode || `WRK-${worker.id}`}) is unassigned or assigned to another agent. Only the assigned agent can scan attendance.`);
+              alert(`Access Denied: Worker ${worker.name} (ID: ${worker.employeeCode || `WRK-${worker.id}`}) is not assigned to you. Only the assigned supervisor can mark attendance.`);
               return;
             }
           }
-          setScannedWorkerForAttendance(worker);
-          setIsScannedAttendanceOpen(true);
+
+          try {
+            const logs = await fetchWorkerAttendanceApi(worker.id);
+            const todayStr = new Date().toISOString().split('T')[0];
+            const todayLog = Array.isArray(logs) ? logs.find((l: any) => {
+              if (!l.date) return false;
+              const logDateStr = typeof l.date === 'string' ? l.date.split('T')[0] : new Date(l.date).toISOString().split('T')[0];
+              return logDateStr === todayStr;
+            }) : null;
+
+            const hasCheckIn = !!(todayLog && (todayLog.signInTime || todayLog.checkInTime || todayLog.checkIn || todayLog.signInPhoto));
+            const hasCheckOut = !!(todayLog && (todayLog.signOutTime || todayLog.checkOutTime || todayLog.checkOut || todayLog.signOutPhoto));
+            const todayFormatted = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+            if (hasCheckIn && hasCheckOut) {
+              alert(`Worker ${worker.name} (ID: ${worker.employeeCode || `WRK-${worker.id}`}) has already completed both Check-In and Check-Out for today (${todayFormatted}).`);
+              return;
+            }
+
+            if (hasCheckIn && !hasCheckOut) {
+              setScannedAttendanceMode('CHECK_OUT');
+            } else {
+              setScannedAttendanceMode('CHECK_IN');
+            }
+
+            setScannedWorkerForAttendance(worker);
+            setIsScannedAttendanceOpen(true);
+          } catch (err) {
+            setScannedAttendanceMode('CHECK_IN');
+            setScannedWorkerForAttendance(worker);
+            setIsScannedAttendanceOpen(true);
+          }
         }}
       />
 
@@ -621,7 +661,7 @@ function MainAppContent() {
         isOpen={isScannedAttendanceOpen}
         onClose={() => setIsScannedAttendanceOpen(false)}
         worker={scannedWorkerForAttendance}
-        mode="CHECK_IN"
+        mode={scannedAttendanceMode}
         onSuccess={() => setRefreshCounter((prev) => prev + 1)}
       />
     </div>

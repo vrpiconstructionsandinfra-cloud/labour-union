@@ -90,12 +90,23 @@ export async function getAllEnquiries(filter?: { designation?: string; status?: 
 
   if (filter?.search && filter.search.trim()) {
     const term = filter.search.trim();
-    where.OR = [
+    // Parse possible ID formats: "12", "#12", "Lead #12", "ENQ-12", "ENQ 12", "ID: 12"
+    const cleanNum = term.replace(/^[#\s]*(?:ENQ-?|LEAD\s*#?|ID:?\s*)?/i, '').trim();
+    const parsedId = Number(cleanNum);
+    const isValidId = !isNaN(parsedId) && parsedId > 0 && Number.isInteger(parsedId);
+
+    const searchConditions: any[] = [
       { name: { contains: term, mode: "insensitive" } },
       { email: { contains: term, mode: "insensitive" } },
       { phone: { contains: term, mode: "insensitive" } },
       { address: { contains: term, mode: "insensitive" } },
     ];
+
+    if (isValidId) {
+      searchConditions.push({ id: parsedId });
+    }
+
+    where.OR = searchConditions;
   }
 
   return prisma.enquiry.findMany({

@@ -27,8 +27,11 @@ export const register = async (
       paymentMethod,
       razorpayPaymentId,
       razorpayOrderId,
-      upiTransactionId
+      upiTransactionId,
+      assignedAgentId
     } = req.body;
+
+    const effectiveAgentId = assignedAgentId || (req as any).user?.id;
 
     const user =
       await authService.registerUser(
@@ -50,7 +53,8 @@ export const register = async (
           paymentMethod,
           razorpayPaymentId,
           razorpayOrderId,
-          upiTransactionId
+          upiTransactionId,
+          assignedAgentId: effectiveAgentId ? Number(effectiveAgentId) : undefined
         }
       );
 

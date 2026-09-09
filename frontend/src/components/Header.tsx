@@ -105,6 +105,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'sites', label: 'Sites', description: 'Working project sites, locations and supervisors', icon: Building2, tabKey: 'sites' },
     { id: 'agents', label: 'Agents', description: 'Field agents directory and site assignments', icon: Users, tabKey: 'agents' },
     { id: 'workers', label: 'Workers', description: 'Complete workers roster, trade and wages', icon: UserCheck, tabKey: 'workers' },
+    { id: 'worker_qrs', label: 'Worker QRs', description: 'Assigned worker digital QR cards and roster', icon: QrCode, tabKey: 'worker_qrs' },
     { id: 'enquiries', label: 'Enquired', description: 'Candidate leads, applications and follow-ups', icon: FileSpreadsheet, tabKey: 'enquiries' },
     { id: 'attendance', label: 'Attendance', description: 'Daily attendance logs & overtime records', icon: CalendarCheck, tabKey: 'attendance' },
     { id: 'leaves', label: 'Leave Requests', description: 'Leave requests, applications and approvals', icon: FileText, tabKey: 'leaves' },

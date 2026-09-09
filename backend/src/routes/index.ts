@@ -16,8 +16,16 @@ import payrollRoutes from "./payroll.routes";
 import notificationRoutes from "./notification.routes";
 import reportRoutes from "./report.routes";
 import enquiryRoutes from "./enquiry.routes";
+import {
+  createRazorpayOrder,
+  verifyRazorpayPayment,
+} from "../controllers/payment.controller";
 
 const router = Router();
+
+// ─── Direct Razorpay Standard Checkout Endpoints ──────────
+router.post("/create-order", createRazorpayOrder);
+router.post("/verify-payment", verifyRazorpayPayment);
 
 router.use("/auth", authRoutes);
 router.use("/sites", siteRoutes);

@@ -20,7 +20,11 @@ const payroll_routes_1 = __importDefault(require("./payroll.routes"));
 const notification_routes_1 = __importDefault(require("./notification.routes"));
 const report_routes_1 = __importDefault(require("./report.routes"));
 const enquiry_routes_1 = __importDefault(require("./enquiry.routes"));
+const payment_controller_1 = require("../controllers/payment.controller");
 const router = (0, express_1.Router)();
+// ─── Direct Razorpay Standard Checkout Endpoints ──────────
+router.post("/create-order", payment_controller_1.createRazorpayOrder);
+router.post("/verify-payment", payment_controller_1.verifyRazorpayPayment);
 router.use("/auth", auth_routes_1.default);
 router.use("/sites", site_routes_1.default);
 router.use("/attendance", attendance_routes_1.default);

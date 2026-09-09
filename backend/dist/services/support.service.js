@@ -598,7 +598,7 @@ async function getSupportAnalytics(reqUser) {
 async function getFieldAgentsForSupport(supportUserId) {
     const agents = await prisma_1.default.user.findMany({
         where: {
-            role: { in: [client_1.UserRole.AGENT, client_1.UserRole.SUPER_AGENT] },
+            role: client_1.UserRole.AGENT,
         },
         include: {
             site: true,
@@ -707,7 +707,7 @@ async function getFieldAgentsForSupport(supportUserId) {
  */
 async function assignAgentToSupportBasket(supportUserId, agentId) {
     const agent = await prisma_1.default.user.findUnique({ where: { id: agentId } });
-    if (!agent || (agent.role !== client_1.UserRole.AGENT && agent.role !== client_1.UserRole.SUPER_AGENT)) {
+    if (!agent || agent.role !== client_1.UserRole.AGENT) {
         throw new Error("Field Agent not found");
     }
     const updated = await prisma_1.default.user.update({
@@ -726,7 +726,7 @@ async function assignAgentToSupportBasket(supportUserId, agentId) {
  */
 async function unassignAgentFromSupportBasket(agentId) {
     const agent = await prisma_1.default.user.findUnique({ where: { id: agentId } });
-    if (!agent || (agent.role !== client_1.UserRole.AGENT && agent.role !== client_1.UserRole.SUPER_AGENT)) {
+    if (!agent || agent.role !== client_1.UserRole.AGENT) {
         throw new Error("Field Agent not found");
     }
     const updated = await prisma_1.default.user.update({
@@ -740,7 +740,7 @@ async function unassignAgentFromSupportBasket(agentId) {
  */
 async function assignSiteWithDuration(supportUserId, agentId, siteId, durationDays, startDate, workersNeeded) {
     const agent = await prisma_1.default.user.findUnique({ where: { id: agentId } });
-    if (!agent || (agent.role !== client_1.UserRole.AGENT && agent.role !== client_1.UserRole.SUPER_AGENT)) {
+    if (!agent || agent.role !== client_1.UserRole.AGENT) {
         throw new Error("Field Agent not found");
     }
     const site = await prisma_1.default.site.findUnique({ where: { id: siteId } });

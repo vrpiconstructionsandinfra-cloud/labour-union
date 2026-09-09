@@ -101,6 +101,7 @@ model User {
   // Banking & Registration Payment Details
   bankAccountNo      String?
   ifscCode           String?
+  bankBranch         String?
   address            String?
   registrationAmount Float?
   paymentMethod      String?

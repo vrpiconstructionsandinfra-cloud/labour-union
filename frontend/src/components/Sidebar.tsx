@@ -67,6 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'sites', label: 'Sites', icon: Building2 },
     { id: 'agents', label: 'Agents', icon: Users },
     { id: 'workers', label: 'Workers', icon: UserCheck },
+    { id: 'worker_qrs', label: 'Worker QRs', icon: QrCode },
     { id: 'enquiries', label: 'Enquired', icon: FileSpreadsheet },
     { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
     { id: 'leaves', label: 'Leave Requests', icon: FileText },

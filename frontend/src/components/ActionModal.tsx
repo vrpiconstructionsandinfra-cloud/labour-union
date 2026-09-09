@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Check, Search, AlertCircle, Loader2, Bell, Send, CheckCheck, Megaphone, Calendar, DollarSign, Wallet, MessageSquare, Paperclip, UploadCloud, Trash2, Clock, Building2, FileSpreadsheet, Camera, Eye, EyeOff, RefreshCw, CheckCircle2, Copy, QrCode, CreditCard } from 'lucide-react';
 import {
   registerUserApi,
@@ -28,12 +29,12 @@ import {
   clearAllNotificationsApi,
   deleteNotificationApi,
   sendEmailVerificationCodeApi,
-  verifyEmailCodeApi,
-  createRazorpayOrderApi
+  verifyEmailCodeApi
 } from '../services/api';
 import type { WorkerItem, AgentItem, SiteItem, SupportTicket, TicketComment, NotificationItem } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { getSocket } from '../services/socket';
+import { initiateRazorpayCheckout } from '../utils/razorpay';
 import { UserAvatar } from './UserAvatar';
 import './ActionModal.css';
 
@@ -400,7 +401,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
         setPhone('');
         setSalary('');
         setPassword(
-          type === 'add_agent' || type === 'agents'
+          type === 'add_agent' || type === 'agents' || type === 'agent' || type === 'register_agent' || type === 'CREATE_AGENT' || type === 'create_agent'
             ? generateTempPassword()
             : type === 'add_worker' || type === 'workers' || type === 'CREATE_WORKER' || type === 'create_worker' || type === 'register_worker'
             ? generateWorkerTempPassword()
@@ -462,7 +463,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
       }
     }
 
-    if (isOpen && (type === 'assign_agent' || type === 'add_agent' || type === 'agents' || type === 'add_worker' || type === 'workers' || type === 'add_site' || type === 'sites')) {
+    if (isOpen && (type === 'assign_agent' || type === 'add_agent' || type === 'agents' || type === 'agent' || type === 'register_agent' || type === 'CREATE_AGENT' || type === 'create_agent' || type === 'add_worker' || type === 'workers' || type === 'add_site' || type === 'sites')) {
       fetchSitesApi().then((sites) => {
         setSitesList(sites);
         if (targetSiteId) {
@@ -935,7 +936,8 @@ export const ActionModal: React.FC<ActionModalProps> = ({
           address: agentAddress.trim() || undefined,
           registrationAmount: registrationAmount ? Number(registrationAmount) : 500,
           paymentMethod: paymentMethod,
-          upiTransactionId: upiTransactionId.trim() || undefined
+          upiTransactionId: upiTransactionId.trim() || undefined,
+          assignedAgentId: (role === 'AGENT' && user?.id) ? Number(user.id) : (selectedAgentId ? Number(selectedAgentId) : undefined)
         });
 
         setIsLoading(false);
@@ -984,7 +986,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
         setIsLoading(false);
         setErrorMsg(err.message || 'Failed to update worker details');
       }
-    } else if (type === 'add_agent' || type === 'agents') {
+    } else if (type === 'add_agent' || type === 'agents' || type === 'agent' || type === 'register_agent' || type === 'CREATE_AGENT' || type === 'create_agent') {
       if (!name.trim()) { setErrorMsg('Agent Full Name is required.'); return; }
       if (!email.trim()) { setErrorMsg('Email Address is required.'); return; }
       if (!isEmailVerified) { setErrorMsg('Please verify agent email address with OTP code before registering.'); return; }
@@ -1034,57 +1036,27 @@ export const ActionModal: React.FC<ActionModalProps> = ({
       if (paymentMethod === 'UPI') {
         setIsLoading(true);
         try {
-          // Load Razorpay Checkout SDK dynamically if not loaded
-          if (!(window as any).Razorpay) {
-            await new Promise((resolve, reject) => {
-              const script = document.createElement('script');
-              script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-              script.onload = resolve;
-              script.onerror = () => reject(new Error('Failed to load Razorpay SDK'));
-              document.body.appendChild(script);
-            });
-          }
-
-          const orderRes = await createRazorpayOrderApi(Number(registrationAmount) || 500);
-          const orderData = orderRes.data || orderRes;
-
-          const options: any = {
-            key: orderData.keyId || 'rzp_test_TUlG2PT9HSDHcY',
-            amount: orderData.amount || Math.round((Number(registrationAmount) || 500) * 100),
-            currency: orderData.currency || 'INR',
+          const verifyRes = await initiateRazorpayCheckout({
+            amount: Number(registrationAmount) || 500,
+            isINR: true,
+            currency: 'INR',
             name: 'Labor Union Management System',
-            description: 'New Agent Registration Fee',
+            description: 'New Field Agent Registration Fee',
             prefill: {
               name: name.trim(),
               email: email.trim(),
-              contact: phone.trim()
+              contact: phone.trim(),
             },
-            theme: {
-              color: '#2563EB'
-            },
-            handler: async function (response: any) {
-              await executeAgentRegistration({
-                razorpayPaymentId: response.razorpay_payment_id || `pay_${Date.now()}`,
-                razorpayOrderId: response.razorpay_order_id || orderData.orderId
-              });
-            },
-            modal: {
-              ondismiss: function () {
-                setIsLoading(false);
-                setErrorMsg('Payment cancelled by user. Agent registration requires completed payment.');
-              }
-            }
-          };
+            themeColor: '#2563EB',
+          });
 
-          if (orderData.orderId && !orderData.isMock && !String(orderData.orderId).includes('mock') && !String(orderData.orderId).includes('fallback')) {
-            options.order_id = orderData.orderId;
-          }
-
-          const rzp = new (window as any).Razorpay(options);
-          rzp.open();
+          await executeAgentRegistration({
+            razorpayPaymentId: verifyRes.payment_id || `pay_${Date.now()}`,
+            razorpayOrderId: verifyRes.order_id || `order_${Date.now()}`,
+          });
         } catch (err: any) {
           setIsLoading(false);
-          setErrorMsg(err.message || 'Failed to initiate Razorpay UPI payment');
+          setErrorMsg(err.message || 'Payment was not completed. Please try again.');
         }
       } else {
         await executeAgentRegistration({});
@@ -1243,6 +1215,10 @@ export const ActionModal: React.FC<ActionModalProps> = ({
         return 'Add New Working Site';
       case 'add_agent':
       case 'agents':
+      case 'agent':
+      case 'register_agent':
+      case 'CREATE_AGENT':
+      case 'create_agent':
         return 'Register New Agent';
       case 'add_worker':
       case 'workers':
@@ -1297,7 +1273,9 @@ export const ActionModal: React.FC<ActionModalProps> = ({
     }
   };
 
-  return (
+  if (!isOpen) return null;
+
+  const modalMarkup = (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-container animate-fade-in" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
@@ -1327,7 +1305,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
                 ? 'Worker Registered Successfully!'
                 : type === 'edit_worker'
                 ? 'Worker Details Updated Successfully!'
-                : type === 'add_agent' || type === 'agents'
+                : type === 'add_agent' || type === 'agents' || type === 'agent' || type === 'register_agent' || type === 'CREATE_AGENT' || type === 'create_agent'
                 ? 'Agent Registered Successfully!'
                 : type === 'generate_payroll' || type === 'payroll'
                 ? 'Weekly Payroll Generated & Processed!'
@@ -2437,7 +2415,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
                   </button>
                 </div>
               </>
-            ) : type === 'add_agent' || type === 'agents' ? (
+            ) : type === 'add_agent' || type === 'agents' || type === 'agent' || type === 'register_agent' || type === 'CREATE_AGENT' || type === 'create_agent' ? (
               <>
                 {/* Agent Profile Photo Section */}
                 <div className="form-group" style={{ marginBottom: '18px' }}>
@@ -3736,4 +3714,6 @@ export const ActionModal: React.FC<ActionModalProps> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalMarkup, document.body) : null;
 };

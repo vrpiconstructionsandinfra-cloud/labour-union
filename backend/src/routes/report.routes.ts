@@ -5,6 +5,7 @@ import { UserRole } from '@prisma/client';
 import {
   checkSaturdayWindowStatus,
   generateSaturdayWeeklyCsv,
+  generateSaturdayWeeklyExcelBuffer,
   generateSaturdayWeeklyReportData,
   sendSaturdayWeeklyReportEmail
 } from '../services/report.service';
@@ -29,17 +30,25 @@ router.get('/saturday-weekly-status', authenticate, authorize(UserRole.SUPER_AGE
 // GET /api/reports/saturday-weekly-data
 router.get('/saturday-weekly-data', authenticate, authorize(UserRole.SUPER_AGENT), async (req: Request, res: Response) => {
   try {
-    const { rows, weekDays } = await generateSaturdayWeeklyReportData();
-    return res.json({ success: true, count: rows.length, data: rows, weekDays });
+    const reportData = await generateSaturdayWeeklyReportData();
+    return res.json({
+      success: true,
+      summary: reportData.summary,
+      workersCount: reportData.workerRows.length,
+      agentsCount: reportData.agentRows.length,
+      csasCount: reportData.csaRows.length,
+      data: reportData
+    });
   } catch (error: any) {
     return res.status(500).json({ error: error.message });
   }
 });
 
-// GET /api/reports/saturday-weekly-excel (Download CSV/Excel)
+// GET /api/reports/saturday-weekly-excel (Download Multi-sheet XLSX / CSV)
 router.get('/saturday-weekly-excel', authenticate, authorize(UserRole.SUPER_AGENT), async (req: Request, res: Response) => {
   try {
     const demo = req.query.demo === 'true';
+    const format = (req.query.format as string)?.toLowerCase();
     const status = checkSaturdayWindowStatus();
 
     if (!status.active && !demo) {
@@ -48,13 +57,26 @@ router.get('/saturday-weekly-excel', authenticate, authorize(UserRole.SUPER_AGEN
       });
     }
 
-    const csvContent = await generateSaturdayWeeklyCsv();
     const dateStr = new Date().toISOString().split('T')[0];
-    const fileName = `Saturday_Weekly_Audit_Report_${dateStr}.csv`;
 
-    res.setHeader('Content-Type', 'text/csv');
+    if (format === 'csv') {
+      const csvContent = await generateSaturdayWeeklyCsv();
+      const fileName = `Saturday_Weekly_Audit_Report_${dateStr}.csv`;
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      return res.send(csvContent);
+    }
+
+    // Default to Excel XLSX with 4 sheets (Executive Summary, Workers Payroll, Field Agents, Customer Support Agents)
+    const excelBuffer = await generateSaturdayWeeklyExcelBuffer();
+    const fileName = `Saturday_Weekly_Audit_Report_${dateStr}.xlsx`;
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    return res.send(csvContent);
+    return res.send(excelBuffer);
   } catch (error: any) {
     return res.status(500).json({ error: error.message });
   }

@@ -39,7 +39,8 @@ const mail_service_1 = require("../services/mail.service");
 const verificationOtps = new Map();
 const register = async (req, res) => {
     try {
-        const { name, email, password, role, phone, designation, employeeCode, salary, siteId, avatar, bankAccountNo, ifscCode, address, registrationAmount, paymentMethod, razorpayPaymentId, razorpayOrderId, upiTransactionId } = req.body;
+        const { name, email, password, role, phone, designation, employeeCode, salary, siteId, avatar, bankAccountNo, ifscCode, address, registrationAmount, paymentMethod, razorpayPaymentId, razorpayOrderId, upiTransactionId, assignedAgentId } = req.body;
+        const effectiveAgentId = assignedAgentId || req.user?.id;
         const user = await authService.registerUser(name, email, password, role || "WORKER", phone, designation, employeeCode, salary ? Number(salary) : undefined, siteId ? Number(siteId) : undefined, avatar, {
             bankAccountNo,
             ifscCode,
@@ -48,7 +49,8 @@ const register = async (req, res) => {
             paymentMethod,
             razorpayPaymentId,
             razorpayOrderId,
-            upiTransactionId
+            upiTransactionId,
+            assignedAgentId: effectiveAgentId ? Number(effectiveAgentId) : undefined
         });
         if (user && user.email) {
             if (role === 'AGENT' || role === 'SUPER_AGENT' || role === 'CUSTOMER_SUPPORT') {

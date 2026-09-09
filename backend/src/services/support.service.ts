@@ -662,7 +662,7 @@ export async function getSupportAnalytics(reqUser?: { id: number; role: string }
 export async function getFieldAgentsForSupport(supportUserId: number) {
   const agents = await prisma.user.findMany({
     where: {
-      role: { in: [UserRole.AGENT, UserRole.SUPER_AGENT] },
+      role: UserRole.AGENT,
     },
     include: {
       site: true,
@@ -776,7 +776,7 @@ export async function getFieldAgentsForSupport(supportUserId: number) {
  */
 export async function assignAgentToSupportBasket(supportUserId: number, agentId: number) {
   const agent = await prisma.user.findUnique({ where: { id: agentId } });
-  if (!agent || (agent.role !== UserRole.AGENT && agent.role !== UserRole.SUPER_AGENT)) {
+  if (!agent || agent.role !== UserRole.AGENT) {
     throw new Error("Field Agent not found");
   }
 
@@ -798,7 +798,7 @@ export async function assignAgentToSupportBasket(supportUserId: number, agentId:
  */
 export async function unassignAgentFromSupportBasket(agentId: number) {
   const agent = await prisma.user.findUnique({ where: { id: agentId } });
-  if (!agent || (agent.role !== UserRole.AGENT && agent.role !== UserRole.SUPER_AGENT)) {
+  if (!agent || agent.role !== UserRole.AGENT) {
     throw new Error("Field Agent not found");
   }
 
@@ -822,7 +822,7 @@ export async function assignSiteWithDuration(
   workersNeeded?: number
 ) {
   const agent = await prisma.user.findUnique({ where: { id: agentId } });
-  if (!agent || (agent.role !== UserRole.AGENT && agent.role !== UserRole.SUPER_AGENT)) {
+  if (!agent || agent.role !== UserRole.AGENT) {
     throw new Error("Field Agent not found");
   }
 

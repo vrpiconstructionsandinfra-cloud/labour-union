@@ -54,6 +54,7 @@ const registerUser = async (name, email, password, role, phone, designation, emp
                 employeeCode: finalCode,
                 salary: salary || (targetRole === "WORKER" ? 25500 : 45000),
                 siteId: siteId || undefined,
+                assignedAgentId: extraDetails?.assignedAgentId ? Number(extraDetails.assignedAgentId) : undefined,
                 profileImage: avatar || undefined,
                 bankAccountNo: extraDetails?.bankAccountNo || undefined,
                 ifscCode: extraDetails?.ifscCode || undefined,
@@ -80,11 +81,12 @@ const registerUser = async (name, email, password, role, phone, designation, emp
                     employeeCode: finalCode,
                     salary: salary || (targetRole === "WORKER" ? 25500 : 45000),
                     siteId: siteId || undefined,
+                    assignedAgentId: extraDetails?.assignedAgentId ? Number(extraDetails.assignedAgentId) : undefined,
                     profileImage: avatar || undefined,
                 },
             });
             try {
-                await prisma_1.default.$executeRawUnsafe(`UPDATE "User" SET "bankAccountNo" = $1, "ifscCode" = $2, "address" = $3, "registrationAmount" = $4, "paymentMethod" = $5, "razorpayPaymentId" = $6, "razorpayOrderId" = $7, "upiTransactionId" = $8 WHERE "id" = $9`, extraDetails?.bankAccountNo || null, extraDetails?.ifscCode || null, extraDetails?.address || null, extraDetails?.registrationAmount ? Number(extraDetails.registrationAmount) : null, extraDetails?.paymentMethod || null, extraDetails?.razorpayPaymentId || null, extraDetails?.razorpayOrderId || null, extraDetails?.upiTransactionId || null, user.id);
+                await prisma_1.default.$executeRawUnsafe(`UPDATE "User" SET "bankAccountNo" = $1, "ifscCode" = $2, "address" = $3, "registrationAmount" = $4, "paymentMethod" = $5, "razorpayPaymentId" = $6, "razorpayOrderId" = $7, "upiTransactionId" = $8, "assignedAgentId" = COALESCE($10, "assignedAgentId") WHERE "id" = $9`, extraDetails?.bankAccountNo || null, extraDetails?.ifscCode || null, extraDetails?.address || null, extraDetails?.registrationAmount ? Number(extraDetails.registrationAmount) : null, extraDetails?.paymentMethod || null, extraDetails?.razorpayPaymentId || null, extraDetails?.razorpayOrderId || null, extraDetails?.upiTransactionId || null, user.id, extraDetails?.assignedAgentId ? Number(extraDetails.assignedAgentId) : null);
             }
             catch (sqlErr) {
                 console.warn("⚠️ Banking SQL update warning:", sqlErr.message);

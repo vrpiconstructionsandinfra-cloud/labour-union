@@ -12,7 +12,8 @@ import {
   Users,
   Filter,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  X
 } from 'lucide-react';
 import { fetchEnquiriesApi, updateEnquiryStatusApi, deleteEnquiryApi, type EnquiryItem } from '../services/api';
 import './EnquiriesPage.css';
@@ -165,11 +166,31 @@ export const EnquiriesPage: React.FC = () => {
           <Search size={17} color="#64748B" />
           <input
             type="text"
-            placeholder="Search by name, phone, email, or address..."
+            placeholder="Search by Lead ID (#12), name, phone, email, or address..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="enquiries-search-input"
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '4px',
+                color: '#94A3B8',
+                borderRadius: '50%'
+              }}
+              title="Clear search"
+            >
+              <X size={15} />
+            </button>
+          )}
         </div>
 
         <div className="enquiries-filter-group">

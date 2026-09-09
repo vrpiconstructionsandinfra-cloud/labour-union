@@ -237,9 +237,10 @@ body {
 /* Metrics Grid - 5 Columns */
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 24px;
+  width: 100%;
 }
 
 /* Grid layout for Middle section (3 Columns) */
@@ -364,7 +365,8 @@ body {
 
 @media (max-width: 1400px) {
   .metrics-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
   }
   .middle-grid, .bottom-grid {
     grid-template-columns: 1fr;
@@ -373,7 +375,8 @@ body {
 
 @media (max-width: 900px) {
   .metrics-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
   }
   .main-content {
     padding: 16px;
@@ -445,8 +448,13 @@ body {
   }
 
   .metrics-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 12px !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .metrics-grid > .metric-card:last-child:nth-child(odd) {
+    grid-column: span 2;
   }
 
   .stats-row-3, .stats-row-4 {
@@ -462,5 +470,10 @@ body {
 @media (max-width: 380px) {
   .metrics-grid {
     grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  .metrics-grid > .metric-card:last-child:nth-child(odd) {
+    grid-column: span 1 !important;
   }
 }

@@ -622,6 +622,7 @@ export const registerUserApi = async (userData: {
   razorpayPaymentId?: string;
   razorpayOrderId?: string;
   upiTransactionId?: string;
+  assignedAgentId?: number;
 }) => {
   const res = await fetchWithAuth('/api/auth/register', {
     method: 'POST',
@@ -630,12 +631,35 @@ export const registerUserApi = async (userData: {
   return res.data;
 };
 
-export const createRazorpayOrderApi = async (amount: number) => {
-  const res = await fetchWithAuth('/api/payments/razorpay-order', {
+export const createRazorpayOrderApi = async (amount: number, isINR = true) => {
+  const payload = isINR ? { amountInINR: amount } : { amount };
+  const res = await fetch('/api/create-order', {
     method: 'POST',
-    body: JSON.stringify({ amount })
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
   });
-  return res;
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to create Razorpay order');
+  }
+  return data;
+};
+
+export const verifyRazorpayPaymentApi = async (data: {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}) => {
+  const res = await fetch('/api/verify-payment', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  const json = await res.json();
+  if (!res.ok || !json.success) {
+    throw new Error(json.message || 'Payment signature verification failed');
+  }
+  return json;
 };
 
 // 13. Payroll Generation Endpoint (Backend Payroll API)
