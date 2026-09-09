@@ -1346,15 +1346,22 @@ body.dark-mode .menu-item-btn.logout-item:hover {
   color: #EF4444 !important;
 }
 
-/* Backdrop for mobile sliding drawer */
+/* Backdrop for mobile sliding drawer - only visible on small mobile screens */
 .mobile-drawer-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  z-index: 998;
-  animation: fadeIn 0.2s ease-out;
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    z-index: 998;
+    animation: fadeIn 0.2s ease-out;
+  }
 }
 
 /* Tickets Responsive View Classes */

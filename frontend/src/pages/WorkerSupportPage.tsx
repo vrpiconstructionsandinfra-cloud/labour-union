@@ -79,6 +79,15 @@ export const WorkerSupportPage: React.FC<WorkerSupportPageProps> = ({
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
+  // 3-Dots Actions Menu Popover State
+  const [activeActionMenuTicketId, setActiveActionMenuTicketId] = useState<number | string | null>(null);
+
+  useEffect(() => {
+    const handleDocClick = () => setActiveActionMenuTicketId(null);
+    document.addEventListener('click', handleDocClick);
+    return () => document.removeEventListener('click', handleDocClick);
+  }, []);
+
   const isSupportAgentRole =
     user?.role === 'SUPER_AGENT' ||
     (user?.role as string) === 'SUPPORT_AGENT' ||
@@ -497,6 +506,30 @@ export const WorkerSupportPage: React.FC<WorkerSupportPageProps> = ({
     return <span className="cs-badge cs-status-default">{status}</span>;
   };
 
+  const renderStatusSelect = (t: SupportTicket, isHeader: boolean = false) => {
+    const s = (t.status || 'OPEN').toUpperCase();
+    const selectClass = isHeader
+      ? `cs-detail-status-select ${s === 'IN PROGRESS' ? 'in_progress' : s.toLowerCase()}`
+      : `cs-status-select ${s === 'IN PROGRESS' ? 'in_progress' : s.toLowerCase()}`;
+    return (
+      <select
+        className={selectClass}
+        value={s === 'IN PROGRESS' ? 'IN_PROGRESS' : s}
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => {
+          e.stopPropagation();
+          handleStatusChange(t.id, e.target.value);
+        }}
+        title="Change Ticket Status"
+      >
+        <option value="OPEN">Open</option>
+        <option value="IN_PROGRESS">In Progress</option>
+        <option value="RESOLVED">Resolved</option>
+        <option value="CLOSED">Closed</option>
+      </select>
+    );
+  };
+
   const renderCategoryBadge = (cat: 'Emergency' | 'Equipment' | 'General') => {
     if (cat === 'Emergency') return <span className="cs-badge cs-cat-emergency">Emergency</span>;
     if (cat === 'Equipment') return <span className="cs-badge cs-cat-equipment">Equipment</span>;
@@ -712,20 +745,82 @@ export const WorkerSupportPage: React.FC<WorkerSupportPageProps> = ({
                           <span className="cs-subj-text">{t.subject || 'Support Inquiry'}</span>
                         </td>
                         <td>{renderCategoryBadge(cat)}</td>
-                        <td>{renderStatusBadge(t.status)}</td>
+                        <td onClick={(e) => e.stopPropagation()}>
+                          {isSupportAgentRole ? renderStatusSelect(t) : renderStatusBadge(t.status)}
+                        </td>
                         <td className="cs-created-date">{formatTicketDate(t.createdAt)}</td>
-                        <td style={{ textAlign: 'center' }}>
+                        <td style={{ textAlign: 'center', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
                             className="cs-dots-btn"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSelectedTicket(t);
+                              setActiveActionMenuTicketId((prev) => (prev === t.id ? null : t.id));
                             }}
-                            title="View Ticket Conversation"
+                            title="Ticket Actions"
                           >
                             <MoreVertical size={16} />
                           </button>
+                          {activeActionMenuTicketId === t.id && (
+                            <div className="cs-actions-dropdown-menu animate-fade-in" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                className="cs-action-menu-item"
+                                onClick={() => {
+                                  setSelectedTicket(t);
+                                  setActiveActionMenuTicketId(null);
+                                }}
+                              >
+                                <MessageSquare size={14} color="#2563EB" />
+                                <span>View Conversation</span>
+                              </button>
+                              <div className="cs-action-menu-divider" />
+                              <button
+                                type="button"
+                                className="cs-action-menu-item"
+                                onClick={() => {
+                                  handleStatusChange(t.id, 'IN_PROGRESS');
+                                  setActiveActionMenuTicketId(null);
+                                }}
+                              >
+                                <span className="cs-status-dot blue" />
+                                <span>Mark as In Progress</span>
+                              </button>
+                              <button
+                                type="button"
+                                className="cs-action-menu-item"
+                                onClick={() => {
+                                  handleStatusChange(t.id, 'RESOLVED');
+                                  setActiveActionMenuTicketId(null);
+                                }}
+                              >
+                                <span className="cs-status-dot green" />
+                                <span>Mark as Resolved</span>
+                              </button>
+                              <button
+                                type="button"
+                                className="cs-action-menu-item"
+                                onClick={() => {
+                                  handleStatusChange(t.id, 'CLOSED');
+                                  setActiveActionMenuTicketId(null);
+                                }}
+                              >
+                                <span className="cs-status-dot slate" />
+                                <span>Mark as Closed</span>
+                              </button>
+                              <button
+                                type="button"
+                                className="cs-action-menu-item"
+                                onClick={() => {
+                                  handleStatusChange(t.id, 'OPEN');
+                                  setActiveActionMenuTicketId(null);
+                                }}
+                              >
+                                <span className="cs-status-dot amber" />
+                                <span>Reopen Ticket</span>
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );
@@ -845,7 +940,11 @@ export const WorkerSupportPage: React.FC<WorkerSupportPageProps> = ({
             <div className="cs-detail-header-row">
               <div className="cs-detail-code-wrap">
                 <span className="cs-detail-ticket-id">{formatTicketCode(selectedTicket)}</span>
-                {renderStatusBadge(selectedTicket.status)}
+                {isSupportAgentRole ? (
+                  renderStatusSelect(selectedTicket, true)
+                ) : (
+                  renderStatusBadge(selectedTicket.status)
+                )}
               </div>
 
               <div className="cs-detail-header-actions">

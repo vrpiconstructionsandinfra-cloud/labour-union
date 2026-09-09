@@ -151,6 +151,12 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([role])
+  @@index([status])
+  @@index([siteId])
+  @@index([assignedAgentId])
+  @@index([managedBySupportId])
 }
 
 model Site {
@@ -181,6 +187,10 @@ model Site {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([active])
+  @@index([createdById])
 }
 
 model Attendance {
@@ -216,6 +226,10 @@ model Attendance {
   createdAt DateTime @default(now())
 
   @@unique([workerId, date])
+  @@index([markedById])
+  @@index([date])
+  @@index([siteId])
+  @@index([status])
 }
 
 model Leave {
@@ -236,6 +250,11 @@ model Leave {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([workerId])
+  @@index([approvedById])
+  @@index([status])
+  @@index([fromDate, toDate])
 }
 
 model Payment {
@@ -266,6 +285,10 @@ model Payment {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([workerId])
+  @@index([status])
+  @@index([weekStart, weekEnd])
 }
 
 model Wallet {
@@ -295,6 +318,8 @@ model WalletTransaction {
   description String?
 
   createdAt DateTime @default(now())
+
+  @@index([walletId])
 }
 
 model Insurance {
@@ -349,6 +374,10 @@ model SupportTicket {
   createdAt DateTime @default(now())
 
   updatedAt DateTime @updatedAt
+
+  @@index([workerId])
+  @@index([handledById])
+  @@index([status])
 }
 
 model SupportTicketComment {
@@ -363,6 +392,9 @@ model SupportTicketComment {
   message String
 
   createdAt DateTime @default(now())
+
+  @@index([ticketId])
+  @@index([authorId])
 }
 
 model Notification {
@@ -375,6 +407,10 @@ model Notification {
   type      String    @default("INFO")
   isRead    Boolean   @default(false)
   createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([role])
+  @@index([isRead])
 }
 
 model DisbursementRequest {
@@ -388,6 +424,10 @@ model DisbursementRequest {
   status      DisbursementStatus @default(PENDING)
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
+
+  @@index([agentId])
+  @@index([workerId])
+  @@index([status])
 }
 
 enum EnquiryDesignation {
@@ -415,6 +455,9 @@ model Enquiry {
   notes       String?
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
+
+  @@index([status])
+  @@index([designation])
 }
 
 model SiteAssignment {
@@ -431,6 +474,10 @@ model SiteAssignment {
   status       String    @default("ACTIVE")
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+
+  @@index([siteId])
+  @@index([agentId])
+  @@index([status])
 }
 
 model SupportAgentMessage {
@@ -445,6 +492,9 @@ model SupportAgentMessage {
   messageType    String   @default("TEXT")
   ticketId       Int?
   createdAt      DateTime @default(now())
+
+  @@index([supportAgentId, fieldAgentId])
+  @@index([senderId])
 }
 
 model SitePayment {
@@ -475,6 +525,11 @@ model SitePayment {
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+
+  @@index([siteId])
+  @@index([payerId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 

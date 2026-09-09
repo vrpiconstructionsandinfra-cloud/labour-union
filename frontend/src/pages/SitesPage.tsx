@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, MapPin, Users, ChevronDown, ChevronUp, UserX, Loader2, CheckCircle2, Building, UserPlus } from 'lucide-react';
 import { fetchSitesApi, fetchAgentsApi, removeAgentFromSiteApi, updateSiteApi } from '../services/api';
+import { queryClient, QUERY_KEYS } from '../services/queryClient';
 import { useAuth } from '../context/AuthContext';
 import type { SiteItem, AgentItem } from '../types';
 import {
@@ -67,6 +68,8 @@ export const SitesPage: React.FC<SitesPageProps> = ({
       setSites((prev) =>
         prev.map((s) => (s.id === siteId ? { ...s, status: newStatus } : s))
       );
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.sites });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboardStats });
     } catch (err: any) {
       alert(err.message || 'Failed to update site status');
     } finally {

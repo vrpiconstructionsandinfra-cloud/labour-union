@@ -35,7 +35,7 @@ router.get(
 router.put(
   "/:id",
   authenticate,
-  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT"),
+  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT", "AGENT"),
   siteController.update
 );
 

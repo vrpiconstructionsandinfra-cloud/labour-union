@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SessionExpiredModal } from './components/SessionExpiredModal';
 import { AccessDeniedScreen } from './components/AccessDeniedScreen';
@@ -13,31 +13,43 @@ import { QuickActions } from './components/QuickActions';
 import { ActionModal } from './components/ActionModal';
 import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import { useRealtimeSync } from './hooks/useRealtimeSync';
 import './styles/responsive.css';
 
-// Sub-module Pages
-import { SitesPage } from './pages/SitesPage';
-import { AgentsPage } from './pages/AgentsPage';
-import { WorkersPage } from './pages/WorkersPage';
-import { EnquiriesPage } from './pages/EnquiriesPage';
-import { AttendancePage } from './pages/AttendancePage';
-import { LeavePage } from './pages/LeavePage';
-import { PayrollPage } from './pages/PayrollPage';
-import { WalletPage } from './pages/WalletPage';
-import { InsurancePage } from './pages/InsurancePage';
-import { AgentSalaryPage } from './pages/AgentSalaryPage';
-import { SupportPage } from './pages/SupportPage';
-import { ReportsPage } from './pages/ReportsPage';
-import { SettingsPage } from './pages/SettingsPage';
-import { WorkerDetailPage } from './pages/WorkerDetailPage';
-import { AgentDetailPage } from './pages/AgentDetailPage';
-import { WorkerVerifyPage } from './pages/WorkerVerifyPage';
-import { SupportLoginPage } from './pages/SupportLoginPage';
-import { SupportDashboardPage } from './pages/SupportDashboardPage';
+// Lazy Loaded Sub-module Pages & Heavy Views for Code Splitting & Performance
+const SitesPage = lazy(() => import('./pages/SitesPage').then(m => ({ default: m.SitesPage })));
+const AgentsPage = lazy(() => import('./pages/AgentsPage').then(m => ({ default: m.AgentsPage })));
+const WorkersPage = lazy(() => import('./pages/WorkersPage').then(m => ({ default: m.WorkersPage })));
+const EnquiriesPage = lazy(() => import('./pages/EnquiriesPage').then(m => ({ default: m.EnquiriesPage })));
+const AttendancePage = lazy(() => import('./pages/AttendancePage').then(m => ({ default: m.AttendancePage })));
+const LeavePage = lazy(() => import('./pages/LeavePage').then(m => ({ default: m.LeavePage })));
+const PayrollPage = lazy(() => import('./pages/PayrollPage').then(m => ({ default: m.PayrollPage })));
+const WalletPage = lazy(() => import('./pages/WalletPage').then(m => ({ default: m.WalletPage })));
+const InsurancePage = lazy(() => import('./pages/InsurancePage').then(m => ({ default: m.InsurancePage })));
+const AgentSalaryPage = lazy(() => import('./pages/AgentSalaryPage').then(m => ({ default: m.AgentSalaryPage })));
+const SupportPage = lazy(() => import('./pages/SupportPage').then(m => ({ default: m.SupportPage })));
+const ReportsPage = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const WorkerDetailPage = lazy(() => import('./pages/WorkerDetailPage').then(m => ({ default: m.WorkerDetailPage })));
+const AgentDetailPage = lazy(() => import('./pages/AgentDetailPage').then(m => ({ default: m.AgentDetailPage })));
+const WorkerVerifyPage = lazy(() => import('./pages/WorkerVerifyPage').then(m => ({ default: m.WorkerVerifyPage })));
+const SupportDashboardPage = lazy(() => import('./pages/SupportDashboardPage').then(m => ({ default: m.SupportDashboardPage })));
+const SupportLoginPage = lazy(() => import('./pages/SupportLoginPage').then(m => ({ default: m.SupportLoginPage })));
+const CustomerSupportAgentsView = lazy(() => import('./components/CustomerSupportAgentsView').then(m => ({ default: m.CustomerSupportAgentsView })));
+const WorkerQrCardsView = lazy(() => import('./components/WorkerQrCardsView').then(m => ({ default: m.WorkerQrCardsView })));
+const SitePaymentsView = lazy(() => import('./components/SitePaymentsView').then(m => ({ default: m.SitePaymentsView })));
+
+function PageFallback() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '320px', width: '100%', flexDirection: 'column', gap: '12px' }}>
+      <div style={{ width: '36px', height: '36px', border: '3px solid #E2E8F0', borderTopColor: '#2563EB', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <span style={{ fontSize: '13px', color: '#64748B', fontWeight: 500 }}>Loading module...</span>
+    </div>
+  );
+}
 
 // Role Specific Dashboards
 import { AgentDashboardView, WorkerDashboardView } from './components/RoleDashboards';
-import { CustomerSupportAgentsView } from './components/CustomerSupportAgentsView';
 import { WorkerMyDetailsView } from './components/WorkerMyDetailsView';
 import { AgentMyDetailsView } from './components/AgentMyDetailsView';
 import { AgentVerifyPage } from './pages/AgentVerifyPage';
@@ -45,8 +57,6 @@ import { SaturdayReportBanner } from './components/SaturdayReportBanner';
 import { ScanWorkerQrModal } from './components/ScanWorkerQrModal';
 import { MarkAttendanceModal } from './components/MarkAttendanceModal';
 import { SupportAgentModal } from './components/SupportAgentModal';
-import { WorkerQrCardsView } from './components/WorkerQrCardsView';
-import { SitePaymentsView } from './components/SitePaymentsView';
 
 import { Calendar, ChevronDown, LogOut } from 'lucide-react';
 import {
@@ -73,6 +83,9 @@ const SYSTEM_QUICK_ACTIONS: QuickActionItem[] = [
 import { PublicWorkerVerificationView } from './components/PublicWorkerVerificationView';
 
 function MainAppContent() {
+  // Activate automatic background real-time cache synchronization across all queries
+  useRealtimeSync();
+
   const { isAuthenticated, isValidating, sessionExpired, clearExpired, user, role, login, logout, hasPermission } = useAuth();
   
   const [currentPath, setCurrentPath] = useState(() => window.location.pathname);
@@ -229,7 +242,11 @@ function MainAppContent() {
   }
 
   if (currentPath === '/verify-worker' || currentPath.startsWith('/verify-worker')) {
-    return <WorkerVerifyPage />;
+    return (
+      <Suspense fallback={<PageFallback />}>
+        <WorkerVerifyPage />
+      </Suspense>
+    );
   }
 
   if (currentPath === '/verify-agent' || currentPath.startsWith('/verify-agent')) {
@@ -237,39 +254,59 @@ function MainAppContent() {
   }
 
   if (currentPath === '/worker-details' || currentPath.includes('worker-details')) {
-    return <WorkerDetailPage />;
+    return (
+      <Suspense fallback={<PageFallback />}>
+        <WorkerDetailPage />
+      </Suspense>
+    );
   }
 
   if (currentPath === '/agent-details' || currentPath.includes('agent-details')) {
-    return <AgentDetailPage />;
+    return (
+      <Suspense fallback={<PageFallback />}>
+        <AgentDetailPage />
+      </Suspense>
+    );
   }
 
   if (currentPath === '/support/login' || currentPath === '/support-login') {
     if (isAuthenticated) {
-      return <SupportDashboardPage />;
+      return (
+        <Suspense fallback={<PageFallback />}>
+          <SupportDashboardPage />
+        </Suspense>
+      );
     }
     return (
-      <SupportLoginPage
-        onSuccessNavigate={() => {
-          window.history.pushState({}, '', '/support/dashboard');
-          window.dispatchEvent(new Event('popstate'));
-        }}
-      />
-    );
-  }
-
-  if (currentPath === '/support/dashboard' || currentPath === '/support-portal' || currentPath === '/support-dashboard') {
-    if (!isAuthenticated) {
-      return (
+      <Suspense fallback={<PageFallback />}>
         <SupportLoginPage
           onSuccessNavigate={() => {
             window.history.pushState({}, '', '/support/dashboard');
             window.dispatchEvent(new Event('popstate'));
           }}
         />
+      </Suspense>
+    );
+  }
+
+  if (currentPath === '/support/dashboard' || currentPath === '/support-portal' || currentPath === '/support-dashboard') {
+    if (!isAuthenticated) {
+      return (
+        <Suspense fallback={<PageFallback />}>
+          <SupportLoginPage
+            onSuccessNavigate={() => {
+              window.history.pushState({}, '', '/support/dashboard');
+              window.dispatchEvent(new Event('popstate'));
+            }}
+          />
+        </Suspense>
       );
     }
-    return <SupportDashboardPage />;
+    return (
+      <Suspense fallback={<PageFallback />}>
+        <SupportDashboardPage />
+      </Suspense>
+    );
   }
 
   // ── Show loading spinner while backend token validation is running ──────────
@@ -557,7 +594,9 @@ function MainAppContent() {
         />
 
         <main className="main-content">
-          {renderTabContent()}
+          <Suspense fallback={<PageFallback />}>
+            {renderTabContent()}
+          </Suspense>
         </main>
 
         <Footer setActiveTab={setActiveTab} onOpenModal={(type) => setActiveModal(type)} />

@@ -163,8 +163,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     }
   };
 
-  const handleNavigateToSupportLogin = () => {
-    window.history.pushState({}, '', '/support/login');
+  const handleNavigateToSupportLogin = (targetEmailOrEvent?: string | React.MouseEvent) => {
+    const emailToPass = typeof targetEmailOrEvent === 'string' ? targetEmailOrEvent : (email || '');
+    const query = emailToPass ? `?email=${encodeURIComponent(emailToPass)}` : '';
+    window.history.pushState({}, '', `/support/login${query}`);
     window.dispatchEvent(new Event('popstate'));
   };
 
@@ -216,7 +218,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
       if (isSupportUser) {
         setIsLoading(false);
-        setServerError('Access Denied: Customer Support Agents must log in via the Customer Support Portal.');
+        setServerError(null);
+        setToastSuccess('🎧 Customer Support Agent account detected. Redirecting to Support Portal in 1.5s...');
+        setTimeout(() => {
+          handleNavigateToSupportLogin(email);
+        }, 1500);
         return;
       }
 
@@ -247,6 +253,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 
       if (isTransientError) {
         setServerError(errMsg);
+        return;
+      }
+
+      if (errMsg.toLowerCase().includes('customer support') || errMsg.toLowerCase().includes('support portal')) {
+        setServerError(null);
+        setToastSuccess('🎧 Customer Support Agent account detected. Redirecting to Support Portal in 1.5s...');
+        setTimeout(() => {
+          handleNavigateToSupportLogin(email);
+        }, 1500);
         return;
       }
 
@@ -403,9 +418,31 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             )}
 
             {toastSuccess && (
-              <div className="auth-toast-banner auth-toast-success">
-                <CheckCircle2 size={16} />
-                <span>{toastSuccess}</span>
+              <div className="auth-toast-banner auth-toast-success" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <CheckCircle2 size={16} style={{ flexShrink: 0 }} />
+                  <span>{toastSuccess}</span>
+                </div>
+                {toastSuccess.toLowerCase().includes('support') && (
+                  <button
+                    type="button"
+                    className="auth-toast-action-btn"
+                    onClick={() => handleNavigateToSupportLogin(email)}
+                    style={{
+                      backgroundColor: '#2563EB',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '4px 10px',
+                      fontSize: '11.5px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      marginLeft: 'auto'
+                    }}
+                  >
+                    Go Now →
+                  </button>
+                )}
               </div>
             )}
 

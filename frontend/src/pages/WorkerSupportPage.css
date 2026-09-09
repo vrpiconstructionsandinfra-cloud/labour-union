@@ -426,6 +426,167 @@
   color: #475569;
 }
 
+/* Interactive Status Select Dropdowns */
+.cs-status-select,
+.cs-detail-status-select {
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.15s ease;
+  appearance: auto;
+}
+
+.cs-status-select.open,
+.cs-detail-status-select.open {
+  background: #fef3c7;
+  color: #d97706;
+  border: 1.5px solid #f59e0b;
+}
+
+.cs-status-select.in_progress,
+.cs-detail-status-select.in_progress {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1.5px solid #3b82f6;
+}
+
+.cs-status-select.resolved,
+.cs-detail-status-select.resolved {
+  background: #dcfce7;
+  color: #16a34a;
+  border: 1.5px solid #22c55e;
+}
+
+.cs-status-select.closed,
+.cs-detail-status-select.closed {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1.5px solid #94a3b8;
+}
+
+.cs-detail-status-select {
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 9px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* 3-Dots Actions Dropdown Menu */
+.cs-actions-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 170px;
+  z-index: 100;
+}
+
+.cs-action-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #334155;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background 0.15s ease;
+}
+
+.cs-action-menu-item:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.cs-action-menu-divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 4px 0;
+}
+
+.cs-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.cs-status-dot.amber { background-color: #f59e0b; }
+.cs-status-dot.blue { background-color: #2563eb; }
+.cs-status-dot.green { background-color: #10b981; }
+.cs-status-dot.slate { background-color: #64748b; }
+
+/* Dark mode overrides */
+[data-theme="dark"] .cs-status-select.open,
+[data-theme="dark"] .cs-detail-status-select.open,
+body.dark-mode .cs-status-select.open,
+body.dark-mode .cs-detail-status-select.open {
+  background: #78350f !important;
+  color: #fde68a !important;
+  border-color: #d97706 !important;
+}
+
+[data-theme="dark"] .cs-status-select.in_progress,
+[data-theme="dark"] .cs-detail-status-select.in_progress,
+body.dark-mode .cs-status-select.in_progress,
+body.dark-mode .cs-detail-status-select.in_progress {
+  background: #1e3a8a !important;
+  color: #93c5fd !important;
+  border-color: #2563eb !important;
+}
+
+[data-theme="dark"] .cs-status-select.resolved,
+[data-theme="dark"] .cs-detail-status-select.resolved,
+body.dark-mode .cs-status-select.resolved,
+body.dark-mode .cs-detail-status-select.resolved {
+  background: #14532d !important;
+  color: #86efac !important;
+  border-color: #16a34a !important;
+}
+
+[data-theme="dark"] .cs-status-select.closed,
+[data-theme="dark"] .cs-detail-status-select.closed,
+body.dark-mode .cs-status-select.closed,
+body.dark-mode .cs-detail-status-select.closed {
+  background: #1e293b !important;
+  color: #94a3b8 !important;
+  border-color: #475569 !important;
+}
+
+[data-theme="dark"] .cs-actions-dropdown-menu,
+body.dark-mode .cs-actions-dropdown-menu {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .cs-action-menu-item,
+body.dark-mode .cs-action-menu-item {
+  color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .cs-action-menu-item:hover,
+body.dark-mode .cs-action-menu-item:hover {
+  background: #334155 !important;
+  color: #ffffff !important;
+}
+
 /* ─── PAGINATION FOOTER ──────────────────────────────────────────────────── */
 .cs-pagination-footer {
   display: flex;

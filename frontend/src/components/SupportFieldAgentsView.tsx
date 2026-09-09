@@ -16,6 +16,7 @@ import {
   type SupportFieldAgentItem,
   type SupportAgentMessageItem,
 } from '../services/api';
+import { queryClient, QUERY_KEYS } from '../services/queryClient';
 import { getSocket } from '../services/socket';
 import {
   Users,
@@ -77,6 +78,7 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
   const [newPincode, setNewPincode] = useState<string>('');
   const [newContactPerson, setNewContactPerson] = useState<string>('');
   const [newContactNumber, setNewContactNumber] = useState<string>('');
+  const [newSiteStatus, setNewSiteStatus] = useState<string>('ACTIVE');
   const [newAssignAgentId, setNewAssignAgentId] = useState<string>('');
   const [modalAgentSearch, setModalAgentSearch] = useState<string>('');
   const [isAgentDropdownOpen, setIsAgentDropdownOpen] = useState<boolean>(false);
@@ -314,7 +316,7 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
         pincode: newPincode.trim() || '400001',
         contactPerson: newContactPerson.trim() || 'Site Supervisor',
         contactNumber: newContactNumber.trim() || '9876543210',
-        status: 'ACTIVE',
+        status: newSiteStatus || 'ACTIVE',
       });
 
       const newSiteId = createdSite?.id;
@@ -330,6 +332,10 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
       }
 
       await loadData();
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.sites });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.agents });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboardStats });
+
       setIsCreateSiteModalOpen(false);
       // Reset form fields
       setNewSiteName('');
@@ -341,6 +347,7 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
       setNewContactPerson('');
       setNewContactNumber('');
       setNewAssignAgentId('');
+      setNewSiteStatus('ACTIVE');
       setNewDurationDays(7);
       setNewWorkersNeeded(5);
       alert('Working site created successfully' + (newAssignAgentId ? ' and agent assigned with automated chat notice!' : '!'));
@@ -353,9 +360,19 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
 
   // Site Status Change Handler
   const handleSiteStatusChange = async (siteId: number, newStatus: string) => {
+    if (newStatus === 'COMPLETED') {
+      const confirmCompletion = window.confirm(
+        'Are you sure you want to mark this site work as COMPLETED? The assigned field agent and workers will be automatically unlinked and moved back to Standby for new site allocations.'
+      );
+      if (!confirmCompletion) return;
+    }
+
     try {
       await updateSiteStatusApi(siteId, newStatus);
       await loadData();
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.sites });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.agents });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboardStats });
     } catch (err: any) {
       alert(err.message || 'Failed to update site status');
     }
@@ -712,11 +729,24 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
                       <td onClick={(e) => e.stopPropagation()}>
                         {agent.currentSite ? (
                           <div className="sfa-site-cell">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <Building2 size={14} color="#059669" />
-                              <strong style={{ color: '#0F172A', fontSize: '13px' }}>
-                                {agent.currentSite.siteName}
-                              </strong>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '2px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Building2 size={14} color="#059669" />
+                                <strong style={{ color: '#0F172A', fontSize: '13px' }}>
+                                  {agent.currentSite.siteName}
+                                </strong>
+                              </div>
+                              <select
+                                value={agent.currentSite.status || 'ACTIVE'}
+                                onChange={(e) => handleSiteStatusChange(agent.currentSite!.id, e.target.value)}
+                                className={`sfa-site-status-select-inline ${(agent.currentSite.status || 'ACTIVE').toLowerCase()}`}
+                                title="Change Working Site Status"
+                              >
+                                <option value="ACTIVE">🟢 Active</option>
+                                <option value="IN_PROGRESS">🟡 In Progress</option>
+                                <option value="COMPLETED">✓ Completed</option>
+                                <option value="ON_HOLD">⏸️ On Hold</option>
+                              </select>
                             </div>
                             {agent.activeAssignment?.durationDays && (
                               <div className="sfa-duration-badge">
@@ -876,7 +906,23 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
                   {/* Site & Workforce Metadata Box */}
                   <div className="sfa-card-meta-box">
                     <div className="sfa-card-meta-col">
-                      <span className="sfa-card-meta-label">Assigned Site</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                        <span className="sfa-card-meta-label">Assigned Site</span>
+                        {agent.currentSite && (
+                          <select
+                            value={agent.currentSite.status || 'ACTIVE'}
+                            onChange={(e) => handleSiteStatusChange(agent.currentSite!.id, e.target.value)}
+                            className={`sfa-site-status-select-inline ${(agent.currentSite.status || 'ACTIVE').toLowerCase()}`}
+                            title="Change Working Site Status"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <option value="ACTIVE">🟢 Active</option>
+                            <option value="IN_PROGRESS">🟡 In Progress</option>
+                            <option value="COMPLETED">✓ Completed</option>
+                            <option value="ON_HOLD">⏸️ On Hold</option>
+                          </select>
+                        )}
+                      </div>
                       {agent.currentSite ? (
                         <div className="sfa-card-site-info">
                           <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -1366,6 +1412,23 @@ export const SupportFieldAgentsView: React.FC<SupportFieldAgentsViewProps> = ({
                       placeholder="e.g. 9876543210"
                     />
                   </div>
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <label className="sfa-form-label">
+                    <Building2 size={14} color="#2563EB" />
+                    <span>Initial Site Status</span>
+                  </label>
+                  <select
+                    value={newSiteStatus}
+                    onChange={(e) => setNewSiteStatus(e.target.value)}
+                    className="sfa-form-input"
+                    style={{ fontWeight: 600 }}
+                  >
+                    <option value="ACTIVE">🟢 Active Working</option>
+                    <option value="IN_PROGRESS">🟡 Work In Progress</option>
+                    <option value="ON_HOLD">⏸️ On Hold</option>
+                  </select>
                 </div>
 
                 {/* Optional Field Agent Assignment Section */}

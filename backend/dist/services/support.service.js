@@ -804,7 +804,14 @@ async function assignSiteWithDuration(supportUserId, agentId, siteId, durationDa
  * Update Site Status (ACTIVE, IN_PROGRESS, COMPLETED / Work Done, ON_HOLD)
  */
 async function updateSiteStatusBySupport(siteId, status) {
-    const site = await prisma_1.default.site.findUnique({ where: { id: siteId } });
+    const site = await prisma_1.default.site.findUnique({
+        where: { id: siteId },
+        include: {
+            users: {
+                select: { id: true, name: true, role: true, email: true },
+            },
+        },
+    });
     if (!site) {
         throw new Error("Site not found");
     }
@@ -813,10 +820,42 @@ async function updateSiteStatusBySupport(siteId, status) {
         data: { status },
     });
     if (status === "COMPLETED") {
+        // 1. Mark all active site assignments as COMPLETED
         await prisma_1.default.siteAssignment.updateMany({
-            where: { siteId, status: "ACTIVE" },
+            where: { siteId, status: { in: ["ACTIVE", "IN_PROGRESS"] } },
             data: { status: "COMPLETED" },
         });
+        // 2. Unassign agents and workers from the completed site so they return to Standby
+        await prisma_1.default.user.updateMany({
+            where: { siteId },
+            data: { siteId: null },
+        });
+        // 3. Notify Super Agent & Field Agents
+        (0, notification_service_1.createNotification)({
+            role: "SUPER_AGENT",
+            title: "Site Work Completed",
+            message: `Project Site "${updatedSite.siteName}" (${updatedSite.siteCode}) has been marked as COMPLETED. Assigned agents and workers have been moved to Standby.`,
+            type: "SITE",
+        }).catch(() => { });
+        for (const u of site.users) {
+            if (u.role === client_1.UserRole.AGENT) {
+                (0, notification_service_1.createNotification)({
+                    userId: u.id,
+                    role: "AGENT",
+                    title: "Site Work Completed",
+                    message: `Your project site "${updatedSite.siteName}" has been completed. You are now on Standby for new site assignments.`,
+                    type: "SITE",
+                }).catch(() => { });
+            }
+        }
+    }
+    else {
+        (0, notification_service_1.createNotification)({
+            role: "SUPER_AGENT",
+            title: "Site Status Updated",
+            message: `Site "${updatedSite.siteName}" (${updatedSite.siteCode}) status updated to "${status}".`,
+            type: "SITE",
+        }).catch(() => { });
     }
     return updatedSite;
 }

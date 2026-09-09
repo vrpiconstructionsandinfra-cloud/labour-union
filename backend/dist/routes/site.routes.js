@@ -45,7 +45,7 @@ router.get("/", auth_middleware_1.authenticate, (0, role_middleware_1.authorize)
 // Get Site By Id
 router.get("/:id", auth_middleware_1.authenticate, (0, role_middleware_1.authorize)("SUPER_AGENT", "CUSTOMER_SUPPORT", "AGENT"), siteController.findOne);
 // Update Site
-router.put("/:id", auth_middleware_1.authenticate, (0, role_middleware_1.authorize)("SUPER_AGENT", "CUSTOMER_SUPPORT"), siteController.update);
+router.put("/:id", auth_middleware_1.authenticate, (0, role_middleware_1.authorize)("SUPER_AGENT", "CUSTOMER_SUPPORT", "AGENT"), siteController.update);
 // Delete Site
 router.delete("/:id", auth_middleware_1.authenticate, (0, role_middleware_1.authorize)("SUPER_AGENT"), siteController.remove);
 exports.default = router;
