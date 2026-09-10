@@ -19,8 +19,10 @@ import { getSocket, joinUserRoom } from '../services/socket';
 import { TicketDetailModal } from '../components/TicketDetailModal';
 import { SupportPage } from './SupportPage';
 import { LeavePage } from './LeavePage';
+import { EnquiriesPage } from './EnquiriesPage';
 import { AgentMyDetailsView } from '../components/AgentMyDetailsView';
 import { SupportFieldAgentsView } from '../components/SupportFieldAgentsView';
+import { SitePaymentsView } from '../components/SitePaymentsView';
 import { ActionModal } from '../components/ActionModal';
 import { MobileBottomNav } from '../components/MobileBottomNav';
 import { UserAvatar } from '../components/UserAvatar';
@@ -29,12 +31,13 @@ import {
   LayoutDashboard,
   Users,
   User,
+  CreditCard,
+  FileSpreadsheet,
   Lock,
   KeyRound,
   Loader2,
   Ticket,
   BookOpen,
-  BarChart3,
   Bell,
   Sun,
   Moon,
@@ -419,7 +422,6 @@ export const SupportDashboardPage: React.FC = () => {
 
   const stats = analyticsData?.stats || {};
   const recentTickets = analyticsData?.recentTickets || [];
-  const performanceSummary = analyticsData?.performanceSummary || {};
 
   // Filtered recent tickets
   const filteredRecentTickets = recentTickets.filter((ticket: any) => {
@@ -464,6 +466,22 @@ export const SupportDashboardPage: React.FC = () => {
       return (
         <div className="tab-standalone-page animate-fade-in" style={{ padding: 0, backgroundColor: 'transparent', border: 'none', boxShadow: 'none' }}>
           <SupportFieldAgentsView onOpenRegisterModal={() => setActiveModal('add_agent')} />
+        </div>
+      );
+    }
+
+    if (activeTab === 'pay_site_bills' || activeTab === 'site_payments' || activeTab === 'payments') {
+      return (
+        <div className="tab-standalone-page animate-fade-in" style={{ padding: 0, backgroundColor: 'transparent', border: 'none', boxShadow: 'none' }}>
+          <SitePaymentsView onNavigateTab={(tab) => handleNavTabClick(tab)} />
+        </div>
+      );
+    }
+
+    if (activeTab === 'enquiries' || activeTab === 'enquired') {
+      return (
+        <div className="tab-standalone-page animate-fade-in" style={{ padding: 0, backgroundColor: 'transparent', border: 'none', boxShadow: 'none' }}>
+          <EnquiriesPage />
         </div>
       );
     }
@@ -605,34 +623,6 @@ export const SupportDashboardPage: React.FC = () => {
                 )}
               </tbody>
             </table>
-          </div>
-        </div>
-      );
-    }
-
-    if (activeTab === 'reports') {
-      return (
-        <div className="tab-standalone-page animate-fade-in">
-          <div className="standalone-header">
-            <div>
-              <h2>Support Analytics & Performance Reports</h2>
-              <p>Comprehensive ticket resolution times, agent workload, and worker satisfaction.</p>
-            </div>
-          </div>
-
-          <div className="metrics-grid-container" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-            <div className="support-stat-card">
-              <span className="card-label">Average Resolution Time</span>
-              <h2 className="card-value">{performanceSummary.avgResponseTime || '1h 24m'}</h2>
-            </div>
-            <div className="support-stat-card">
-              <span className="card-label">Overall Resolution Rate</span>
-              <h2 className="card-value">{performanceSummary.resolutionRate || '92.4%'}</h2>
-            </div>
-            <div className="support-stat-card">
-              <span className="card-label">Customer Satisfaction Rating</span>
-              <h2 className="card-value">{performanceSummary.customerSatisfaction || '4.6 / 5'}</h2>
-            </div>
           </div>
         </div>
       );
@@ -1129,6 +1119,22 @@ export const SupportDashboardPage: React.FC = () => {
             )}
           </button>
 
+          <button
+            className={`nav-item ${activeTab === 'pay_site_bills' || activeTab === 'site_payments' || activeTab === 'payments' ? 'active' : ''}`}
+            onClick={() => handleNavTabClick('pay_site_bills')}
+          >
+            <CreditCard size={18} />
+            {!sidebarCollapsed && <span>Pay Site Bills</span>}
+          </button>
+
+          <button
+            className={`nav-item ${activeTab === 'enquiries' || activeTab === 'enquired' ? 'active' : ''}`}
+            onClick={() => handleNavTabClick('enquired')}
+          >
+            <FileSpreadsheet size={18} />
+            {!sidebarCollapsed && <span>Enquired</span>}
+          </button>
+
           <button className={`nav-item ${activeTab === 'my_leaves' || activeTab === 'leaves' ? 'active' : ''}`} onClick={() => handleNavTabClick('my_leaves')}>
             <FileText size={18} />
             {!sidebarCollapsed && <span>My Leaves</span>}
@@ -1137,11 +1143,6 @@ export const SupportDashboardPage: React.FC = () => {
           <button className={`nav-item ${activeTab === 'my_details' ? 'active' : ''}`} onClick={() => handleNavTabClick('my_details')}>
             <User size={18} />
             {!sidebarCollapsed && <span>My Details</span>}
-          </button>
-
-          <button className={`nav-item ${activeTab === 'reports' ? 'active' : ''}`} onClick={() => handleNavTabClick('reports')}>
-            <BarChart3 size={18} />
-            {!sidebarCollapsed && <span>Reports</span>}
           </button>
 
           <button className={`nav-item ${activeTab === 'notifications' ? 'active' : ''}`} onClick={() => handleNavTabClick('notifications')}>

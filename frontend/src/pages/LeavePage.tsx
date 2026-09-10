@@ -48,6 +48,7 @@ export const LeavePage: React.FC<LeavePageProps> = ({
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const isAgentOrSuperAdmin = !isMyLeavesOnly && (role === 'SUPER_AGENT' || role === 'AGENT');
+  const canApplyLeave = !isAgentOrSuperAdmin && Boolean(onOpenModal);
 
   const loadLeaves = () => {
     setIsLoading(true);
@@ -181,6 +182,26 @@ export const LeavePage: React.FC<LeavePageProps> = ({
     return 'Directory of workforce leave records and approvals.';
   };
 
+  const getEmptyStateTitle = () => {
+    if (role === 'SUPER_AGENT') return 'No leave requests submitted yet';
+    if (role === 'AGENT' && !isMyLeavesOnly) return 'No worker leave requests yet';
+    if (isMyLeavesOnly) return 'No personal leave requests found';
+    return undefined;
+  };
+
+  const getEmptyStateMessage = () => {
+    if (role === 'SUPER_AGENT') {
+      return 'Leave applications submitted by Field Agents and Support Staff will appear here for your review and approval.';
+    }
+    if (role === 'AGENT' && !isMyLeavesOnly) {
+      return 'Leave applications submitted by your assigned workforce will appear here for review and approval.';
+    }
+    if (isMyLeavesOnly) {
+      return 'You have not submitted any leave applications yet.';
+    }
+    return undefined;
+  };
+
   return (
     <div className="page-wrapper animate-fade-in">
       {/* Standardized Header */}
@@ -194,9 +215,9 @@ export const LeavePage: React.FC<LeavePageProps> = ({
         filterOptions={PRESET_FILTERS}
         activeFilter={activePreset}
         onFilterSelect={handleSelectPreset}
-        primaryActionLabel={role !== 'SUPER_AGENT' && onOpenModal ? 'Apply Leave' : undefined}
-        primaryActionIcon={role !== 'SUPER_AGENT' && onOpenModal ? <Plus size={16} /> : undefined}
-        onPrimaryAction={role !== 'SUPER_AGENT' && onOpenModal ? () => onOpenModal('apply_leave') : undefined}
+        primaryActionLabel={canApplyLeave ? 'Apply Leave' : undefined}
+        primaryActionIcon={canApplyLeave ? <Plus size={16} /> : undefined}
+        onPrimaryAction={canApplyLeave ? () => onOpenModal?.('apply_leave') : undefined}
         customFilters={
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#475569', fontWeight: 600, flexWrap: 'wrap' }}>
             <Calendar size={14} color="#64748B" />
@@ -256,12 +277,8 @@ export const LeavePage: React.FC<LeavePageProps> = ({
         <ListLoadingState message="Loading leave applications..." rows={5} />
       ) : filteredLeaves.length === 0 ? (
         <ListEmptyState
-          title={role === 'SUPER_AGENT' ? 'No leave requests submitted yet' : undefined}
-          message={
-            role === 'SUPER_AGENT'
-              ? 'Leave applications submitted by Field Agents and Support Staff will appear here for your review and approval.'
-              : undefined
-          }
+          title={getEmptyStateTitle()}
+          message={getEmptyStateMessage()}
           isSearchOrFilter={Boolean(searchTerm || filterStartDate || filterEndDate)}
           onClearFilters={() => {
             setSearchTerm('');
@@ -269,8 +286,8 @@ export const LeavePage: React.FC<LeavePageProps> = ({
             setFilterEndDate('');
             setActivePreset('ALL');
           }}
-          primaryActionLabel={role !== 'SUPER_AGENT' && onOpenModal ? 'Apply Leave' : undefined}
-          onPrimaryAction={role !== 'SUPER_AGENT' && onOpenModal ? () => onOpenModal('apply_leave') : undefined}
+          primaryActionLabel={canApplyLeave ? 'Apply Leave' : undefined}
+          onPrimaryAction={canApplyLeave ? () => onOpenModal?.('apply_leave') : undefined}
         />
       ) : (
         <>

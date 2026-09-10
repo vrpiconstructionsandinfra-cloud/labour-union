@@ -14,9 +14,9 @@ const router = Router();
 // Public route: Submit enquiry
 router.post("/", submitEnquiry);
 
-// Protected routes (Super Agent only)
+// Protected routes (Super Agent and Customer Support)
 router.use(authenticate);
-router.use(authorize(UserRole.SUPER_AGENT));
+router.use(authorize(UserRole.SUPER_AGENT, UserRole.CUSTOMER_SUPPORT));
 
 router.get("/", getEnquiries);
 router.patch("/:id/status", updateStatus);
