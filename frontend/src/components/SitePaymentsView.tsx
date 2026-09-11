@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   CreditCard,
-  QrCode,
   Smartphone,
   Building2,
   Users,
@@ -46,10 +45,7 @@ export const SitePaymentsView: React.FC<SitePaymentsViewProps> = () => {
   // Form States (for Agent & Customer Support Agent)
   const [selectedSiteId, setSelectedSiteId] = useState<string>('');
   const [amount, setAmount] = useState<string>('5000');
-  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'QR_CODE' | 'CARD' | 'RAZORPAY'>('UPI');
-  const [transactionRef, setTransactionRef] = useState<string>('');
   const [remarks, setRemarks] = useState<string>('');
-  const [copiedUpi, setCopiedUpi] = useState<boolean>(false);
   const [copiedTxnId, setCopiedTxnId] = useState<string | null>(null);
 
   // Success Confirmation Modal State
@@ -146,18 +142,8 @@ export const SitePaymentsView: React.FC<SitePaymentsViewProps> = () => {
     return activeSelectedSite.contactPerson || 'Site Supervisor';
   }, [activeSelectedSite, role, user]);
 
-  // Dynamic UPI URL & QR
-  const upiId = 'laborunion@upi';
+  // Payment Amount Helper
   const payAmountNum = Number(amount) || 5000;
-  const upiPayUrl = `upi://pay?pa=${upiId}&pn=Labor%20Union%20Management&am=${payAmountNum}&cu=INR&tn=Site%20Payment%20${activeSelectedSite?.siteCode || 'BILL'}`;
-  const dynamicQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(upiPayUrl)}`;
-
-  // Copy helper
-  const handleCopyUpi = () => {
-    navigator.clipboard.writeText(upiId);
-    setCopiedUpi(true);
-    setTimeout(() => setCopiedUpi(false), 2000);
-  };
 
   const handleCopyTxn = (txn: string) => {
     navigator.clipboard.writeText(txn);
@@ -165,8 +151,8 @@ export const SitePaymentsView: React.FC<SitePaymentsViewProps> = () => {
     setTimeout(() => setCopiedTxnId(null), 2000);
   };
 
-  // Submit Payment (UPI / QR / Offline Reference)
-  const handleSubmitPayment = async (e: React.FormEvent) => {
+  // Submit Payment (Direct Razorpay Online Checkout)
+  const handleSubmitPayment = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSiteId) {
       setErrorMessage('Please select a project site to pay for.');
@@ -176,40 +162,10 @@ export const SitePaymentsView: React.FC<SitePaymentsViewProps> = () => {
       setErrorMessage('Please enter a valid payment amount (minimum ₹1).');
       return;
     }
-
-    if (paymentMethod === 'CARD' || paymentMethod === 'RAZORPAY') {
-      handleRazorpayPay();
-      return;
-    }
-
-    setIsSubmitting(true);
-    setErrorMessage(null);
-
-    try {
-      const res = await createSitePaymentApi({
-        siteId: Number(selectedSiteId),
-        amount: Number(amount),
-        paymentMethod: paymentMethod,
-        upiTransactionId: transactionRef.trim() || undefined,
-        transactionId: transactionRef.trim() || undefined,
-        remarks: remarks.trim() || undefined
-      });
-
-      if (res.success && res.data) {
-        setSuccessPayment(res.data);
-        setTransactionRef('');
-        setRemarks('');
-        loadData();
-      }
-    } catch (err: any) {
-      console.error('Payment error:', err);
-      setErrorMessage(err.message || 'Payment processing failed. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    handleRazorpayPay();
   };
 
-  // Razorpay Checkout Flow for Card Payment
+  // Razorpay Checkout Flow
   const handleRazorpayPay = () => {
     const payAmt = Number(amount);
     if (!payAmt || payAmt <= 0) {
@@ -248,12 +204,11 @@ export const SitePaymentsView: React.FC<SitePaymentsViewProps> = () => {
             razorpayOrderId: rawResponse?.razorpay_order_id || verifyRes.order_id,
             razorpaySignature: rawResponse?.razorpay_signature,
             transactionId: rawResponse?.razorpay_payment_id || verifyRes.payment_id,
-            remarks: remarks.trim() || 'Paid via Razorpay Card Checkout'
+            remarks: remarks.trim() || 'Paid via Razorpay Checkout'
           });
 
           if (res.success && res.data) {
             setSuccessPayment(res.data);
-            setTransactionRef('');
             setRemarks('');
             loadData();
           }
@@ -464,7 +419,7 @@ export const SitePaymentsView: React.FC<SitePaymentsViewProps> = () => {
               </div>
             )}
 
-            {/* Site Selection Dropdown */}
+            {/* Top: Site Selection & Site Details Preview */}
             <div className="form-group-custom">
               <label htmlFor="site-select">
                 <span>Select Project Site:</span>
@@ -506,96 +461,68 @@ export const SitePaymentsView: React.FC<SitePaymentsViewProps> = () => {
               </div>
             )}
 
-            {/* Amount Input & Preset Pills */}
-            <div className="form-group-custom">
-              <label htmlFor="amount-input">
-                <span>Amount to Pay (INR):</span>
-                <span style={{ fontSize: '11.5px', color: '#10B981', fontWeight: 800 }}>₹ INR Currency</span>
-              </label>
-              <input
-                id="amount-input"
-                type="number"
-                min="1"
-                step="1"
-                className="form-input-custom"
-                placeholder="Enter amount (e.g. 5000)"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                required
-              />
-              <div className="amount-presets-row">
-                {['2000', '5000', '10000', '25000', '50000', '100000'].map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    className={`amount-preset-pill ${amount === preset ? 'active' : ''}`}
-                    onClick={() => setAmount(preset)}
-                  >
-                    + ₹{Number(preset).toLocaleString('en-IN')}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Payment Method Selector Grid */}
-            <div className="form-group-custom">
-              <label>Select Payment Method:</label>
-              <div className="payment-methods-grid">
-                <div
-                  className={`payment-method-tile ${paymentMethod === 'UPI' ? 'selected' : ''}`}
-                  onClick={() => setPaymentMethod('UPI')}
-                >
-                  <Smartphone size={20} color="#D97706" />
-                  <span className="method-name">UPI Payment</span>
-                </div>
-
-                <div
-                  className={`payment-method-tile ${paymentMethod === 'QR_CODE' ? 'selected' : ''}`}
-                  onClick={() => setPaymentMethod('QR_CODE')}
-                >
-                  <QrCode size={20} color="#2563EB" />
-                  <span className="method-name">Scan QR Code</span>
-                </div>
-
-                <div
-                  className={`payment-method-tile ${paymentMethod === 'CARD' ? 'selected' : ''}`}
-                  onClick={() => setPaymentMethod('CARD')}
-                >
-                  <CreditCard size={20} color="#7E22CE" />
-                  <span className="method-name">Card / Razorpay</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Reference ID input for UPI / QR methods */}
-            {paymentMethod !== 'CARD' && (
+            {/* 2-Column Responsive Grid for Payment Fields */}
+            <div className="site-payment-fields-grid">
+              
+              {/* Left Column: Amount & Presets */}
               <div className="form-group-custom">
-                <label htmlFor="ref-input">
-                  <span>UPI / Bank Reference ID (UTR):</span>
-                  <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>Optional / Auto-generated</span>
+                <label htmlFor="amount-input">
+                  <span>Amount to Pay (INR):</span>
+                  <span style={{ fontSize: '11.5px', color: '#10B981', fontWeight: 800 }}>₹ INR Currency</span>
                 </label>
                 <input
-                  id="ref-input"
+                  id="amount-input"
+                  type="number"
+                  min="1"
+                  step="1"
+                  className="form-input-custom"
+                  placeholder="Enter amount (e.g. 5000)"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  required
+                />
+                <div className="amount-presets-row">
+                  {['2000', '5000', '10000', '25000', '50000', '100000'].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      className={`amount-preset-pill ${amount === preset ? 'active' : ''}`}
+                      onClick={() => setAmount(preset)}
+                    >
+                      + ₹{Number(preset).toLocaleString('en-IN')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Right Column: Remarks */}
+              <div className="form-group-custom">
+                <label htmlFor="remarks-input">Notes / Remarks:</label>
+                <input
+                  id="remarks-input"
                   type="text"
                   className="form-input-custom"
-                  placeholder="e.g. UPI Ref: 318293819283 or UTR"
-                  value={transactionRef}
-                  onChange={(e) => setTransactionRef(e.target.value)}
+                  placeholder="e.g. Monthly maintenance bill / Generator diesel / Water supply"
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
                 />
+                <div style={{
+                  backgroundColor: '#FAF5FF',
+                  border: '1px solid #E9D5FF',
+                  borderRadius: '10px',
+                  padding: '10px 14px',
+                  fontSize: '12px',
+                  color: '#7E22CE',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginTop: '8px'
+                }}>
+                  <CreditCard size={16} color="#7E22CE" />
+                  <span><strong>Online Razorpay Gateway:</strong> Instant verification with UPI, Cards & NetBanking.</span>
+                </div>
               </div>
-            )}
 
-            {/* Remarks */}
-            <div className="form-group-custom">
-              <label htmlFor="remarks-input">Notes / Remarks:</label>
-              <input
-                id="remarks-input"
-                type="text"
-                className="form-input-custom"
-                placeholder="e.g. Monthly maintenance bill / Generator diesel / Water supply"
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
-              />
             </div>
 
             {/* Submit Action Button */}
@@ -604,84 +531,33 @@ export const SitePaymentsView: React.FC<SitePaymentsViewProps> = () => {
               disabled={isSubmitting}
               className="primary-btn"
               style={{
-                padding: '13px 20px',
+                padding: '14px 20px',
                 fontSize: '15px',
                 fontWeight: 800,
                 borderRadius: '10px',
-                backgroundColor: paymentMethod === 'CARD' ? '#7E22CE' : '#2563EB',
+                backgroundColor: '#7E22CE',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
                 cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                minHeight: '46px'
+                minHeight: '48px',
+                marginTop: '4px'
               }}
             >
               {isSubmitting ? (
                 <>
                   <RefreshCw size={16} className="spinner" />
-                  <span>Processing Payment...</span>
+                  <span>Opening Razorpay Checkout...</span>
                 </>
-              ) : paymentMethod === 'CARD' ? (
+              ) : (
                 <>
                   <CreditCard size={18} />
                   <span>Pay ₹{payAmountNum.toLocaleString('en-IN')} with Razorpay</span>
                 </>
-              ) : (
-                <>
-                  <CheckCircle2 size={18} />
-                  <span>Confirm & Record Payment (₹{payAmountNum.toLocaleString('en-IN')})</span>
-                </>
               )}
             </button>
           </form>
-
-          {/* Right: Interactive Live Payment QR & UPI Details */}
-          <div className="site-payment-preview-card">
-            <h3 style={{ fontSize: '16px', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
-              Scan & Pay Online
-            </h3>
-            <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: 0 }}>
-              Scan this dynamic QR code via Google Pay, PhonePe, Paytm, or any BHIM UPI app.
-            </p>
-
-            <div className="payment-qr-container">
-              <img src={dynamicQrUrl} alt="Dynamic Payment QR Code" className="payment-qr-image" />
-              <div style={{ fontSize: '12px', fontWeight: 800, color: '#15803D' }}>
-                Amount: ₹{payAmountNum.toLocaleString('en-IN')}
-              </div>
-            </div>
-
-            <div className="upi-id-copy-box">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Smartphone size={16} color="#2563EB" />
-                <span>UPI ID: <strong>{upiId}</strong></span>
-              </div>
-              <button type="button" className="copy-btn-mini" onClick={handleCopyUpi}>
-                {copiedUpi ? <Check size={12} /> : <Copy size={12} />}
-                <span>{copiedUpi ? 'Copied' : 'Copy'}</span>
-              </button>
-            </div>
-
-            <div
-              style={{
-                backgroundColor: 'var(--bg-main)',
-                borderRadius: '10px',
-                padding: '12px',
-                fontSize: '12px',
-                color: 'var(--text-secondary)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '4px',
-                textAlign: 'left'
-              }}
-            >
-              <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>💡 Instant Verification:</div>
-              <div>1. Open your UPI app and scan the QR code above.</div>
-              <div>2. Complete payment of ₹{payAmountNum.toLocaleString('en-IN')}.</div>
-              <div>3. Copy the 12-digit UTR/Ref ID and click Confirm above.</div>
-            </div>
-          </div>
 
         </div>
       )}
@@ -724,7 +600,6 @@ export const SitePaymentsView: React.FC<SitePaymentsViewProps> = () => {
             >
               <option value="ALL">All Methods</option>
               <option value="UPI">UPI</option>
-              <option value="QR_CODE">QR Code</option>
               <option value="CARD">Card / Razorpay</option>
             </select>
 

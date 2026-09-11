@@ -94,12 +94,10 @@
   flex-shrink: 0;
 }
 
-/* Pay Bill Form & Interactive Method Grid */
+/* Pay Bill Form Layout */
 .site-payment-checkout-layout {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 20px;
-  align-items: start;
+  display: block;
+  width: 100%;
 }
 
 .site-payment-form-card {
@@ -111,6 +109,20 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+  width: 100%;
+}
+
+.site-payment-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px 24px;
+}
+
+@media (max-width: 768px) {
+  .site-payment-fields-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }
 
 .site-payment-form-title {
@@ -215,7 +227,7 @@
 /* Payment Method Selector Tabs */
 .payment-methods-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 10px;
 }
 
@@ -252,72 +264,7 @@
   color: var(--text-primary, #0f172a);
 }
 
-/* Interactive Payment Preview & Scanner Card */
-.site-payment-preview-card {
-  background: var(--bg-card, #ffffff);
-  border: 1px solid var(--border-color, #e2e8f0);
-  border-radius: 14px;
-  padding: 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  text-align: center;
-}
 
-.payment-qr-container {
-  background: #ffffff;
-  border: 2px dashed #94a3b8;
-  border-radius: 14px;
-  padding: 18px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin: 0 auto;
-  max-width: 240px;
-}
-
-.payment-qr-image {
-  width: 170px;
-  height: 170px;
-  display: block;
-  image-rendering: pixelated;
-}
-
-.upi-id-copy-box {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--bg-main, #f1f5f9);
-  border: 1px solid var(--border-color, #cbd5e1);
-  border-radius: 10px;
-  padding: 10px 14px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-primary, #0f172a);
-  gap: 10px;
-}
-
-.copy-btn-mini {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 10px;
-  border-radius: 6px;
-  background: #2563eb;
-  color: #ffffff;
-  font-size: 11.5px;
-  font-weight: 700;
-  border: none;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.copy-btn-mini:hover {
-  background: #1d4ed8;
-}
 
 /* Super Agent Payments Table / Toolbar */
 .site-payments-table-card {

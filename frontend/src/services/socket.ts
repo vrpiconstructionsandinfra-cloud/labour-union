@@ -2,8 +2,10 @@ import { io, Socket } from 'socket.io-client';
 
 const getSocketUrl = () => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-  const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-  return `http://${hostname}:5000`;
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return 'http://127.0.0.1:5000';
 };
 
 const SOCKET_URL = getSocketUrl();
