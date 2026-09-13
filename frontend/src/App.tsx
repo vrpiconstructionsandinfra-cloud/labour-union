@@ -38,6 +38,7 @@ const SupportLoginPage = lazy(() => import('./pages/SupportLoginPage').then(m =>
 const CustomerSupportAgentsView = lazy(() => import('./components/CustomerSupportAgentsView').then(m => ({ default: m.CustomerSupportAgentsView })));
 const WorkerQrCardsView = lazy(() => import('./components/WorkerQrCardsView').then(m => ({ default: m.WorkerQrCardsView })));
 const SitePaymentsView = lazy(() => import('./components/SitePaymentsView').then(m => ({ default: m.SitePaymentsView })));
+const RegisterWorkerPage = lazy(() => import('./pages/RegisterWorkerPage').then(m => ({ default: m.RegisterWorkerPage })));
 
 function PageFallback() {
   return (
@@ -395,7 +396,19 @@ function MainAppContent() {
               setTargetWorker(worker);
               setActiveModal('edit_worker');
             }}
+            onNavigateTab={(tab) => setActiveTab(tab)}
             refreshTrigger={refreshCounter}
+          />
+        );
+      case 'register_worker':
+      case 'add_worker_page':
+        return (
+          <RegisterWorkerPage
+            onNavigateTab={(tab) => setActiveTab(tab)}
+            onSuccess={() => {
+              setActiveTab('workers');
+              setRefreshCounter((p) => p + 1);
+            }}
           />
         );
       case 'worker_qrs':
@@ -537,13 +550,15 @@ function MainAppContent() {
               <QuickActions
                 actions={SYSTEM_QUICK_ACTIONS.filter(action => {
                   if (role === 'SUPER_AGENT') {
-                    return action.actionKey !== 'add_worker' && action.actionKey !== 'mark_attendance' && action.actionKey !== 'view_reports';
+                    return action.actionKey !== 'mark_attendance' && action.actionKey !== 'view_reports';
                   }
                   return true;
                 })}
                 onActionClick={(actionKey) => {
                   if (actionKey === 'view_reports' || actionKey === 'reports') {
                     setActiveTab('reports');
+                  } else if (actionKey === 'add_worker' || actionKey === 'register_worker') {
+                    setActiveTab('register_worker');
                   } else {
                     setActiveModal(actionKey);
                   }

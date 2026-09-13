@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Check, Search, AlertCircle, Loader2, Bell, Send, CheckCheck, Megaphone, Calendar, DollarSign, Wallet, MessageSquare, Paperclip, UploadCloud, Trash2, Clock, Building2, FileSpreadsheet, Camera, Eye, EyeOff, RefreshCw, CreditCard, CheckCircle2 } from 'lucide-react';
+import { X, Check, Search, AlertCircle, Loader2, Bell, Send, CheckCheck, Megaphone, Calendar, DollarSign, Wallet, MessageSquare, Paperclip, UploadCloud, Trash2, Clock, Building2, FileSpreadsheet, Camera, Eye, EyeOff, RefreshCw, CreditCard, CheckCircle2, IndianRupee, Receipt } from 'lucide-react';
 import {
   registerUserApi,
   updateUserApi,
@@ -35,6 +35,8 @@ import type { WorkerItem, AgentItem, SiteItem, SupportTicket, TicketComment, Not
 import { useAuth } from '../context/AuthContext';
 import { getSocket } from '../services/socket';
 import { UserAvatar } from './UserAvatar';
+import { getWageConfig, getTradeWage } from '../services/wageConfigService';
+import { initiateRazorpayCheckout } from '../utils/razorpay';
 import './ActionModal.css';
 
 interface ActionModalProps {
@@ -203,13 +205,23 @@ export const ActionModal: React.FC<ActionModalProps> = ({
   const [phone, setPhone] = useState('');
   const [employeeCode, setEmployeeCode] = useState('');
   const [designation, setDesignation] = useState('');
-  const [salary, setSalary] = useState('');
   const [password, setPassword] = useState('');
 
   // Bank and Address details
   const [bankAccountNo, setBankAccountNo] = useState('');
   const [ifscCode, setIfscCode] = useState('');
   const [agentAddress, setAgentAddress] = useState('');
+
+  // Worker Wage & Payment Rate States
+  const [wageType, setWageType] = useState<'DAILY' | 'MONTHLY'>('DAILY');
+  const [dailyWageRate, setDailyWageRate] = useState('850');
+  const [monthlySalaryRate, setMonthlySalaryRate] = useState('25500');
+
+  // Worker Registration Fee & Payment States
+  const [collectRegistrationFee, setCollectRegistrationFee] = useState(true);
+  const [registrationFee, setRegistrationFee] = useState('500');
+  const [regPaymentMethod, setRegPaymentMethod] = useState('RAZORPAY');
+  const [regTransactionRef, setRegTransactionRef] = useState('');
 
   // Agent OTP & Temp Password States
   const [showPassword, setShowPassword] = useState(false);
@@ -378,15 +390,30 @@ export const ActionModal: React.FC<ActionModalProps> = ({
         setPhone(targetWorker.phone || '');
         setEmployeeCode(targetWorker.employeeCode || '');
         setDesignation(targetWorker.designation || '');
-        setSalary(targetWorker.dailyWage ? String(targetWorker.dailyWage * 30) : '');
+        const dWage = targetWorker.dailyWage || (targetWorker.salary ? Math.round(targetWorker.salary / 30) : 850);
+        const mSalary = targetWorker.salary || (dWage * 30);
+        setDailyWageRate(String(dWage));
+        setMonthlySalaryRate(String(mSalary));
         setWorkerAvatar(targetWorker.avatar || '');
         setPassword('');
+        setWageType('DAILY');
       } else {
+        const currentWageCfg = getWageConfig();
         setName('');
         setEmail('');
         setEmployeeCode('');
         setPhone('');
-        setSalary('');
+        setWageType('DAILY');
+        setDailyWageRate('850');
+        setMonthlySalaryRate('25500');
+        setCollectRegistrationFee(true);
+        setRegistrationFee(
+          type === 'add_agent' || type === 'agents' || type === 'agent' || type === 'register_agent' || type === 'CREATE_AGENT' || type === 'create_agent'
+            ? String(currentWageCfg.agentRegistrationFee !== undefined ? currentWageCfg.agentRegistrationFee : 1000)
+            : String(currentWageCfg.registrationFee || 500)
+        );
+        setRegPaymentMethod('RAZORPAY');
+        setRegTransactionRef('');
         setPassword(
           type === 'add_agent' || type === 'agents' || type === 'agent' || type === 'register_agent' || type === 'CREATE_AGENT' || type === 'create_agent'
             ? generateTempPassword()
@@ -509,6 +536,15 @@ export const ActionModal: React.FC<ActionModalProps> = ({
           const maxNum = existingNums.length > 0 ? Math.max(...existingNums) : list.length;
           const freshCode = `WRK-${(maxNum + 1).toString().padStart(3, '0')}`;
           setEmployeeCode(freshCode);
+
+          const cfg = getWageConfig();
+          setRegistrationFee(String(cfg.registrationFee || 500));
+          if (cfg.tradeWages && cfg.tradeWages.length > 0) {
+            const first = cfg.tradeWages[0];
+            setDesignation(first.name);
+            setDailyWageRate(String(first.dailyWage));
+            setMonthlySalaryRate(String(first.monthlyWage || first.dailyWage * 30));
+          }
         }
       }).catch(() => {});
 
@@ -891,16 +927,15 @@ export const ActionModal: React.FC<ActionModalProps> = ({
         setErrorMsg(err.message || 'Failed to assign worker');
       }
     } else if (type === 'add_worker' || type === 'workers' || type === 'CREATE_WORKER' || type === 'create_worker' || type === 'register_worker') {
-      if (role === 'SUPER_AGENT') {
-        setErrorMsg('Super Agents cannot modify worker information.');
-        return;
-      }
       if (!name.trim()) { setErrorMsg('Worker Full Name is required.'); return; }
       if (!employeeCode.trim()) { setErrorMsg('Employee Code is required.'); return; }
       if (!phone.trim()) { setErrorMsg('Phone Number is required.'); return; }
       if (phone.trim().length < 10) { setErrorMsg('Phone Number must contain at least 10 digits.'); return; }
       if (!password) { setErrorMsg('Password is required.'); return; }
       if (password.length < 6) { setErrorMsg('Password must be at least 6 characters long.'); return; }
+
+      const finalSalary = wageType === 'DAILY' ? ((Number(dailyWageRate) || 850) * 30) : (Number(monthlySalaryRate) || 25500);
+      const regAmt = collectRegistrationFee ? (Number(registrationFee) || 0) : 0;
 
       setIsLoading(true);
       try {
@@ -910,14 +945,17 @@ export const ActionModal: React.FC<ActionModalProps> = ({
           password: password,
           role: 'WORKER',
           phone: phone.trim(),
-          designation: designation,
+          designation: designation || 'Mason / Carpenter',
           employeeCode: employeeCode.trim(),
-          salary: Number(salary) || 25500,
+          salary: finalSalary,
           siteId: selectedSiteId ? Number(selectedSiteId) : undefined,
           avatar: workerAvatar || undefined,
           bankAccountNo: bankAccountNo.trim() || undefined,
           ifscCode: ifscCode.trim().toUpperCase() || undefined,
           address: agentAddress.trim() || undefined,
+          registrationAmount: regAmt > 0 ? regAmt : undefined,
+          paymentMethod: regAmt > 0 ? regPaymentMethod : undefined,
+          upiTransactionId: (regAmt > 0 && regTransactionRef.trim()) ? regTransactionRef.trim() : undefined,
           assignedAgentId: (role === 'AGENT' && user?.id) ? Number(user.id) : (selectedAgentId ? Number(selectedAgentId) : undefined)
         });
 
@@ -934,14 +972,12 @@ export const ActionModal: React.FC<ActionModalProps> = ({
         setErrorMsg(err.message || 'Failed to register worker');
       }
     } else if (type === 'edit_worker') {
-      if (role === 'SUPER_AGENT') {
-        setErrorMsg('Super Agents cannot modify worker information.');
-        return;
-      }
       if (!targetWorker?.id) {
         setErrorMsg('Invalid worker selected for update');
         return;
       }
+
+      const finalSalary = wageType === 'DAILY' ? ((Number(dailyWageRate) || 850) * 30) : (Number(monthlySalaryRate) || 25500);
 
       setIsLoading(true);
       try {
@@ -951,7 +987,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
           phone: phone,
           designation: designation,
           employeeCode: employeeCode,
-          salary: Number(salary) || 25500,
+          salary: finalSalary,
           avatar: workerAvatar || undefined
         });
 
@@ -977,8 +1013,49 @@ export const ActionModal: React.FC<ActionModalProps> = ({
       if (!password) { setErrorMsg('Password is required.'); return; }
       if (password.length < 6) { setErrorMsg('Password must be at least 6 characters long.'); return; }
 
+      const regFeeNum = collectRegistrationFee ? Number(registrationFee) : 0;
+      if (collectRegistrationFee && (isNaN(regFeeNum) || regFeeNum < 0)) {
+        setErrorMsg('Please enter a valid registration fee amount.');
+        return;
+      }
+
       setIsLoading(true);
       try {
+        let razorpayPaymentId: string | undefined = undefined;
+        let razorpayOrderId: string | undefined = undefined;
+
+        // Execute Razorpay Standard Checkout for Agent Onboarding Fee
+        if (collectRegistrationFee && regFeeNum > 0) {
+          try {
+            const rzpResult = await initiateRazorpayCheckout({
+              amount: regFeeNum,
+              isINR: true,
+              currency: 'INR',
+              name: 'Labor Union System',
+              description: `Agent Onboarding Fee (${designation || 'Field Agent'}) - Code: ${employeeCode.trim()}`,
+              prefill: {
+                name: name.trim(),
+                email: email.trim(),
+                contact: phone.trim()
+              },
+              notes: {
+                employeeCode: employeeCode.trim(),
+                role: 'AGENT',
+                designation: designation || 'Field Supervisor',
+                siteId: selectedSiteId || ''
+              },
+              themeColor: '#2563EB'
+            });
+
+            razorpayPaymentId = rzpResult.payment_id;
+            razorpayOrderId = rzpResult.order_id;
+          } catch (paymentErr: any) {
+            setIsLoading(false);
+            setErrorMsg(paymentErr.message || 'Razorpay registration payment failed or was cancelled.');
+            return;
+          }
+        }
+
         await registerUserApi({
           name: name.trim(),
           email: email.trim(),
@@ -991,7 +1068,11 @@ export const ActionModal: React.FC<ActionModalProps> = ({
           avatar: workerAvatar || undefined,
           bankAccountNo: bankAccountNo.trim() || undefined,
           ifscCode: ifscCode.trim() || undefined,
-          address: agentAddress.trim() || undefined
+          address: agentAddress.trim() || undefined,
+          registrationAmount: regFeeNum,
+          paymentMethod: regFeeNum > 0 ? 'RAZORPAY' : 'WAIVED',
+          razorpayPaymentId: razorpayPaymentId,
+          razorpayOrderId: razorpayOrderId,
         });
 
         setIsLoading(false);
@@ -2106,20 +2187,22 @@ export const ActionModal: React.FC<ActionModalProps> = ({
                     />
                   </div>
                   <div className="form-group flex-1">
-                    <label>Skill / Designation</label>
+                    <label>Skill / Designation *</label>
                     <select
                       value={designation}
-                      onChange={(e) => setDesignation(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setDesignation(val);
+                        const wage = getTradeWage(val);
+                        setDailyWageRate(String(wage.dailyWage));
+                        setMonthlySalaryRate(String(wage.monthlyWage));
+                      }}
                     >
-                      <option value="">-- Select Skill / Designation --</option>
-                      <option value="Mason / Carpenter">Mason / Carpenter</option>
-                      <option value="Electrician">Electrician</option>
-                      <option value="Scaffolder">Scaffolder</option>
-                      <option value="Plumber">Plumber</option>
-                      <option value="Welder">Welder</option>
-                      <option value="Site Technician">Site Technician</option>
-                      <option value="General Helper">General Helper</option>
-                      <option value="Helper">Helper</option>
+                      {getWageConfig().tradeWages.map((t) => (
+                        <option key={t.id || t.name} value={t.name}>
+                          {t.name} (₹{t.dailyWage}/day)
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -2140,6 +2223,195 @@ export const ActionModal: React.FC<ActionModalProps> = ({
                     </select>
                   </div>
                 )}
+
+                {/* Optional Agent Assignment for Super Admin / Support Agent */}
+                {(role === 'SUPER_AGENT' || role === 'CUSTOMER_SUPPORT') && agentsList.length > 0 && (
+                  <div className="form-group">
+                    <label>Assigned Field Agent (Optional)</label>
+                    <select
+                      value={selectedAgentId}
+                      onChange={(e) => setSelectedAgentId(e.target.value)}
+                    >
+                      <option value="">-- Unassigned (Direct HQ Oversight) --</option>
+                      {agentsList.map((ag) => (
+                        <option key={ag.id} value={ag.id}>
+                          {ag.name} ({ag.employeeCode || `AGT-${ag.id}`})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Worker Wage & Compensation Structure */}
+                <div style={{ backgroundColor: '#F8FAFC', padding: '14px', borderRadius: '12px', border: '1px solid #E2E8F0', marginTop: '6px', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 800, color: '#1E293B', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <IndianRupee size={15} color="#059669" />
+                      <span>Worker Wage & Salary Rate</span>
+                    </div>
+                    <div style={{ display: 'inline-flex', background: '#E2E8F0', borderRadius: '6px', padding: '2px' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWageType('DAILY');
+                          const d = Number(dailyWageRate) || 850;
+                          setMonthlySalaryRate(String(d * 30));
+                        }}
+                        style={{
+                          padding: '3px 9px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          background: wageType === 'DAILY' ? '#FFFFFF' : 'transparent',
+                          color: wageType === 'DAILY' ? '#0F172A' : '#64748B',
+                          boxShadow: wageType === 'DAILY' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                        }}
+                      >
+                        Daily Wage (₹/day)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWageType('MONTHLY');
+                          const m = Number(monthlySalaryRate) || 25500;
+                          setDailyWageRate(String(Math.round(m / 30)));
+                        }}
+                        style={{
+                          padding: '3px 9px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          background: wageType === 'MONTHLY' ? '#FFFFFF' : 'transparent',
+                          color: wageType === 'MONTHLY' ? '#0F172A' : '#64748B',
+                          boxShadow: wageType === 'MONTHLY' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                        }}
+                      >
+                        Monthly Salary (₹/mo)
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="form-row" style={{ marginBottom: '8px' }}>
+                    {wageType === 'DAILY' ? (
+                      <div className="form-group flex-1">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                          <label style={{ margin: 0 }}>Daily Wage Rate (₹ / Day) *</label>
+                          {role !== 'SUPER_AGENT' && (
+                            <span style={{ fontSize: '10.5px', color: '#DC2626', fontWeight: 700, backgroundColor: '#FEF2F2', padding: '1px 6px', borderRadius: '4px', border: '1px solid #FECACA' }}>
+                              Fixed by Super Admin
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                          <span style={{ position: 'absolute', left: '10px', fontWeight: 700, color: '#64748B' }}>₹</span>
+                          <input
+                            type="number"
+                            min="100"
+                            max="100000"
+                            required
+                            readOnly={role !== 'SUPER_AGENT'}
+                            placeholder="e.g. 850"
+                            value={dailyWageRate}
+                            onChange={(e) => {
+                              if (role === 'SUPER_AGENT') {
+                                const val = e.target.value;
+                                setDailyWageRate(val);
+                                const num = Number(val) || 0;
+                                setMonthlySalaryRate(String(num * 30));
+                              }
+                            }}
+                            style={{
+                              paddingLeft: '24px',
+                              backgroundColor: role !== 'SUPER_AGENT' ? '#F8FAFC' : '#FFFFFF',
+                              borderColor: role !== 'SUPER_AGENT' ? '#E2E8F0' : '#CBD5E1',
+                              cursor: role !== 'SUPER_AGENT' ? 'not-allowed' : 'text'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="form-group flex-1">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                          <label style={{ margin: 0 }}>Monthly Fixed Salary (₹ / Month) *</label>
+                          {role !== 'SUPER_AGENT' && (
+                            <span style={{ fontSize: '10.5px', color: '#DC2626', fontWeight: 700, backgroundColor: '#FEF2F2', padding: '1px 6px', borderRadius: '4px', border: '1px solid #FECACA' }}>
+                              Fixed by Super Admin
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                          <span style={{ position: 'absolute', left: '10px', fontWeight: 700, color: '#64748B' }}>₹</span>
+                          <input
+                            type="number"
+                            min="1000"
+                            max="1000000"
+                            required
+                            readOnly={role !== 'SUPER_AGENT'}
+                            placeholder="e.g. 25500"
+                            value={monthlySalaryRate}
+                            onChange={(e) => {
+                              if (role === 'SUPER_AGENT') {
+                                const val = e.target.value;
+                                setMonthlySalaryRate(val);
+                                const num = Number(val) || 0;
+                                setDailyWageRate(String(Math.round(num / 30)));
+                              }
+                            }}
+                            style={{
+                              paddingLeft: '24px',
+                              backgroundColor: role !== 'SUPER_AGENT' ? '#F8FAFC' : '#FFFFFF',
+                              borderColor: role !== 'SUPER_AGENT' ? '#E2E8F0' : '#CBD5E1',
+                              cursor: role !== 'SUPER_AGENT' ? 'not-allowed' : 'text'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="form-group flex-1" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                      <label style={{ color: '#64748B', fontSize: '11.5px', marginBottom: '4px' }}>
+                        {wageType === 'DAILY' ? 'Calculated Monthly Base (30 Days)' : 'Calculated Daily Base (1 Day)'}
+                      </label>
+                      <div style={{ padding: '8px 12px', background: '#F1F5F9', borderRadius: '8px', border: '1px dashed #CBD5E1', fontSize: '13px', fontWeight: 700, color: '#059669' }}>
+                        {wageType === 'DAILY'
+                          ? `₹ ${(Number(dailyWageRate || 0) * 30).toLocaleString('en-IN')} / month`
+                          : `₹ ${(Number(dailyWageRate || 0)).toLocaleString('en-IN')} / day`}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quick Wage Presets */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
+                    <span style={{ fontSize: '10.5px', color: '#64748B', fontWeight: 600 }}>Standard Rates:</span>
+                    {getWageConfig().tradeWages.map((preset) => (
+                      <button
+                        key={preset.id || preset.name}
+                        type="button"
+                        onClick={() => {
+                          setDesignation(preset.name);
+                          setDailyWageRate(String(preset.dailyWage));
+                          setMonthlySalaryRate(String(preset.monthlyWage || preset.dailyWage * 30));
+                        }}
+                        style={{
+                          background: Number(dailyWageRate) === preset.dailyWage ? '#E0E7FF' : '#FFFFFF',
+                          border: Number(dailyWageRate) === preset.dailyWage ? '1px solid #4F46E5' : '1px solid #E2E8F0',
+                          color: Number(dailyWageRate) === preset.dailyWage ? '#4338CA' : '#475569',
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          fontSize: '11px',
+                          cursor: 'pointer',
+                          fontWeight: 600
+                        }}
+                      >
+                        {preset.name.split('/')[0].trim()} (₹{preset.dailyWage})
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
                 <div className="form-row">
                   <div className="form-group flex-1">
@@ -2188,6 +2460,79 @@ export const ActionModal: React.FC<ActionModalProps> = ({
                     </div>
                   )}
                 </div>
+
+                {/* Worker Registration / Membership Payment Section */}
+                {type !== 'edit_worker' && (
+                  <div style={{ backgroundColor: '#F8FAFC', padding: '14px', borderRadius: '12px', border: '1px solid #E2E8F0', marginTop: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: collectRegistrationFee ? '10px' : '0' }}>
+                      <div style={{ fontSize: '12px', fontWeight: 800, color: '#1E293B', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Receipt size={15} color="#D97706" />
+                        <span>Registration & Onboarding Payment</span>
+                      </div>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', margin: 0, fontSize: '12px', fontWeight: 600, color: '#334155' }}>
+                        <input
+                          type="checkbox"
+                          checked={collectRegistrationFee}
+                          onChange={(e) => setCollectRegistrationFee(e.target.checked)}
+                          style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#2563EB' }}
+                        />
+                        <span>Collect Payment</span>
+                      </label>
+                    </div>
+
+                    {collectRegistrationFee && (
+                      <>
+                        <div className="form-row" style={{ marginTop: '8px', marginBottom: '8px' }}>
+                          <div className="form-group flex-1">
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                              <label style={{ margin: 0 }}>Registration Amount (₹) *</label>
+                              {role !== 'SUPER_AGENT' && (
+                                <span style={{ fontSize: '10.5px', color: '#DC2626', fontWeight: 700, backgroundColor: '#FEF2F2', padding: '1px 6px', borderRadius: '4px', border: '1px solid #FECACA' }}>
+                                  Fixed by Super Admin
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                              <span style={{ position: 'absolute', left: '10px', fontWeight: 700, color: '#64748B' }}>₹</span>
+                              <input
+                                type="number"
+                                min="0"
+                                readOnly={role !== 'SUPER_AGENT'}
+                                placeholder="e.g. 500"
+                                value={registrationFee}
+                                onChange={(e) => role === 'SUPER_AGENT' && setRegistrationFee(e.target.value)}
+                                style={{
+                                  paddingLeft: '24px',
+                                  backgroundColor: role !== 'SUPER_AGENT' ? '#F8FAFC' : '#FFFFFF',
+                                  borderColor: role !== 'SUPER_AGENT' ? '#E2E8F0' : '#CBD5E1',
+                                  cursor: role !== 'SUPER_AGENT' ? 'not-allowed' : 'text'
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="form-group flex-1">
+                            <label>Payment Mode *</label>
+                            <div style={{ padding: '9px 12px', background: '#FFFFFF', borderRadius: '8px', border: '1px solid #2563EB', color: '#1D4ED8', fontWeight: 700, fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <span>Razorpay Online Gateway</span>
+                              <span style={{ fontSize: '10.5px', background: '#DBEAFE', padding: '2px 6px', borderRadius: '4px' }}>SECURE</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label>Razorpay Payment ID / Order Ref (Optional)</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. pay_Nq98xK198 or rzp_order_104"
+                            value={regTransactionRef}
+                            onChange={(e) => setRegTransactionRef(e.target.value)}
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
 
                 {/* Banking & Residential Address Section */}
                 <div style={{ backgroundColor: '#F8FAFC', padding: '14px', borderRadius: '12px', border: '1px solid #E2E8F0', marginTop: '10px' }}>
@@ -2472,6 +2817,55 @@ export const ActionModal: React.FC<ActionModalProps> = ({
                   </div>
                 </div>
 
+                {/* Agent Registration Fee Section with Razorpay */}
+                <div style={{ marginTop: '16px', marginBottom: '16px', padding: '16px', borderRadius: '12px', background: '#F8FAFC', border: '1.5px solid #E2E8F0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Receipt size={17} style={{ color: '#2563EB' }} />
+                      <span style={{ fontSize: '13.5px', fontWeight: 800, color: '#0F172A' }}>Agent Registration Fee (Razorpay)</span>
+                    </div>
+                    <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px', backgroundColor: '#EFF6FF', color: '#2563EB', border: '1px solid #BFDBFE', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <CreditCard size={12} /> Razorpay Online Gateway
+                    </span>
+                  </div>
+
+                  <p style={{ fontSize: '12px', color: '#64748B', margin: '0 0 12px 0', lineHeight: '1.4' }}>
+                    Registration fee is collected securely via Razorpay Standard Online Checkout (UPI, Cards, NetBanking, Wallets).
+                  </p>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                    <div style={{ position: 'relative', width: '160px' }}>
+                      <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontWeight: 800, color: '#64748B', fontSize: '14px' }}>₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="50"
+                        value={registrationFee}
+                        onChange={(e) => setRegistrationFee(e.target.value)}
+                        placeholder="1000"
+                        style={{ width: '100%', padding: '9px 12px 9px 28px', borderRadius: '8px', border: '1.5px solid #2563EB', fontSize: '14px', fontWeight: 800, color: '#0F172A', backgroundColor: '#FFFFFF' }}
+                      />
+                    </div>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', fontWeight: 600, color: '#334155', cursor: 'pointer', userSelect: 'none' }}>
+                      <input
+                        type="checkbox"
+                        checked={collectRegistrationFee}
+                        onChange={(e) => setCollectRegistrationFee(e.target.checked)}
+                        style={{ width: '16px', height: '16px', accentColor: '#2563EB', cursor: 'pointer' }}
+                      />
+                      <span>Collect Registration Fee via Razorpay</span>
+                    </label>
+                  </div>
+
+                  {collectRegistrationFee && Number(registrationFee) > 0 && (
+                    <div style={{ marginTop: '12px', padding: '10px 12px', borderRadius: '8px', backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', fontSize: '12px', color: '#1E40AF', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <CheckCircle2 size={15} color="#2563EB" style={{ flexShrink: 0 }} />
+                      <span>Razorpay payment checkout for <strong>₹{registrationFee}</strong> will open immediately upon submission.</span>
+                    </div>
+                  )}
+                </div>
+
                 {/* Banking & Personal Address Details */}
                 <div style={{ marginTop: '16px', marginBottom: '16px', padding: '14px', borderRadius: '10px', background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
                   <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -2511,8 +2905,6 @@ export const ActionModal: React.FC<ActionModalProps> = ({
                   </div>
                 </div>
 
-
-
                 <div className="modal-footer mt-12">
                   <button type="button" className="btn-cancel" onClick={onClose} disabled={isLoading}>
                     Cancel
@@ -2522,13 +2914,21 @@ export const ActionModal: React.FC<ActionModalProps> = ({
                     className="btn-submit"
                     disabled={isLoading || !isEmailVerified}
                     title={!isEmailVerified ? "Please verify agent email address with OTP code before registering" : ""}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', backgroundColor: '#2563EB' }}
                   >
                     {isLoading ? (
                       <span className="btn-loading-content">
-                        <Loader2 size={16} className="spinner" /> Registering Agent...
+                        <Loader2 size={16} className="spinner" /> Processing Razorpay & Registering...
                       </span>
                     ) : (
-                      'Register Agent'
+                      <>
+                        <CreditCard size={16} />
+                        <span>
+                          {collectRegistrationFee && Number(registrationFee) > 0
+                            ? `Pay ₹${registrationFee} & Register Agent`
+                            : 'Register Agent'}
+                        </span>
+                      </>
                     )}
                   </button>
                 </div>

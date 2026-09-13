@@ -855,7 +855,7 @@ export const AgentDashboardView: React.FC<AgentDashboardProps> = ({
 
               <button
                 className="quick-action-item"
-                onClick={() => onOpenModal('add_worker')}
+                onClick={() => onNavigateTab ? onNavigateTab('register_worker') : onOpenModal('add_worker')}
                 style={{ padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'var(--bg-main)', cursor: 'pointer' }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

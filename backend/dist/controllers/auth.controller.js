@@ -40,7 +40,8 @@ const verificationOtps = new Map();
 const register = async (req, res) => {
     try {
         const { name, email, password, role, phone, designation, employeeCode, salary, siteId, avatar, bankAccountNo, ifscCode, address, registrationAmount, paymentMethod, razorpayPaymentId, razorpayOrderId, upiTransactionId, assignedAgentId } = req.body;
-        const effectiveAgentId = assignedAgentId || req.user?.id;
+        const isAgentUser = req.user?.role === 'AGENT';
+        const effectiveAgentId = assignedAgentId ? Number(assignedAgentId) : (isAgentUser ? req.user?.id : undefined);
         const user = await authService.registerUser(name, email, password, role || "WORKER", phone, designation, employeeCode, salary ? Number(salary) : undefined, siteId ? Number(siteId) : undefined, avatar, {
             bankAccountNo,
             ifscCode,

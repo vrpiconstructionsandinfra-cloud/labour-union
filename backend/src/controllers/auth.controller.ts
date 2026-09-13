@@ -31,7 +31,8 @@ export const register = async (
       assignedAgentId
     } = req.body;
 
-    const effectiveAgentId = assignedAgentId || (req as any).user?.id;
+    const isAgentUser = (req as any).user?.role === 'AGENT';
+    const effectiveAgentId = assignedAgentId ? Number(assignedAgentId) : (isAgentUser ? (req as any).user?.id : undefined);
 
     const user =
       await authService.registerUser(

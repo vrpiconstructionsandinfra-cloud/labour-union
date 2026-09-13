@@ -17,6 +17,7 @@ import notificationRoutes from "./notification.routes";
 import reportRoutes from "./report.routes";
 import enquiryRoutes from "./enquiry.routes";
 import sitePaymentRoutes from "./sitePayment.routes";
+import settingsRoutes from "./settings.routes";
 import {
   createRazorpayOrder,
   verifyRazorpayPayment,
@@ -47,5 +48,6 @@ router.use("/payroll", payrollRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/reports", reportRoutes);
 router.use("/enquiries", enquiryRoutes);
+router.use("/settings", settingsRoutes);
 
 export default router;

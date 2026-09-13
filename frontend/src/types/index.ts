@@ -165,6 +165,7 @@ export interface WorkerItem {
   agentName: string;
   assignedAgentId?: string;
   dailyWage: number;
+  salary?: number;
   joiningDate: string;
   avatar: string;
   status: 'ACTIVE' | 'INACTIVE';

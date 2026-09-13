@@ -18,6 +18,7 @@ import './Pages.css';
 interface WorkersPageProps {
   onOpenModal: (type: string) => void;
   onOpenEditWorkerModal?: (worker: WorkerItem) => void;
+  onNavigateTab?: (tab: string) => void;
   refreshTrigger?: number;
 }
 
@@ -34,6 +35,7 @@ const SKILL_OPTIONS = [
 export const WorkersPage: React.FC<WorkersPageProps> = ({
   onOpenModal,
   onOpenEditWorkerModal,
+  onNavigateTab,
   refreshTrigger
 }) => {
   const { user, role } = useAuth();
@@ -156,9 +158,9 @@ export const WorkersPage: React.FC<WorkersPageProps> = ({
         filterOptions={SKILL_OPTIONS}
         activeFilter={skillFilter}
         onFilterSelect={setSkillFilter}
-        primaryActionLabel={!isSuperAgent ? 'Register New Worker' : undefined}
+        primaryActionLabel="Register New Worker"
         primaryActionIcon={<Plus size={16} />}
-        onPrimaryAction={!isSuperAgent ? () => onOpenModal('add_worker') : undefined}
+        onPrimaryAction={() => onNavigateTab ? onNavigateTab('register_worker') : onOpenModal('add_worker')}
       />
 
       {isLoading ? (
@@ -170,8 +172,8 @@ export const WorkersPage: React.FC<WorkersPageProps> = ({
             setSearchTerm('');
             setSkillFilter('ALL');
           }}
-          primaryActionLabel={!isSuperAgent ? 'Register Worker' : undefined}
-          onPrimaryAction={!isSuperAgent ? () => onOpenModal('add_worker') : undefined}
+          primaryActionLabel="Register Worker"
+          onPrimaryAction={() => onNavigateTab ? onNavigateTab('register_worker') : onOpenModal('add_worker')}
         />
       ) : (
         <>
