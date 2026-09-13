@@ -241,6 +241,199 @@ export const getTodayAgentAttendance = async (userId: number) => {
   });
 };
 
+export const getTodayAttendanceOverview = async (roleFilter?: string) => {
+  const now = new Date();
+  const startOfDay = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0));
+  const endOfDay = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999));
+
+  // 1. Fetch all active Field Agents & Customer Support staff
+  const targetRoles = roleFilter
+    ? [roleFilter as UserRole]
+    : [UserRole.AGENT, UserRole.CUSTOMER_SUPPORT];
+
+  const users = await prisma.user.findMany({
+    where: {
+      role: { in: targetRoles },
+    },
+    select: {
+      id: true,
+      name: true,
+      employeeCode: true,
+      designation: true,
+      role: true,
+      profileImage: true,
+      phone: true,
+      email: true,
+      active: true,
+      status: true,
+      siteId: true,
+      site: {
+        select: {
+          id: true,
+          siteName: true,
+          siteCode: true,
+        },
+      },
+      handledTickets: {
+        where: {
+          status: { in: ["OPEN", "IN_PROGRESS"] },
+        },
+        select: {
+          id: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  // 2. Fetch today's Attendance records
+  const todayAttendances = await prisma.attendance.findMany({
+    where: {
+      date: {
+        gte: startOfDay,
+        lte: endOfDay,
+      },
+    },
+    include: {
+      site: { select: { id: true, siteName: true, siteCode: true } },
+    },
+  });
+
+  // 3. Fetch today's Leaves
+  const todayLeaves = await prisma.leave.findMany({
+    where: {
+      fromDate: { lte: endOfDay },
+      toDate: { gte: startOfDay },
+    },
+    include: {
+      worker: { select: { id: true, name: true, employeeCode: true, role: true } },
+    },
+  });
+
+  const attendanceMap = new Map<number, any>();
+  todayAttendances.forEach((att) => {
+    attendanceMap.set(att.workerId, att);
+  });
+
+  const leaveMap = new Map<number, any>();
+  todayLeaves.forEach((lv) => {
+    const existing = leaveMap.get(lv.workerId);
+    if (!existing || (existing.status !== "APPROVED" && lv.status === "APPROVED")) {
+      leaveMap.set(lv.workerId, lv);
+    }
+  });
+
+  const localHour = now.getHours();
+  const isPastNoon = localHour >= 12;
+
+  const staffRoster = users.map((user) => {
+    const isSupport =
+      user.role === UserRole.CUSTOMER_SUPPORT ||
+      (user.employeeCode && user.employeeCode.toUpperCase().startsWith("CSA")) ||
+      (user.designation && user.designation.toLowerCase().includes("support"));
+
+    const category = isSupport ? "SUPPORT_AGENT" : "FIELD_AGENT";
+    const empCode = user.employeeCode || (isSupport ? `CSA-00${user.id}` : `AGT-00${user.id}`);
+    const siteName = user.site?.siteName || (isSupport ? "HQ Support Center" : "Metro Construction Block A");
+    const activeTicketsCount = user.handledTickets ? user.handledTickets.length : 0;
+    const department = isSupport
+      ? activeTicketsCount > 0
+        ? `HQ Support (${activeTicketsCount} Active)`
+        : "HQ Support Center"
+      : siteName;
+
+    const att = attendanceMap.get(user.id);
+    const leave = leaveMap.get(user.id);
+
+    let computedStatus: "PRESENT" | "ON_LEAVE" | "COMPLETED" | "NOT_CHECKED_IN" | "ABSENT" = "NOT_CHECKED_IN";
+    let checkInTime: string | null = null;
+    let checkOutTime: string | null = null;
+    let durationStr: string = "—";
+    let leaveType: string | null = null;
+    let leaveReason: string | null = null;
+
+    if (att) {
+      if (att.checkInTime) {
+        const cIn = new Date(att.checkInTime);
+        checkInTime = cIn.toISOString();
+
+        if (att.checkOutTime) {
+          computedStatus = "COMPLETED";
+          const cOut = new Date(att.checkOutTime);
+          checkOutTime = cOut.toISOString();
+          const diffMs = Math.max(0, cOut.getTime() - cIn.getTime());
+          const h = Math.floor(diffMs / 3600000);
+          const m = Math.floor((diffMs % 3600000) / 60000);
+          durationStr = `${h}h ${m}m`;
+        } else {
+          computedStatus = "PRESENT";
+          const diffMs = Math.max(0, now.getTime() - cIn.getTime());
+          const h = Math.floor(diffMs / 3600000);
+          const m = Math.floor((diffMs % 3600000) / 60000);
+          durationStr = `${h}h ${m}m`;
+        }
+      } else if (att.status === "ABSENT") {
+        computedStatus = "ABSENT";
+      }
+    } else if (leave && leave.status === "APPROVED") {
+      computedStatus = "ON_LEAVE";
+      leaveType = (leave as any).leaveType || "Approved Leave";
+      leaveReason = leave.reason;
+      durationStr = leave.reason || "Casual Leave";
+    } else if (leave && leave.status === "REJECTED") {
+      computedStatus = "ABSENT";
+      leaveReason = "Leave Rejected";
+    } else {
+      if (isPastNoon) {
+        computedStatus = "ABSENT";
+      } else {
+        computedStatus = "NOT_CHECKED_IN";
+      }
+    }
+
+    return {
+      id: user.id,
+      userId: user.id,
+      name: user.name,
+      employeeCode: empCode,
+      avatar: user.profileImage,
+      category,
+      role: user.role,
+      designation: user.designation,
+      phone: user.phone,
+      email: user.email,
+      assignedSite: siteName,
+      department,
+      activeTicketsCount,
+      status: computedStatus,
+      checkInTime,
+      checkOutTime,
+      duration: durationStr,
+      leaveType,
+      leaveReason,
+      isOnline: computedStatus === "PRESENT",
+    };
+  });
+
+  const summary = {
+    totalStaff: staffRoster.length,
+    fieldAgentsCount: staffRoster.filter((s) => s.category === "FIELD_AGENT").length,
+    supportAgentsCount: staffRoster.filter((s) => s.category === "SUPPORT_AGENT").length,
+    presentCount: staffRoster.filter((s) => s.status === "PRESENT").length,
+    onLeaveCount: staffRoster.filter((s) => s.status === "ON_LEAVE").length,
+    completedCount: staffRoster.filter((s) => s.status === "COMPLETED").length,
+    notCheckedInCount: staffRoster.filter((s) => s.status === "NOT_CHECKED_IN").length,
+    absentCount: staffRoster.filter((s) => s.status === "ABSENT").length,
+  };
+
+  return {
+    summary,
+    staff: staffRoster,
+  };
+};
+
 export const agentCheckIn = async (userId: number) => {
   const today = new Date();
   const startOfDay = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0));
@@ -252,6 +445,7 @@ export const agentCheckIn = async (userId: number) => {
       where: { id: existing.id },
       data: {
         checkInTime: new Date(),
+        checkOutTime: null,
         status: "PRESENT",
       },
       include: {

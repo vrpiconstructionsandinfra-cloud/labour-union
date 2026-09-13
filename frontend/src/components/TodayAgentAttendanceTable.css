@@ -148,6 +148,19 @@
   border: 1px solid #a7f3d0;
 }
 
+.status-pill-completed {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
 .status-pill-leave {
   display: inline-flex;
   align-items: center;
@@ -161,6 +174,32 @@
   border: 1px solid #fde68a;
 }
 
+.status-pill-not-checked-in {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  background-color: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+}
+
+.status-pill-absent {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  background-color: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
 .status-dot-green {
   width: 6px;
   height: 6px;
@@ -169,12 +208,35 @@
   box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
 }
 
+.status-dot-blue {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #2563eb;
+  box-shadow: 0 0 6px rgba(37, 99, 235, 0.6);
+}
+
 .status-dot-amber {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background-color: #f59e0b;
   box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+}
+
+.status-dot-slate {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #94a3b8;
+}
+
+.status-dot-red {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
 }
 
 /* Duration Tag */

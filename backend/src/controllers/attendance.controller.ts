@@ -174,6 +174,17 @@ export const getTodayAttendanceStatus = async (req: Request, res: Response) => {
   }
 };
 
+export const getTodayAttendanceOverview = async (req: Request, res: Response) => {
+  try {
+    const roleFilter = req.query.role as string | undefined;
+    const result = await attendanceService.getTodayAttendanceOverview(roleFilter);
+    return res.status(200).json({ success: true, data: result });
+  } catch (err: any) {
+    console.error("Error fetching today attendance overview:", err);
+    return res.status(500).json({ success: false, message: err.message || "Failed to fetch today attendance overview" });
+  }
+};
+
 export const verifyFacePhotos = async (req: Request, res: Response) => {
   try {
     const { checkInPhoto, checkOutPhoto } = req.body;

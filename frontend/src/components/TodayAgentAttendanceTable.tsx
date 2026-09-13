@@ -11,31 +11,32 @@ import {
   Palmtree,
   Calendar
 } from 'lucide-react';
-import {
-  fetchAttendanceLogsApi,
-  fetchAgentsApi,
-  fetchUsersApi,
-  fetchSupportTicketsApi,
-  fetchLeavesApi
-} from '../services/api';
+import { fetchTodayAttendanceOverviewApi } from '../services/api';
 import { getSocket } from '../services/socket';
 import { UserAvatar } from './UserAvatar';
 import './TodayAgentAttendanceTable.css';
 
-interface PresentStaffRecord {
+export interface PresentStaffRecord {
   id: string | number;
-  userId?: string | number;
+  userId: string | number;
   name: string;
   employeeCode: string;
-  avatar?: string;
+  avatar?: string | null;
   category: 'FIELD_AGENT' | 'SUPPORT_AGENT';
-  checkInTime: string;
-  duration: string;
+  role?: string;
+  designation?: string;
+  phone?: string | null;
+  email?: string | null;
   assignedSite: string;
   department: string;
-  status: 'PRESENT' | 'HALF_DAY' | 'ON_LEAVE';
-  rawDate?: string;
-  leaveReason?: string;
+  activeTicketsCount?: number;
+  status: 'PRESENT' | 'ON_LEAVE' | 'COMPLETED' | 'NOT_CHECKED_IN' | 'ABSENT';
+  checkInTime: string | null;
+  checkOutTime: string | null;
+  duration: string;
+  leaveType?: string | null;
+  leaveReason?: string | null;
+  isOnline: boolean;
 }
 
 interface TodayAgentAttendanceTableProps {
@@ -47,185 +48,50 @@ export const TodayAgentAttendanceTable: React.FC<TodayAgentAttendanceTableProps>
 }) => {
   const [activeTab, setActiveTab] = useState<'ALL' | 'FIELD_AGENT' | 'SUPPORT_AGENT' | 'LEAVE'>('ALL');
   const [presentStaff, setPresentStaff] = useState<PresentStaffRecord[]>([]);
+  const [summary, setSummary] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [currentTime, setCurrentTime] = useState<number>(Date.now());
+
+  const format12Hour = (isoStr?: string | null): string => {
+    if (!isoStr) return '—';
+    try {
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return isoStr;
+      return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch {
+      return isoStr;
+    }
+  };
+
+  const computeLiveDuration = (checkInTime: string | null, checkOutTime: string | null, fallbackDuration: string): string => {
+    if (!checkInTime) return fallbackDuration || '—';
+    try {
+      const cIn = new Date(checkInTime).getTime();
+      const end = checkOutTime ? new Date(checkOutTime).getTime() : currentTime;
+      const diffMs = Math.max(0, end - cIn);
+      const h = Math.floor(diffMs / 3600000);
+      const m = Math.floor((diffMs % 3600000) / 60000);
+      return `${h}h ${m}m`;
+    } catch {
+      return fallbackDuration || '—';
+    }
+  };
 
   const loadAttendance = async () => {
     try {
-      const [attendanceRes, agentsData, usersData, ticketsData, leavesData] = await Promise.all([
-        fetchAttendanceLogsApi().catch(() => ({ logs: [] })),
-        fetchAgentsApi().catch(() => []),
-        fetchUsersApi().catch(() => []),
-        fetchSupportTicketsApi().catch(() => []),
-        fetchLeavesApi().catch(() => [])
-      ]);
-
-      const logs: any[] = Array.isArray(attendanceRes) ? attendanceRes : attendanceRes?.logs || [];
-      const allUsers: any[] = [...usersData, ...agentsData];
-      const leaves: any[] = Array.isArray(leavesData) ? leavesData : [];
-
-      // Determine today's date string YYYY-MM-DD
-      const now = new Date();
-      const todayISO = now.toISOString().split('T')[0];
-
-      // Map combined staff pool (Field Agents + Support Agents)
-      const staffMap = new Map<string, any>();
-      allUsers.forEach((u: any) => {
-        if (!u || !u.id) return;
-        const code = (u.employeeCode || '').toUpperCase();
-        const des = (u.designation || '').toLowerCase();
-        const role = (u.role || '').toUpperCase();
-
-        const isFieldAgent = role === 'AGENT' || code.startsWith('AGT');
-        const isSupportAgent =
-          (code.startsWith('CSA') ||
-            des.includes('support') ||
-            role === 'CUSTOMER_SUPPORT' ||
-            role === 'SUPPORT_AGENT') &&
-          role !== 'SUPER_AGENT' &&
-          !code.startsWith('SA-');
-
-        if ((isFieldAgent || isSupportAgent) && role !== 'WORKER' && !code.startsWith('WRK')) {
-          const key = String(u.id);
-          if (!staffMap.has(key)) {
-            staffMap.set(key, {
-              ...u,
-              category: isSupportAgent ? 'SUPPORT_AGENT' : 'FIELD_AGENT'
-            });
-          }
-        }
-      });
-
-      const todayList: PresentStaffRecord[] = [];
-      const processedStaffIds = new Set<string>();
-
-      // 1. Process Approved Leaves for Today for Staff Members
-      leaves.forEach((leave: any) => {
-        const fromD = leave.fromDate ? new Date(leave.fromDate).toISOString().split('T')[0] : '';
-        const toD = leave.toDate ? new Date(leave.toDate).toISOString().split('T')[0] : fromD;
-        const isTodayOnLeave = fromD && toD && fromD <= todayISO && toD >= todayISO;
-
-        if (isTodayOnLeave && leave.status === 'APPROVED') {
-          const staffId = String(leave.workerId || leave.userId || '');
-          const staffMember = staffMap.get(staffId);
-
-          if (staffMember) {
-            processedStaffIds.add(staffId);
-            const isSupport = staffMember.category === 'SUPPORT_AGENT';
-            const siteName = staffMember.site?.siteName || staffMember.assignedSite || 'Metro Construction Block A';
-
-            todayList.push({
-              id: `leave-${leave.id}`,
-              userId: staffMember.id,
-              name: staffMember.name || leave.workerName || 'Staff Member',
-              employeeCode: staffMember.employeeCode || (isSupport ? `CSA-00${staffMember.id}` : `AGT-00${staffMember.id}`),
-              avatar: staffMember.avatar || staffMember.profileImage || '',
-              category: isSupport ? 'SUPPORT_AGENT' : 'FIELD_AGENT',
-              checkInTime: 'On Leave',
-              duration: leave.leaveType || 'Approved Leave',
-              assignedSite: siteName,
-              department: isSupport ? 'HQ Support Center' : siteName,
-              status: 'ON_LEAVE',
-              leaveReason: leave.reason || 'Approved Leave Application'
-            });
-          }
-        }
-      });
-
-      // 2. Find Attendance Logs Marked for Today
-      logs.forEach((log: any) => {
-        const logDate = log.date
-          ? new Date(log.date).toISOString().split('T')[0]
-          : log.createdAt
-          ? new Date(log.createdAt).toISOString().split('T')[0]
-          : '';
-
-        const isToday = logDate === todayISO;
-        const isPresent = log.status === 'PRESENT' || log.status === 'HALF_DAY';
-        const isLogOnLeave = log.status === 'ON_LEAVE' || log.status === 'LEAVE';
-
-        if (isToday && (isPresent || isLogOnLeave)) {
-          const wId = String(log.workerId || log.worker?.id || log.userId || '');
-          const staffMember = staffMap.get(wId);
-
-          if (staffMember && !processedStaffIds.has(wId)) {
-            processedStaffIds.add(wId);
-
-            let checkInFormatted = isLogOnLeave ? 'On Leave' : '09:00 AM';
-            let durationFormatted = isLogOnLeave ? 'Approved Leave' : '4h 30m';
-
-            if (log.checkInTime && !isLogOnLeave) {
-              const cIn = new Date(log.checkInTime);
-              checkInFormatted = cIn.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-              const elapsedMs = Math.max(0, now.getTime() - cIn.getTime());
-              const hours = Math.floor(elapsedMs / (1000 * 60 * 60));
-              const mins = Math.floor((elapsedMs % (1000 * 60 * 60)) / (1000 * 60));
-              durationFormatted = `${hours}h ${mins}m`;
-            }
-
-            const isSupport = staffMember.category === 'SUPPORT_AGENT';
-            const siteName = staffMember.site?.siteName || staffMember.assignedSite || 'Metro Construction Block A';
-            const activeTickets = ticketsData.filter(
-              (t: any) => String(t.handledById) === String(staffMember.id) && t.status !== 'CLOSED'
-            ).length;
-
-            todayList.push({
-              id: log.id || `att-${staffMember.id}`,
-              userId: staffMember.id,
-              name: staffMember.name || log.workerName || 'Staff Member',
-              employeeCode: staffMember.employeeCode || (isSupport ? `CSA-00${staffMember.id}` : `AGT-00${staffMember.id}`),
-              avatar: staffMember.avatar || staffMember.profileImage || '',
-              category: isSupport ? 'SUPPORT_AGENT' : 'FIELD_AGENT',
-              checkInTime: checkInFormatted,
-              duration: durationFormatted,
-              assignedSite: siteName,
-              department: isSupport ? (activeTickets > 0 ? `HQ Support (${activeTickets} Active)` : 'HQ Support Center') : siteName,
-              status: isLogOnLeave ? 'ON_LEAVE' : (log.status === 'HALF_DAY' ? 'HALF_DAY' : 'PRESENT'),
-              rawDate: log.date || log.createdAt
-            });
-          }
-        }
-      });
-
-      // 3. If no explicit attendance log exists for today, show currently active agents as live list
-      if (todayList.length === 0 && staffMap.size > 0) {
-        let staffIndex = 0;
-        staffMap.forEach((staffMember) => {
-          if (staffMember.status === 'ACTIVE' || staffMember.active !== false) {
-            const isSupport = staffMember.category === 'SUPPORT_AGENT';
-            const siteName = staffMember.site?.siteName || staffMember.assignedSite || 'Metro Construction Block A';
-            const activeTickets = ticketsData.filter(
-              (t: any) => String(t.handledById) === String(staffMember.id) && t.status !== 'CLOSED'
-            ).length;
-
-            // Give one staff member demo leave for visual completeness if requested
-            const isDemoLeave = staffIndex === 2;
-            staffIndex++;
-
-            todayList.push({
-              id: `active-${staffMember.id}`,
-              userId: staffMember.id,
-              name: staffMember.name || 'Staff Member',
-              employeeCode: staffMember.employeeCode || (isSupport ? `CSA-00${staffMember.id}` : `AGT-00${staffMember.id}`),
-              avatar: staffMember.avatar || staffMember.profileImage || '',
-              category: isSupport ? 'SUPPORT_AGENT' : 'FIELD_AGENT',
-              checkInTime: isDemoLeave ? 'On Leave' : (isSupport ? '09:00 AM' : '08:30 AM'),
-              duration: isDemoLeave ? 'Casual Leave' : '5h 15m',
-              assignedSite: siteName,
-              department: isSupport ? (activeTickets > 0 ? `HQ Support (${activeTickets} Active)` : 'HQ Support Center') : siteName,
-              status: isDemoLeave ? 'ON_LEAVE' : 'PRESENT'
-            });
-          }
-        });
+      const res = await fetchTodayAttendanceOverviewApi();
+      if (res) {
+        setPresentStaff(res.staff || []);
+        setSummary(res.summary || null);
       }
-
-      setPresentStaff(todayList);
     } catch (err) {
-      console.error('Failed to load today agent attendance:', err);
+      console.error('Failed to load today agent attendance overview:', err);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // 1. Initial Load and Socket Subscription
   useEffect(() => {
     loadAttendance();
 
@@ -239,6 +105,7 @@ export const TodayAgentAttendanceTable: React.FC<TodayAgentAttendanceTableProps>
     socket.on('attendance:check-in', handleUpdate);
     socket.on('attendance:check-out', handleUpdate);
     socket.on('leave:updated', handleUpdate);
+    socket.on('user:status:changed', handleUpdate);
     socket.on('notification', handleUpdate);
 
     return () => {
@@ -247,21 +114,71 @@ export const TodayAgentAttendanceTable: React.FC<TodayAgentAttendanceTableProps>
       socket.off('attendance:check-in', handleUpdate);
       socket.off('attendance:check-out', handleUpdate);
       socket.off('leave:updated', handleUpdate);
+      socket.off('user:status:changed', handleUpdate);
       socket.off('notification', handleUpdate);
     };
   }, []);
 
-  const allCount = presentStaff.length;
-  const fieldAgentsCount = presentStaff.filter((s) => s.category === 'FIELD_AGENT' && s.status !== 'ON_LEAVE').length;
-  const supportAgentsCount = presentStaff.filter((s) => s.category === 'SUPPORT_AGENT' && s.status !== 'ON_LEAVE').length;
-  const todayLeavesCount = presentStaff.filter((s) => s.status === 'ON_LEAVE').length;
+  // 2. Interval Timer for live duration increments
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 30000); // update every 30 seconds
+    return () => clearInterval(timer);
+  }, []);
+
+  const allCount = summary?.totalStaff ?? presentStaff.length;
+  const fieldAgentsCount = summary?.fieldAgentsCount ?? presentStaff.filter((s) => s.category === 'FIELD_AGENT').length;
+  const supportAgentsCount = summary?.supportAgentsCount ?? presentStaff.filter((s) => s.category === 'SUPPORT_AGENT').length;
+  const todayLeavesCount = summary?.onLeaveCount ?? presentStaff.filter((s) => s.status === 'ON_LEAVE').length;
 
   const filteredStaff = presentStaff.filter((s) => {
-    if (activeTab === 'FIELD_AGENT') return s.category === 'FIELD_AGENT' && s.status !== 'ON_LEAVE';
-    if (activeTab === 'SUPPORT_AGENT') return s.category === 'SUPPORT_AGENT' && s.status !== 'ON_LEAVE';
+    if (activeTab === 'FIELD_AGENT') return s.category === 'FIELD_AGENT';
+    if (activeTab === 'SUPPORT_AGENT') return s.category === 'SUPPORT_AGENT';
     if (activeTab === 'LEAVE') return s.status === 'ON_LEAVE';
     return true;
   });
+
+  const renderStatusPill = (status: PresentStaffRecord['status']) => {
+    switch (status) {
+      case 'PRESENT':
+        return (
+          <span className="status-pill-present">
+            <span className="status-dot-green" />
+            <span>Present</span>
+          </span>
+        );
+      case 'COMPLETED':
+        return (
+          <span className="status-pill-completed">
+            <span className="status-dot-blue" />
+            <span>Completed</span>
+          </span>
+        );
+      case 'ON_LEAVE':
+        return (
+          <span className="status-pill-leave">
+            <span className="status-dot-amber" />
+            <span>On Leave</span>
+          </span>
+        );
+      case 'ABSENT':
+        return (
+          <span className="status-pill-absent">
+            <span className="status-dot-red" />
+            <span>Absent</span>
+          </span>
+        );
+      case 'NOT_CHECKED_IN':
+      default:
+        return (
+          <span className="status-pill-not-checked-in">
+            <span className="status-dot-slate" />
+            <span>Not Checked In</span>
+          </span>
+        );
+    }
+  };
 
   return (
     <div className="today-attendance-card animate-fade-in">
@@ -316,7 +233,10 @@ export const TodayAgentAttendanceTable: React.FC<TodayAgentAttendanceTableProps>
             <span>🏖️ Today's Leave</span>
             <span
               className="today-att-count-badge"
-              style={{ backgroundColor: activeTab === 'LEAVE' ? '#D97706' : '#FEF3C7', color: activeTab === 'LEAVE' ? '#FFF' : '#B45309' }}
+              style={{
+                backgroundColor: activeTab === 'LEAVE' ? '#D97706' : '#FEF3C7',
+                color: activeTab === 'LEAVE' ? '#FFF' : '#B45309'
+              }}
             >
               {todayLeavesCount}
             </span>
@@ -354,12 +274,36 @@ export const TodayAgentAttendanceTable: React.FC<TodayAgentAttendanceTableProps>
                 <tbody>
                   {filteredStaff.map((staff) => {
                     const isOnLeave = staff.status === 'ON_LEAVE';
+                    const isPresent = staff.status === 'PRESENT';
+                    const isCompleted = staff.status === 'COMPLETED';
+                    const liveDuration = isPresent
+                      ? computeLiveDuration(staff.checkInTime, null, staff.duration)
+                      : isCompleted
+                      ? computeLiveDuration(staff.checkInTime, staff.checkOutTime, staff.duration)
+                      : staff.duration;
 
                     return (
                       <tr key={staff.id}>
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <UserAvatar src={staff.avatar} name={staff.name} size={34} />
+                            <div style={{ position: 'relative' }}>
+                              <UserAvatar src={staff.avatar} name={staff.name} size={34} />
+                              {isPresent && (
+                                <span
+                                  style={{
+                                    position: 'absolute',
+                                    bottom: 0,
+                                    right: 0,
+                                    width: '9px',
+                                    height: '9px',
+                                    borderRadius: '50%',
+                                    backgroundColor: '#10B981',
+                                    border: '2px solid #FFFFFF'
+                                  }}
+                                  title="Active / Present Now"
+                                />
+                              )}
+                            </div>
                             <div>
                               <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{staff.name}</div>
                               <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{staff.employeeCode}</span>
@@ -380,17 +324,45 @@ export const TodayAgentAttendanceTable: React.FC<TodayAgentAttendanceTableProps>
                         </td>
 
                         <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 600, color: isOnLeave ? '#B45309' : 'var(--text-primary)' }}>
-                            {isOnLeave ? <Palmtree size={13} color="#D97706" /> : <Clock size={13} color="#64748B" />}
-                            <span>{staff.checkInTime}</span>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              fontWeight: 600,
+                              color: isOnLeave ? '#B45309' : isPresent ? '#047857' : 'var(--text-primary)'
+                            }}
+                          >
+                            {isOnLeave ? (
+                              <>
+                                <Palmtree size={13} color="#D97706" />
+                                <span>On Leave</span>
+                              </>
+                            ) : staff.checkInTime ? (
+                              <>
+                                <Clock size={13} color="#64748B" />
+                                <span>{format12Hour(staff.checkInTime)}</span>
+                              </>
+                            ) : (
+                              <span style={{ color: '#94A3B8' }}>—</span>
+                            )}
                           </div>
                         </td>
 
                         <td>
-                          <span className={`duration-tag ${isOnLeave ? 'leave' : ''}`}>
-                            {isOnLeave && <Calendar size={11} />}
-                            <span>{staff.duration}</span>
-                          </span>
+                          {isOnLeave ? (
+                            <span className="duration-tag leave">
+                              <Calendar size={11} />
+                              <span>{staff.leaveReason || staff.leaveType || 'Approved Leave'}</span>
+                            </span>
+                          ) : staff.checkInTime ? (
+                            <span className={`duration-tag ${isCompleted ? 'completed' : ''}`}>
+                              <Clock size={11} />
+                              <span>{liveDuration}</span>
+                            </span>
+                          ) : (
+                            <span style={{ color: '#94A3B8' }}>—</span>
+                          )}
                         </td>
 
                         <td>
@@ -409,19 +381,7 @@ export const TodayAgentAttendanceTable: React.FC<TodayAgentAttendanceTableProps>
                           </div>
                         </td>
 
-                        <td>
-                          {isOnLeave ? (
-                            <span className="status-pill-leave">
-                              <span className="status-dot-amber" />
-                              <span>On Leave</span>
-                            </span>
-                          ) : (
-                            <span className="status-pill-present">
-                              <span className="status-dot-green" />
-                              <span>Present</span>
-                            </span>
-                          )}
-                        </td>
+                        <td>{renderStatusPill(staff.status)}</td>
                       </tr>
                     );
                   })}
@@ -434,12 +394,35 @@ export const TodayAgentAttendanceTable: React.FC<TodayAgentAttendanceTableProps>
           <div className="today-att-mobile-list">
             {filteredStaff.map((staff) => {
               const isOnLeave = staff.status === 'ON_LEAVE';
+              const isPresent = staff.status === 'PRESENT';
+              const isCompleted = staff.status === 'COMPLETED';
+              const liveDuration = isPresent
+                ? computeLiveDuration(staff.checkInTime, null, staff.duration)
+                : isCompleted
+                ? computeLiveDuration(staff.checkInTime, staff.checkOutTime, staff.duration)
+                : staff.duration;
 
               return (
                 <div key={staff.id} className="today-att-mobile-card">
                   <div className="today-att-mobile-header">
                     <div className="today-att-mobile-user">
-                      <UserAvatar src={staff.avatar} name={staff.name} size={36} />
+                      <div style={{ position: 'relative' }}>
+                        <UserAvatar src={staff.avatar} name={staff.name} size={36} />
+                        {isPresent && (
+                          <span
+                            style={{
+                              position: 'absolute',
+                              bottom: 0,
+                              right: 0,
+                              width: '9px',
+                              height: '9px',
+                              borderRadius: '50%',
+                              backgroundColor: '#10B981',
+                              border: '2px solid #FFFFFF'
+                            }}
+                          />
+                        )}
+                      </div>
                       <div>
                         <h4 className="today-att-mobile-name">{staff.name}</h4>
                         <span className="today-att-mobile-code">{staff.employeeCode}</span>
@@ -462,8 +445,11 @@ export const TodayAgentAttendanceTable: React.FC<TodayAgentAttendanceTableProps>
                       <span className="today-att-mobile-label">
                         {isOnLeave ? <Palmtree size={13} /> : <Clock size={13} />} {isOnLeave ? 'Shift Status:' : 'Check-In:'}
                       </span>
-                      <span className="today-att-mobile-val" style={{ color: isOnLeave ? '#B45309' : undefined, fontWeight: 700 }}>
-                        {staff.checkInTime}
+                      <span
+                        className="today-att-mobile-val"
+                        style={{ color: isOnLeave ? '#B45309' : isPresent ? '#047857' : undefined, fontWeight: 700 }}
+                      >
+                        {isOnLeave ? 'On Leave' : staff.checkInTime ? format12Hour(staff.checkInTime) : '—'}
                       </span>
                     </div>
 
@@ -471,7 +457,9 @@ export const TodayAgentAttendanceTable: React.FC<TodayAgentAttendanceTableProps>
                       <span className="today-att-mobile-label">
                         <CalendarCheck size={13} /> Duration / Type:
                       </span>
-                      <span className={`duration-tag ${isOnLeave ? 'leave' : ''}`}>{staff.duration}</span>
+                      <span className={`duration-tag ${isOnLeave ? 'leave' : ''}`}>
+                        {isOnLeave ? staff.leaveReason || 'Approved Leave' : liveDuration}
+                      </span>
                     </div>
 
                     <div className="today-att-mobile-row">
@@ -485,17 +473,7 @@ export const TodayAgentAttendanceTable: React.FC<TodayAgentAttendanceTableProps>
                   </div>
 
                   <div className="today-att-mobile-footer">
-                    {isOnLeave ? (
-                      <span className="status-pill-leave">
-                        <span className="status-dot-amber" />
-                        <span>On Leave</span>
-                      </span>
-                    ) : (
-                      <span className="status-pill-present">
-                        <span className="status-dot-green" />
-                        <span>Present Today</span>
-                      </span>
-                    )}
+                    {renderStatusPill(staff.status)}
 
                     {onViewAllAgents && (
                       <button

@@ -9,6 +9,7 @@ import {
   handleCheckIn,
   handleCheckOut,
   getTodayAttendanceStatus,
+  getTodayAttendanceOverview,
   verifyFacePhotos,
 } from "../controllers/attendance.controller";
 
@@ -23,10 +24,11 @@ router.use(authenticate);
 // DeepFace Python Face Verification
 router.post("/verify-faces", verifyFacePhotos);
 
-// Agent Check In / Check Out routes
+// Agent Check In / Check Out routes & Today Overview
 router.post("/check-in", handleCheckIn);
 router.post("/check-out", handleCheckOut);
 router.get("/today-status", getTodayAttendanceStatus);
+router.get("/today-overview", authorize("SUPER_AGENT", "AGENT", "CUSTOMER_SUPPORT"), getTodayAttendanceOverview);
 
 /*
  * Super Agent & Agent can mark attendance

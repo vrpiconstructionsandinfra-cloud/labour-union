@@ -565,6 +565,12 @@ export const fetchTodayAttendanceStatusApi = async () => {
   return res.data;
 };
 
+export const fetchTodayAttendanceOverviewApi = async (roleFilter?: string) => {
+  const query = roleFilter ? `?role=${roleFilter}` : '';
+  const res = await fetchWithAuth(`/api/attendance/today-overview${query}`);
+  return res.data;
+};
+
 export const fetchTicketCommentsApi = async (ticketId: string | number): Promise<TicketComment[]> => {
   const res = await fetchWithAuth(`/api/support/${ticketId}/comments`);
   return res.data || [];
