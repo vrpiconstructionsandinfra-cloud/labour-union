@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.emitSitePaymentUpdate = exports.emitSupportMessage = exports.emitInsuranceUpdate = exports.emitPayrollUpdate = exports.emitWalletUpdate = exports.emitTicketComment = exports.emitTicketUpdate = exports.emitLeaveUpdate = exports.emitAttendanceUpdate = exports.getSocketIO = exports.initSocket = exports.getOnlineUserIds = void 0;
+exports.emitWorkerRegistration = exports.emitIncentiveUpdate = exports.emitSitePaymentUpdate = exports.emitSupportMessage = exports.emitInsuranceUpdate = exports.emitPayrollUpdate = exports.emitWalletUpdate = exports.emitTicketComment = exports.emitTicketUpdate = exports.emitLeaveUpdate = exports.emitAttendanceUpdate = exports.getSocketIO = exports.initSocket = exports.getOnlineUserIds = void 0;
 const socket_io_1 = require("socket.io");
 let io = null;
 const socketUserMap = new Map();
@@ -76,12 +76,16 @@ exports.getSocketIO = getSocketIO;
 const emitAttendanceUpdate = (data) => {
     if (io) {
         io.emit("attendance:updated", data);
+        // Also broadcast staff-level event so the Super Agent dashboard panel refreshes
+        io.emit("attendance:staff:updated", { userId: data.workerId, timestamp: Date.now() });
     }
 };
 exports.emitAttendanceUpdate = emitAttendanceUpdate;
 const emitLeaveUpdate = (data) => {
     if (io) {
         io.emit("leave:updated", data);
+        // Also broadcast staff-level event so attendance panel reflects leave status change
+        io.emit("leave:staff:updated", { userId: data.workerId, status: data.status, timestamp: Date.now() });
         if (data.workerId) {
             io.to(`user:${data.workerId}`).emit("notification", {
                 title: "Leave Status Updated",
@@ -149,3 +153,24 @@ const emitSitePaymentUpdate = (data) => {
     }
 };
 exports.emitSitePaymentUpdate = emitSitePaymentUpdate;
+const emitIncentiveUpdate = (data) => {
+    if (io) {
+        io.emit("incentive:credited", data);
+        io.emit("incentive:updated", data);
+        if (data.agentId) {
+            io.to(`user:${data.agentId}`).emit("notification", {
+                title: "Worker Registration Incentive Credited",
+                message: `₹${data.amount || 25} Worker Registration Incentive credited for registering ${data.workerName || "new worker"} (${data.employeeCode || ""})`,
+                timestamp: new Date().toISOString(),
+            });
+        }
+    }
+};
+exports.emitIncentiveUpdate = emitIncentiveUpdate;
+const emitWorkerRegistration = (data) => {
+    if (io) {
+        io.emit("worker:registered", data);
+        io.emit("workers:updated", data);
+    }
+};
+exports.emitWorkerRegistration = emitWorkerRegistration;

@@ -13,7 +13,9 @@ import {
   CheckCircle2,
   LogOut,
   QrCode,
-  CreditCard
+  CreditCard,
+  Coins,
+  ShieldAlert
 } from 'lucide-react';
 import {
   fetchWorkersApi,
@@ -21,8 +23,10 @@ import {
   fetchAttendanceLogsApi,
   fetchSitesApi,
   fetchTodayAttendanceStatusApi,
+  fetchMyIncentiveSummaryApi,
   checkInApi,
-  checkOutApi
+  checkOutApi,
+  type MyIncentiveSummary
 } from '../services/api';
 import { getSocket } from '../services/socket';
 import type { User as UserType, WorkerItem, LeaveRecord } from '../types';
@@ -56,6 +60,9 @@ export const AgentDashboardView: React.FC<AgentDashboardProps> = ({
   // Roster Pagination & Limit State
   const [rosterPage, setRosterPage] = useState(1);
   const [rosterItemsPerPage, setRosterItemsPerPage] = useState(5);
+
+  // Worker Registration Incentive Widget State
+  const [myIncentiveSummary, setMyIncentiveSummary] = useState<MyIncentiveSummary | null>(null);
 
   // Agent Personal Attendance Widget State
   const [attendanceData, setAttendanceData] = useState<any>(null);
@@ -208,6 +215,12 @@ export const AgentDashboardView: React.FC<AgentDashboardProps> = ({
 
       setIsLoading(false);
     });
+
+    if (user?.role === 'AGENT') {
+      fetchMyIncentiveSummaryApi()
+        .then((incData) => setMyIncentiveSummary(incData))
+        .catch(() => {});
+    }
   };
 
   useEffect(() => {
@@ -222,6 +235,9 @@ export const AgentDashboardView: React.FC<AgentDashboardProps> = ({
     socket.on('leave:updated', handleLiveRefresh);
     socket.on('user:registered', handleLiveRefresh);
     socket.on('user:updated', handleLiveRefresh);
+    socket.on('worker:registered', handleLiveRefresh);
+    socket.on('incentive:credited', handleLiveRefresh);
+    socket.on('incentive:updated', handleLiveRefresh);
     socket.on('site:assigned', handleLiveRefresh);
     socket.on('notification', handleLiveRefresh);
 
@@ -230,6 +246,9 @@ export const AgentDashboardView: React.FC<AgentDashboardProps> = ({
       socket.off('leave:updated', handleLiveRefresh);
       socket.off('user:registered', handleLiveRefresh);
       socket.off('user:updated', handleLiveRefresh);
+      socket.off('worker:registered', handleLiveRefresh);
+      socket.off('incentive:credited', handleLiveRefresh);
+      socket.off('incentive:updated', handleLiveRefresh);
       socket.off('site:assigned', handleLiveRefresh);
       socket.off('notification', handleLiveRefresh);
     };
@@ -426,6 +445,113 @@ export const AgentDashboardView: React.FC<AgentDashboardProps> = ({
           </div>
           <span className="agent-metric-comparison text-amber">Requires agent approval</span>
         </div>
+      </div>
+
+      {/* Worker Registration Incentive Summary Widget */}
+      <div
+        className="agent-incentive-widget animate-fade-in"
+        style={{
+          backgroundColor: 'var(--bg-card, #FFFFFF)',
+          border: '1px solid var(--border-color, #E2E8F0)',
+          borderRadius: '14px',
+          padding: '16px 20px',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '16px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div
+            style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '12px',
+              backgroundColor: '#FFF7ED',
+              border: '1px solid #FFEDD5',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#EA580C',
+              flexShrink: 0
+            }}
+          >
+            <Coins size={22} />
+          </div>
+          <div>
+            <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary, #0F172A)' }}>
+              Worker Registration Incentive
+            </div>
+            <div style={{ fontSize: '12.5px', color: 'var(--text-secondary, #64748B)', marginTop: '2px' }}>
+              Earn <strong style={{ color: '#EA580C' }}>₹25.00</strong> for every construction worker you successfully register.
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '11.5px', color: 'var(--text-secondary, #64748B)', fontWeight: 600 }}>Workers Registered</div>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: '#2563EB' }}>
+              {myIncentiveSummary?.myWorkersRegistered ?? activeWorkerCount}
+            </div>
+          </div>
+          <div style={{ borderLeft: '1px solid var(--border-color, #E2E8F0)', height: '32px' }} />
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '11.5px', color: 'var(--text-secondary, #64748B)', fontWeight: 600 }}>Registration Incentives</div>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: '#16A34A' }}>
+              ₹{(myIncentiveSummary?.myRegistrationIncentives || (activeWorkerCount * 25)).toLocaleString('en-IN')}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigateTab('my_incentives')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 14px',
+              backgroundColor: '#FFF7ED',
+              border: '1px solid #FED7AA',
+              borderRadius: '9px',
+              color: '#EA580C',
+              fontSize: '12.5px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <span>My Incentives</span>
+            <ChevronRight size={14} />
+          </button>
+        </div>
+      </div>
+
+      {/* Worker Insurance Policy Limitation Short Dashboard Note */}
+      <div className="dashboard-policy-limitation-banner animate-fade-in">
+        <div className="dashboard-policy-banner-left">
+          <div className="dashboard-policy-banner-icon">
+            <ShieldAlert size={20} />
+          </div>
+          <div>
+            <div className="dashboard-policy-banner-title">
+              Worker Insurance Policy – Coverage Limitations
+            </div>
+            <div className="dashboard-policy-banner-desc">
+              <strong>Policy Limitation:</strong> Worker insurance coverage is applicable only on days when the worker is present and actively working at the assigned project/site. Coverage does not apply for days of absence, work at another project/company, or applicable government holidays.
+            </div>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="dashboard-policy-banner-btn"
+          onClick={() => onNavigateTab('insurance')}
+        >
+          <span>Insurance Tab & Guidelines</span>
+          <ChevronRight size={14} />
+        </button>
       </div>
 
       {/* Middle Grid: Left Roster Section & Right Field Agent Actions */}

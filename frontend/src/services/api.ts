@@ -565,10 +565,24 @@ export const fetchTodayAttendanceStatusApi = async () => {
   return res.data;
 };
 
-export const fetchTodayAttendanceOverviewApi = async (roleFilter?: string) => {
-  const query = roleFilter ? `?role=${roleFilter}` : '';
-  const res = await fetchWithAuth(`/api/attendance/today-overview${query}`);
-  return res.data;
+// New: Fetch computed real-time staff attendance status list from backend
+export const fetchTodayStaffAttendanceApi = async () => {
+  const res = await fetchWithAuth('/api/attendance/today-staff');
+  return (res.data || []) as Array<{
+    userId: number;
+    name: string;
+    employeeCode: string;
+    role: string;
+    category: 'FIELD_AGENT' | 'SUPPORT_AGENT';
+    designation: string;
+    siteName: string | null;
+    profileImage: string | null;
+    status: 'PRESENT' | 'COMPLETED' | 'ON_LEAVE' | 'ABSENT' | 'NOT_CHECKED_IN';
+    checkInTime: string | null;
+    checkOutTime: string | null;
+    leaveReason: string | null;
+    leaveType: string | null;
+  }>;
 };
 
 export const fetchTicketCommentsApi = async (ticketId: string | number): Promise<TicketComment[]> => {
@@ -1419,6 +1433,149 @@ export const exportSitePaymentsExcelApi = async (filters: {
   document.body.removeChild(a);
   window.URL.revokeObjectURL(url);
 };
+
+// ─── Agent Incentives (₹25 Worker Registration Incentive Module) ─────────────
+
+export interface SuperAgentIncentiveSummary {
+  totalAgents: number;
+  workersRegistered: number;
+  totalIncentives: number;
+  thisMonthIncentives: number;
+  ratePerWorker: number;
+}
+
+export interface AgentIncentiveListItem {
+  agentId: number;
+  name: string;
+  employeeCode: string;
+  phone: string;
+  email: string;
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  profileImage: string | null;
+  workersAdded: number;
+  totalWorkersAllTime: number;
+  incentiveRate: number;
+  totalIncentive: number;
+  thisMonthIncentive: number;
+  lastWorkerAdded: {
+    name: string;
+    employeeCode: string;
+    date: string;
+  } | null;
+}
+
+export interface AgentIncentiveDetails {
+  agent: {
+    id: number;
+    name: string;
+    employeeCode: string;
+    phone: string;
+    email: string;
+    status: string;
+    designation: string;
+    profileImage: string | null;
+    siteName: string;
+  };
+  summary: {
+    workersRegistered: number;
+    incentiveRate: number;
+    totalIncentive: number;
+    thisMonthIncentive: number;
+  };
+  history: Array<{
+    id: number;
+    reference: string;
+    date: string;
+    workerId: number;
+    workerName: string;
+    workerEmployeeCode: string;
+    designation: string;
+    amount: number;
+    type: string;
+    status: string;
+  }>;
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+export interface MyIncentiveSummary {
+  myWorkersRegistered: number;
+  myRegistrationIncentives: number;
+  thisMonthIncentive: number;
+  ratePerWorker: number;
+}
+
+export const fetchIncentivesSummaryApi = async (): Promise<SuperAgentIncentiveSummary> => {
+  const res = await fetchWithAuth('/api/incentives/summary');
+  return res.data;
+};
+
+export const fetchAgentIncentivesListApi = async (params: {
+  search?: string;
+  status?: string;
+  dateFilter?: string;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  limit?: number;
+} = {}): Promise<{ items: AgentIncentiveListItem[]; pagination: { total: number; page: number; limit: number; totalPages: number } }> => {
+  const query = new URLSearchParams();
+  if (params.search) query.append('search', params.search);
+  if (params.status && params.status !== 'ALL') query.append('status', params.status);
+  if (params.dateFilter) query.append('dateFilter', params.dateFilter);
+  if (params.startDate) query.append('startDate', params.startDate);
+  if (params.endDate) query.append('endDate', params.endDate);
+  if (params.page) query.append('page', String(params.page));
+  if (params.limit) query.append('limit', String(params.limit));
+
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  const res = await fetchWithAuth(`/api/incentives/agents${qs}`);
+  return {
+    items: res.items || [],
+    pagination: res.pagination || { total: 0, page: 1, limit: 25, totalPages: 1 },
+  };
+};
+
+export const fetchAgentIncentiveDetailsApi = async (agentId: number, page = 1, limit = 50): Promise<AgentIncentiveDetails> => {
+  const res = await fetchWithAuth(`/api/incentives/agents/${agentId}?page=${page}&limit=${limit}`);
+  return res.data;
+};
+
+export const fetchMyIncentiveSummaryApi = async (): Promise<MyIncentiveSummary> => {
+  const res = await fetchWithAuth('/api/incentives/my-summary');
+  return res.data;
+};
+
+export const exportAgentIncentivesExcelApi = async (): Promise<void> => {
+  const token = sessionStorage.getItem('token');
+  const headers: HeadersInit = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch('/api/incentives/export', {
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to download Agent Incentives Excel report');
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Agent_Registration_Incentives_${new Date().toISOString().split('T')[0]}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+};
+
 
 
 

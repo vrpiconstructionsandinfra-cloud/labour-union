@@ -9,11 +9,12 @@ const router = (0, express_1.Router)();
 router.use(auth_middleware_1.authenticate);
 // DeepFace Python Face Verification
 router.post("/verify-faces", attendance_controller_1.verifyFacePhotos);
-// Agent Check In / Check Out routes & Today Overview
+// Agent Check In / Check Out routes
 router.post("/check-in", attendance_controller_1.handleCheckIn);
 router.post("/check-out", attendance_controller_1.handleCheckOut);
 router.get("/today-status", attendance_controller_1.getTodayAttendanceStatus);
-router.get("/today-overview", (0, role_middleware_1.authorize)("SUPER_AGENT", "AGENT", "CUSTOMER_SUPPORT"), attendance_controller_1.getTodayAttendanceOverview);
+// New: Computed real-time staff attendance status for Super Agent Dashboard
+router.get("/today-staff", (0, role_middleware_1.authorize)("SUPER_AGENT", "AGENT", "CUSTOMER_SUPPORT"), attendance_controller_1.getTodayStaffAttendance);
 /*
  * Super Agent & Agent can mark attendance
  */

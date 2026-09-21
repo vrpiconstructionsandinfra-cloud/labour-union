@@ -55,7 +55,9 @@ export const register = async (
           razorpayPaymentId,
           razorpayOrderId,
           upiTransactionId,
-          assignedAgentId: effectiveAgentId ? Number(effectiveAgentId) : undefined
+          assignedAgentId: effectiveAgentId ? Number(effectiveAgentId) : undefined,
+          creatorRole: (req as any).user?.role,
+          creatorId: (req as any).user?.id ? Number((req as any).user.id) : undefined,
         }
       );
 

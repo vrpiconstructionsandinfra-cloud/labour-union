@@ -6,6 +6,7 @@ import { MetricCard } from '../components/MetricCard';
 import { TodayAgentAttendanceTable } from '../components/TodayAgentAttendanceTable';
 import { QuickActions } from '../components/QuickActions';
 import { fetchDashboardStatsApi } from '../services/api';
+import { ShieldAlert, ChevronRight } from 'lucide-react';
 import type { MetricData, QuickActionItem } from '../types';
 
 interface DashboardProps {
@@ -69,6 +70,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
               }}
             />
           ))}
+        </div>
+
+        {/* Worker Insurance Policy Limitation Notice Banner */}
+        <div className="dashboard-policy-limitation-banner animate-fade-in" style={{ margin: 0 }}>
+          <div className="dashboard-policy-banner-left">
+            <div className="dashboard-policy-banner-icon">
+              <ShieldAlert size={20} />
+            </div>
+            <div>
+              <div className="dashboard-policy-banner-title">
+                Worker Insurance Policy – Coverage Limitations
+              </div>
+              <div className="dashboard-policy-banner-desc">
+                <strong>Policy Limitation:</strong> Worker insurance coverage is applicable only on days when the worker is present and actively working at the assigned project/site. Coverage does not apply for days of absence, work at another project/company, or applicable government holidays.
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="dashboard-policy-banner-btn"
+            onClick={() => onNavigate('insurance')}
+          >
+            <span>Insurance Tab & Guidelines</span>
+            <ChevronRight size={14} />
+          </button>
         </div>
 
         {/* Today's Agent Attendance Row */}

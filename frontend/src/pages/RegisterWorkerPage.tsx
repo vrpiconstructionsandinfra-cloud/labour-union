@@ -19,7 +19,8 @@ import {
   ShieldCheck,
   UserCheck,
   Sliders,
-  Lock
+  Lock,
+  Coins
 } from 'lucide-react';
 import {
   registerUserApi,
@@ -359,9 +360,26 @@ export const RegisterWorkerPage: React.FC<RegisterWorkerPageProps> = ({
           <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#0F172A', marginBottom: '8px' }}>
             Worker Registered Successfully!
           </h2>
-          <p style={{ color: '#64748B', fontSize: '14px', maxWidth: '520px', margin: '0 auto 24px' }}>
+          <p style={{ color: '#64748B', fontSize: '14px', maxWidth: '520px', margin: '0 auto 20px' }}>
             The new worker profile, trade rate schedule, and Razorpay onboarding record have been activated in the system.
           </p>
+
+          {/* Registration Incentive Confirmation for Field Agent */}
+          {user?.role === 'AGENT' && (
+            <div style={{ backgroundColor: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: '12px', padding: '14px 16px', maxWidth: '500px', margin: '0 auto 20px', display: 'flex', alignItems: 'center', gap: '12px', textAlign: 'left' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#FFEDD5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#EA580C' }}>
+                <Coins size={22} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, color: '#C2410C', fontSize: '13.5px' }}>
+                  Worker Registration Incentive Credited!
+                </div>
+                <div style={{ fontSize: '12.5px', color: '#9A3412', marginTop: '2px' }}>
+                  <strong>₹25.00</strong> has been credited to your agent incentive account for enrolling this worker.
+                </div>
+              </div>
+            </div>
+          )}
 
           <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '12px', padding: '16px', maxWidth: '500px', margin: '0 auto 24px', textAlign: 'left', fontSize: '13px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>

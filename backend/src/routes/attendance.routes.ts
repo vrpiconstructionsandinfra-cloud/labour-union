@@ -1,5 +1,4 @@
 import { Router } from "express";
-
 import {
   createAttendance,
   getAllAttendance,
@@ -9,7 +8,7 @@ import {
   handleCheckIn,
   handleCheckOut,
   getTodayAttendanceStatus,
-  getTodayAttendanceOverview,
+  getTodayStaffAttendance,
   verifyFacePhotos,
 } from "../controllers/attendance.controller";
 
@@ -24,11 +23,17 @@ router.use(authenticate);
 // DeepFace Python Face Verification
 router.post("/verify-faces", verifyFacePhotos);
 
-// Agent Check In / Check Out routes & Today Overview
+// Agent Check In / Check Out routes
 router.post("/check-in", handleCheckIn);
 router.post("/check-out", handleCheckOut);
 router.get("/today-status", getTodayAttendanceStatus);
-router.get("/today-overview", authorize("SUPER_AGENT", "AGENT", "CUSTOMER_SUPPORT"), getTodayAttendanceOverview);
+
+// New: Computed real-time staff attendance status for Super Agent Dashboard
+router.get(
+  "/today-staff",
+  authorize("SUPER_AGENT", "AGENT", "CUSTOMER_SUPPORT"),
+  getTodayStaffAttendance
+);
 
 /*
  * Super Agent & Agent can mark attendance

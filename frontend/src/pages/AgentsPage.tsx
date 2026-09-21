@@ -19,7 +19,6 @@ import {
   fetchAgentsApi,
   fetchWorkersApi,
   fetchSitesApi,
-  fetchTodayAttendanceOverviewApi,
   deleteUserApi,
   updateUserApi
 } from '../services/api';
@@ -97,19 +96,11 @@ export const AgentsPage: React.FC<AgentsPageProps> = ({
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [agentsData, workersData, sitesData, attendanceOverview] = await Promise.all([
+      const [agentsData, workersData, sitesData] = await Promise.all([
         fetchAgentsApi().catch(() => []),
         fetchWorkersApi().catch(() => []),
-        fetchSitesApi().catch(() => []),
-        fetchTodayAttendanceOverviewApi('AGENT').catch(() => ({ staff: [] }))
+        fetchSitesApi().catch(() => [])
       ]);
-
-      const attStaffMap = new Map<string, any>();
-      if (attendanceOverview?.staff) {
-        attendanceOverview.staff.forEach((s: any) => {
-          attStaffMap.set(String(s.userId || s.id), s);
-        });
-      }
 
       // Strictly only Field Agents (exclude Customer Support Agents with CSA- or support designation)
       const fieldAgentsOnly = (agentsData || []).filter((a: any) => {
@@ -120,15 +111,6 @@ export const AgentsPage: React.FC<AgentsPageProps> = ({
           return false;
         }
         return true;
-      }).map((agent: any) => {
-        const attInfo = attStaffMap.get(String(agent.id));
-        const dynamicStatus = attInfo?.status || (agent.active !== false ? 'Active' : 'Inactive');
-        return {
-          ...agent,
-          status: dynamicStatus,
-          attendanceStatus: attInfo?.status,
-          isOnline: attInfo?.isOnline || attInfo?.status === 'PRESENT',
-        };
       });
 
       setAgents(fieldAgentsOnly);
@@ -158,28 +140,18 @@ export const AgentsPage: React.FC<AgentsPageProps> = ({
     socket.on('agent:created', handleRefresh);
     socket.on('agent:updated', handleRefresh);
     socket.on('agent:deleted', handleRefresh);
-    socket.on('attendance:updated', handleRefresh);
-    socket.on('attendance:check-in', handleRefresh);
-    socket.on('attendance:check-out', handleRefresh);
-    socket.on('leave:updated', handleRefresh);
     socket.on('user:created', handleRefresh);
     socket.on('user:updated', handleRefresh);
     socket.on('user:deleted', handleRefresh);
-    socket.on('user:status:changed', handleRefresh);
     socket.on('notification', handleRefresh);
 
     return () => {
       socket.off('agent:created', handleRefresh);
       socket.off('agent:updated', handleRefresh);
       socket.off('agent:deleted', handleRefresh);
-      socket.off('attendance:updated', handleRefresh);
-      socket.off('attendance:check-in', handleRefresh);
-      socket.off('attendance:check-out', handleRefresh);
-      socket.off('leave:updated', handleRefresh);
       socket.off('user:created', handleRefresh);
       socket.off('user:updated', handleRefresh);
       socket.off('user:deleted', handleRefresh);
-      socket.off('user:status:changed', handleRefresh);
       socket.off('notification', handleRefresh);
     };
   }, [refreshTrigger]);

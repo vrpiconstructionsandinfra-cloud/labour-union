@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyFacePhotos = exports.getTodayAttendanceOverview = exports.getTodayAttendanceStatus = exports.handleCheckOut = exports.handleCheckIn = exports.deleteAttendance = exports.updateAttendance = exports.getWorkerAttendance = exports.getAllAttendance = exports.createAttendance = void 0;
+exports.verifyFacePhotos = exports.getTodayStaffAttendance = exports.getTodayAttendanceStatus = exports.handleCheckOut = exports.handleCheckIn = exports.deleteAttendance = exports.updateAttendance = exports.getWorkerAttendance = exports.getAllAttendance = exports.createAttendance = void 0;
 const attendanceService = __importStar(require("../services/attendance.service"));
 const attendance_validator_1 = require("../validators/attendance.validator");
 const createAttendance = async (req, res) => {
@@ -179,18 +179,19 @@ const getTodayAttendanceStatus = async (req, res) => {
     }
 };
 exports.getTodayAttendanceStatus = getTodayAttendanceStatus;
-const getTodayAttendanceOverview = async (req, res) => {
+const getTodayStaffAttendance = async (req, res) => {
     try {
-        const roleFilter = req.query.role;
-        const result = await attendanceService.getTodayAttendanceOverview(roleFilter);
-        return res.status(200).json({ success: true, data: result });
+        if (!req.user) {
+            return res.status(401).json({ success: false, message: "Unauthorized" });
+        }
+        const staffList = await attendanceService.getTodayStaffAttendanceStatus();
+        return res.status(200).json({ success: true, data: staffList });
     }
     catch (err) {
-        console.error("Error fetching today attendance overview:", err);
-        return res.status(500).json({ success: false, message: err.message || "Failed to fetch today attendance overview" });
+        return res.status(500).json({ success: false, message: err.message || "Failed to fetch staff attendance" });
     }
 };
-exports.getTodayAttendanceOverview = getTodayAttendanceOverview;
+exports.getTodayStaffAttendance = getTodayStaffAttendance;
 const verifyFacePhotos = async (req, res) => {
     try {
         const { checkInPhoto, checkOutPhoto } = req.body;

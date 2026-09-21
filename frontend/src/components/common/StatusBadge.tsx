@@ -64,19 +64,13 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
         return { text: label || 'Present', variant: 'badge-success', icon: CalendarCheck };
       case 'ABSENT':
         return { text: label || 'Absent', variant: 'badge-danger', icon: CalendarX };
-      case 'NOT_CHECKED_IN':
-      case 'NOT_CHECKEDIN':
-        return { text: label || 'Not Checked In', variant: 'badge-neutral', icon: Clock };
       case 'HALF_DAY':
       case 'HALFDAY':
         return { text: label || 'Half Day', variant: 'badge-amber', icon: Hourglass };
       case 'HOLIDAY':
         return { text: label || 'Holiday', variant: 'badge-purple', icon: CalendarCheck };
       case 'ON_LEAVE':
-      case 'LEAVE':
-        return { text: label || 'On Leave', variant: 'badge-amber', icon: Clock };
-      case 'CHECKED_OUT':
-        return { text: label || 'Completed', variant: 'badge-info', icon: CheckCircle2 };
+        return { text: label || 'On Leave', variant: 'badge-info', icon: Clock };
 
       // 3. Project / Site Statuses
       case 'COMPLETED':

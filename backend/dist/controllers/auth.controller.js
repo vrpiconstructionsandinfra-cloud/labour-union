@@ -51,7 +51,9 @@ const register = async (req, res) => {
             razorpayPaymentId,
             razorpayOrderId,
             upiTransactionId,
-            assignedAgentId: effectiveAgentId ? Number(effectiveAgentId) : undefined
+            assignedAgentId: effectiveAgentId ? Number(effectiveAgentId) : undefined,
+            creatorRole: req.user?.role,
+            creatorId: req.user?.id ? Number(req.user.id) : undefined,
         });
         if (user && user.email) {
             if (role === 'AGENT' || role === 'SUPER_AGENT' || role === 'CUSTOMER_SUPPORT') {

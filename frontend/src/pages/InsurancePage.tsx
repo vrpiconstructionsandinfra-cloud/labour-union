@@ -1,5 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Plus, AlertCircle, Calendar, Edit, Trash2, Shield, DollarSign } from 'lucide-react';
+import {
+  ShieldCheck,
+  Plus,
+  AlertCircle,
+  Calendar,
+  Edit,
+  Trash2,
+  Shield,
+  DollarSign,
+  CalendarCheck,
+  UserX,
+  MapPin,
+  Briefcase,
+  Landmark
+} from 'lucide-react';
 import { fetchInsuranceApi, deleteInsuranceApi, fetchAttendanceLogsApi } from '../services/api';
 import { getSocket } from '../services/socket';
 import type { InsurancePolicy } from '../types';
@@ -255,6 +269,105 @@ export const InsurancePage: React.FC<InsurancePageProps> = ({
           </div>
           <span className="stat-number">₹ {summary.sumInsured.toLocaleString('en-IN')}</span>
           <span className="stat-sub">Group Term Policy</span>
+        </div>
+      </div>
+
+      {/* Worker Insurance Policy – Coverage Limitations Section */}
+      <div className="insurance-policy-limitations-card">
+        <div className="insurance-policy-limitation-header">
+          <div className="insurance-policy-limitation-title-group">
+            <div className="insurance-limitation-icon-wrap">
+              <ShieldCheck size={24} />
+            </div>
+            <div>
+              <div className="insurance-compliance-badge">
+                <span className="compliance-dot"></span>
+                Mandatory Compliance & Eligibility
+              </div>
+              <h3 className="insurance-limitation-title">
+                Worker Insurance Policy – <span className="highlight-text-limitation">Coverage Limitations</span>
+              </h3>
+            </div>
+          </div>
+        </div>
+
+        {/* Detailed 6 Policy Limitation Points with Colorful Category Icons */}
+        <div className="insurance-limitations-list-grid">
+          {/* Item 01 */}
+          <div className="insurance-limitation-item">
+            <div className="limitation-bullet-badge">01</div>
+            <div className="limitation-category-icon icon-bg-green">
+              <CalendarCheck size={18} />
+            </div>
+            <div className="limitation-item-content">
+              <strong>Active Daily Attendance:</strong> Insurance coverage applies <span className="policy-highlight-chip">only for days on which the worker is marked as present</span> at the assigned project/site.
+            </div>
+          </div>
+
+          {/* Item 02 */}
+          <div className="insurance-limitation-item">
+            <div className="limitation-bullet-badge">02</div>
+            <div className="limitation-category-icon icon-bg-orange">
+              <UserX size={18} />
+            </div>
+            <div className="limitation-item-content">
+              <strong>Absence Exclusion:</strong> If the worker is absent, <span className="policy-highlight-chip">insurance coverage will not apply for that day.</span>
+            </div>
+          </div>
+
+          {/* Item 03 */}
+          <div className="insurance-limitation-item">
+            <div className="limitation-bullet-badge">03</div>
+            <div className="limitation-category-icon icon-bg-blue">
+              <MapPin size={18} />
+            </div>
+            <div className="limitation-item-content">
+              <strong>Site Specificity:</strong> If the worker is working on another project/site, <span className="policy-highlight-chip">the policy will not apply under the current assignment.</span>
+            </div>
+          </div>
+
+          {/* Item 04 */}
+          <div className="insurance-limitation-item">
+            <div className="limitation-bullet-badge">04</div>
+            <div className="limitation-category-icon icon-bg-purple">
+              <Briefcase size={18} />
+            </div>
+            <div className="limitation-item-content">
+              <strong>External Company Work:</strong> If the worker is working for a different company, <span className="policy-highlight-chip">the policy will not apply for that period.</span>
+            </div>
+          </div>
+
+          {/* Item 05 */}
+          <div className="insurance-limitation-item">
+            <div className="limitation-bullet-badge">05</div>
+            <div className="limitation-category-icon icon-bg-pink">
+              <Landmark size={18} />
+            </div>
+            <div className="limitation-item-content">
+              <strong>Government / Public Holidays:</strong> Insurance coverage <span className="policy-highlight-chip">does not apply on officially declared government/public holidays</span> when the worker is not scheduled or marked as working.
+            </div>
+          </div>
+
+          {/* Item 06 */}
+          <div className="insurance-limitation-item">
+            <div className="limitation-bullet-badge">06</div>
+            <div className="limitation-category-icon icon-bg-teal">
+              <ShieldCheck size={18} />
+            </div>
+            <div className="limitation-item-content">
+              <strong>Verified Attendance Determination:</strong> Coverage <span className="policy-highlight-chip">must be determined based on the worker’s verified attendance and active project assignment</span> for that specific day.
+            </div>
+          </div>
+        </div>
+
+        {/* Important Compliance Bottom Banner */}
+        <div className="insurance-policy-important-footer">
+          <div className="important-footer-icon">
+            <ShieldCheck size={16} />
+          </div>
+          <div className="important-footer-text">
+            <strong>IMPORTANT:</strong> Insurance coverage is strictly dependent on the worker’s verified attendance and active assignment for the specific day.
+          </div>
         </div>
       </div>
 

@@ -146,6 +146,9 @@ model User {
   notifications  Notification[]
   sitePayments   SitePayment[] @relation("PayerSitePayments")
 
+  registrationIncentivesEarned   WorkerRegistrationIncentive[] @relation("AgentIncentives")
+  registrationIncentiveGenerated WorkerRegistrationIncentive?   @relation("WorkerIncentive")
+
   resetToken      String?
   resetTokenExpiry DateTime?
 
@@ -532,5 +535,24 @@ model SitePayment {
   @@index([createdAt])
 }
 
+model WorkerRegistrationIncentive {
+  id          Int      @id @default(autoincrement())
 
+  agentId     Int
+  agent       User     @relation("AgentIncentives", fields: [agentId], references: [id], onDelete: Cascade)
 
+  workerId    Int      @unique
+  worker      User     @relation("WorkerIncentive", fields: [workerId], references: [id], onDelete: Cascade)
+
+  amount      Float    @default(25.0)
+  type        String   @default("WORKER_REGISTRATION_INCENTIVE")
+  status      String   @default("CREDITED")
+  reference   String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([agentId])
+  @@index([createdAt])
+  @@index([status])
+}

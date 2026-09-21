@@ -19,7 +19,6 @@ import {
   fetchUsersApi,
   fetchAgentsApi,
   fetchSupportTicketsApi,
-  fetchTodayAttendanceOverviewApi,
   deleteUserApi
 } from '../services/api';
 import { getSocket } from '../services/socket';
@@ -84,20 +83,13 @@ export const CustomerSupportAgentsView: React.FC<CustomerSupportAgentsViewProps>
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [usersData, agentsData, ticketsData, attendanceOverview] = await Promise.all([
+      const [usersData, agentsData, ticketsData] = await Promise.all([
         fetchUsersApi().catch(() => []),
         fetchAgentsApi().catch(() => []),
-        fetchSupportTicketsApi().catch(() => []),
-        fetchTodayAttendanceOverviewApi('CUSTOMER_SUPPORT').catch(() => ({ staff: [] }))
+        fetchSupportTicketsApi().catch(() => [])
       ]);
 
       setTickets(ticketsData || []);
-      const attStaffMap = new Map<string, any>();
-      if (attendanceOverview?.staff) {
-        attendanceOverview.staff.forEach((s: any) => {
-          attStaffMap.set(String(s.userId || s.id), s);
-        });
-      }
 
       // Map Customer Support Agents from backend
       const realSupportAgents: any[] = [];
@@ -128,9 +120,6 @@ export const CustomerSupportAgentsView: React.FC<CustomerSupportAgentsViewProps>
           });
 
           if (!exists) {
-            const attInfo = attStaffMap.get(String(a.id));
-            const dynamicStatus = attInfo?.status || (a.active !== false ? 'Active' : 'Inactive');
-
             realSupportAgents.push({
               id: String(a.id),
               numericId: a.id,
@@ -138,18 +127,46 @@ export const CustomerSupportAgentsView: React.FC<CustomerSupportAgentsViewProps>
               employeeCode: a.employeeCode || `CSA-00${a.id}`,
               email: a.email || `${(a.name || 'agent').toLowerCase().replace(/\s+/g, '.')}@union.com`,
               phone: a.phone || '+91 98765 43210',
-              department: a.department || attInfo?.department || 'HQ Support Center',
+              department: a.department || 'HQ Support Center',
               joinedDate: a.joiningDate
                 ? new Date(a.joiningDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
                 : '01 Jan, 2024',
-              status: dynamicStatus,
-              attendanceStatus: attInfo?.status,
-              isOnline: attInfo?.isOnline || attInfo?.status === 'PRESENT',
+              status: a.status || (a.active !== false ? 'Active' : 'Inactive'),
               avatar: a.avatar || a.profileImage || ''
             });
           }
         }
       });
+
+      // Provide demo records if none in database for testing visual completeness
+      if (realSupportAgents.length === 0) {
+        realSupportAgents.push(
+          {
+            id: '1',
+            numericId: 1,
+            name: 'Manasa',
+            employeeCode: 'CSA-002',
+            email: 'goudaashish994@gmail.com',
+            phone: '+91 98765 43211',
+            department: 'HQ Support (1 Active)',
+            joinedDate: '12 Jan, 2025',
+            status: 'Active',
+            avatar: ''
+          },
+          {
+            id: '2',
+            numericId: 2,
+            name: 'Mega',
+            employeeCode: 'CSA-001',
+            email: 'ashish123@gmail.com',
+            phone: '+91 98765 43212',
+            department: 'HQ Support Center',
+            joinedDate: '01 Jan, 2025',
+            status: 'Active',
+            avatar: ''
+          }
+        );
+      }
 
       setSupportAgents(realSupportAgents);
 
@@ -176,28 +193,18 @@ export const CustomerSupportAgentsView: React.FC<CustomerSupportAgentsViewProps>
     socket.on('ticket:created', handleRefresh);
     socket.on('ticket:updated', handleRefresh);
     socket.on('ticket:assigned', handleRefresh);
-    socket.on('attendance:updated', handleRefresh);
-    socket.on('attendance:check-in', handleRefresh);
-    socket.on('attendance:check-out', handleRefresh);
-    socket.on('leave:updated', handleRefresh);
     socket.on('user:created', handleRefresh);
     socket.on('user:updated', handleRefresh);
     socket.on('user:deleted', handleRefresh);
-    socket.on('user:status:changed', handleRefresh);
     socket.on('notification', handleRefresh);
 
     return () => {
       socket.off('ticket:created', handleRefresh);
       socket.off('ticket:updated', handleRefresh);
       socket.off('ticket:assigned', handleRefresh);
-      socket.off('attendance:updated', handleRefresh);
-      socket.off('attendance:check-in', handleRefresh);
-      socket.off('attendance:check-out', handleRefresh);
-      socket.off('leave:updated', handleRefresh);
       socket.off('user:created', handleRefresh);
       socket.off('user:updated', handleRefresh);
       socket.off('user:deleted', handleRefresh);
-      socket.off('user:status:changed', handleRefresh);
       socket.off('notification', handleRefresh);
     };
   }, []);

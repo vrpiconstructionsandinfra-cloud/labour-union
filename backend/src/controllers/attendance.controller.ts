@@ -174,14 +174,15 @@ export const getTodayAttendanceStatus = async (req: Request, res: Response) => {
   }
 };
 
-export const getTodayAttendanceOverview = async (req: Request, res: Response) => {
+export const getTodayStaffAttendance = async (req: Request, res: Response) => {
   try {
-    const roleFilter = req.query.role as string | undefined;
-    const result = await attendanceService.getTodayAttendanceOverview(roleFilter);
-    return res.status(200).json({ success: true, data: result });
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+    const staffList = await attendanceService.getTodayStaffAttendanceStatus();
+    return res.status(200).json({ success: true, data: staffList });
   } catch (err: any) {
-    console.error("Error fetching today attendance overview:", err);
-    return res.status(500).json({ success: false, message: err.message || "Failed to fetch today attendance overview" });
+    return res.status(500).json({ success: false, message: err.message || "Failed to fetch staff attendance" });
   }
 };
 

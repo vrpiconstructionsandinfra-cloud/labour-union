@@ -20,7 +20,8 @@ import {
   QrCode,
   FileSpreadsheet,
   X,
-  Settings
+  Settings,
+  Coins
 } from 'lucide-react';
 import { UserAvatar } from './UserAvatar';
 import './Sidebar.css';
@@ -67,6 +68,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'sites', label: 'Sites', icon: Building2 },
     { id: 'agents', label: 'Agents', icon: Users },
     { id: 'workers', label: 'Workers', icon: UserCheck },
+    { id: 'agent_incentives', label: 'Agent Incentives', icon: Coins },
+    { id: 'my_incentives', label: 'My Incentives', icon: Coins },
     { id: 'worker_qrs', label: 'Worker QRs', icon: QrCode },
     { id: 'site_payments', label: role === 'SUPER_AGENT' ? 'Site Payments' : 'Pay Site Bills', icon: CreditCard },
     { id: 'enquiries', label: 'Enquired', icon: FileSpreadsheet },

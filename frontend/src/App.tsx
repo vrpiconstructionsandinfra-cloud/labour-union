@@ -39,6 +39,7 @@ const CustomerSupportAgentsView = lazy(() => import('./components/CustomerSuppor
 const WorkerQrCardsView = lazy(() => import('./components/WorkerQrCardsView').then(m => ({ default: m.WorkerQrCardsView })));
 const SitePaymentsView = lazy(() => import('./components/SitePaymentsView').then(m => ({ default: m.SitePaymentsView })));
 const RegisterWorkerPage = lazy(() => import('./pages/RegisterWorkerPage').then(m => ({ default: m.RegisterWorkerPage })));
+const AgentIncentivesPage = lazy(() => import('./pages/AgentIncentivesPage').then(m => ({ default: m.AgentIncentivesPage })));
 
 function PageFallback() {
   return (
@@ -59,7 +60,7 @@ import { ScanWorkerQrModal } from './components/ScanWorkerQrModal';
 import { MarkAttendanceModal } from './components/MarkAttendanceModal';
 import { SupportAgentModal } from './components/SupportAgentModal';
 
-import { Calendar, ChevronDown, LogOut } from 'lucide-react';
+import { Calendar, ChevronDown, LogOut, ShieldAlert, ChevronRight } from 'lucide-react';
 import {
   fetchDashboardStatsApi,
   fetchPayrollsApi,
@@ -353,7 +354,7 @@ function MainAppContent() {
   // Render Page Content based on Active Navigation Tab & Role
   const renderTabContent = () => {
     // ── Role Guard: block tabs the user's role has no permission for ────────
-    const guardedTabs = ['sites', 'agents', 'workers', 'enquiries', 'attendance', 'leaves', 'my_leaves', 'payroll', 'wallet', 'insurance', 'tickets', 'reports', 'settings'];
+    const guardedTabs = ['sites', 'agents', 'workers', 'agent_incentives', 'my_incentives', 'enquiries', 'attendance', 'leaves', 'my_leaves', 'payroll', 'wallet', 'insurance', 'tickets', 'reports', 'settings'];
     if (guardedTabs.includes(activeTab) && !hasPermission(activeTab)) {
       return (
         <AccessDeniedScreen
@@ -388,6 +389,10 @@ function MainAppContent() {
             refreshTrigger={refreshCounter}
           />
         );
+      case 'agent_incentives':
+        return <AgentIncentivesPage onNavigateTab={(tab) => setActiveTab(tab)} />;
+      case 'my_incentives':
+        return <AgentIncentivesPage isAgentView={true} onNavigateTab={(tab) => setActiveTab(tab)} />;
       case 'workers':
         return (
           <WorkersPage
@@ -529,6 +534,31 @@ function MainAppContent() {
             </div>
 
             <SaturdayReportBanner />
+
+            {/* Worker Insurance Policy Limitation Notice Banner for Super Agent */}
+            <div className="dashboard-policy-limitation-banner animate-fade-in" style={{ marginTop: '16px', marginBottom: '16px' }}>
+              <div className="dashboard-policy-banner-left">
+                <div className="dashboard-policy-banner-icon">
+                  <ShieldAlert size={20} />
+                </div>
+                <div>
+                  <div className="dashboard-policy-banner-title">
+                    Worker Insurance Policy – Coverage Limitations
+                  </div>
+                  <div className="dashboard-policy-banner-desc">
+                    <strong>Policy Limitation:</strong> Worker insurance coverage is applicable only on days when the worker is present and actively working at the assigned project/site. Coverage does not apply for days of absence, work at another project/company, or applicable government holidays.
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="dashboard-policy-banner-btn"
+                onClick={() => setActiveTab('insurance')}
+              >
+                <span>Insurance Tab & Guidelines</span>
+                <ChevronRight size={14} />
+              </button>
+            </div>
 
             <div className="metrics-grid">
               {metrics.map((metric) => (

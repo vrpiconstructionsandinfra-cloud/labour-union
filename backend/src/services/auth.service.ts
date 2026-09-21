@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { hashPassword, comparePassword } from "../utils/hash";
 import { generateToken } from "../utils/jwt";
 import { sendResetPasswordEmail, sendMobileLoginApprovalEmail } from "./mail.service";
+import { emitIncentiveUpdate, emitWorkerRegistration } from "../socket/socket";
 
 /*
  * Register User (SUPER_AGENT, AGENT, WORKER)
@@ -29,6 +30,8 @@ export const registerUser = async (
     razorpayOrderId?: string;
     upiTransactionId?: string;
     assignedAgentId?: number;
+    creatorRole?: string;
+    creatorId?: number;
   }
 ) => {
   const userEmail = email?.trim() ? email.trim().toLowerCase() : null;
@@ -68,34 +71,90 @@ export const registerUser = async (
     targetRole = 'CUSTOMER_SUPPORT' as UserRole;
   }
 
+  // Determine if this worker registration was performed by an authenticated AGENT
+  const isAgentRegistration =
+    targetRole === 'WORKER' &&
+    extraDetails?.creatorRole === 'AGENT' &&
+    Boolean(extraDetails?.creatorId);
+
+  const registeringAgentId = isAgentRegistration ? Number(extraDetails?.creatorId) : undefined;
+  const effectiveAssignedAgentId = extraDetails?.assignedAgentId
+    ? Number(extraDetails.assignedAgentId)
+    : registeringAgentId;
+
   let user: any;
+  let incentiveRecord: any = null;
+
   try {
-    user = await prisma.user.create({
-      data: {
-        name,
-        email: userEmail,
-        password: hashedPassword,
-        role: targetRole,
-        phone,
-        designation: designation || (targetRole === "WORKER" ? "Mason / Carpenter" : targetRole === "CUSTOMER_SUPPORT" ? "Customer Support Agent" : "Field Supervisor"),
-        employeeCode: finalCode,
-        salary: salary || (targetRole === "WORKER" ? 25500 : 45000),
-        siteId: siteId || undefined,
-        assignedAgentId: extraDetails?.assignedAgentId ? Number(extraDetails.assignedAgentId) : undefined,
-        profileImage: avatar || undefined,
-        bankAccountNo: extraDetails?.bankAccountNo || undefined,
-        ifscCode: extraDetails?.ifscCode || undefined,
-        address: extraDetails?.address || undefined,
-        registrationAmount: extraDetails?.registrationAmount ? Number(extraDetails.registrationAmount) : undefined,
-        paymentMethod: extraDetails?.paymentMethod || undefined,
-        razorpayPaymentId: extraDetails?.razorpayPaymentId || undefined,
-        razorpayOrderId: extraDetails?.razorpayOrderId || undefined,
-        upiTransactionId: extraDetails?.upiTransactionId || undefined,
-      },
+    user = await prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
+        data: {
+          name,
+          email: userEmail,
+          password: hashedPassword,
+          role: targetRole,
+          phone,
+          designation:
+            designation ||
+            (targetRole === 'WORKER'
+              ? 'Mason / Carpenter'
+              : targetRole === 'CUSTOMER_SUPPORT'
+              ? 'Customer Support Agent'
+              : 'Field Supervisor'),
+          employeeCode: finalCode,
+          salary: salary || (targetRole === 'WORKER' ? 25500 : 45000),
+          siteId: siteId || undefined,
+          assignedAgentId: effectiveAssignedAgentId || undefined,
+          profileImage: avatar || undefined,
+          bankAccountNo: extraDetails?.bankAccountNo || undefined,
+          ifscCode: extraDetails?.ifscCode || undefined,
+          address: extraDetails?.address || undefined,
+          registrationAmount: extraDetails?.registrationAmount
+            ? Number(extraDetails.registrationAmount)
+            : undefined,
+          paymentMethod: extraDetails?.paymentMethod || undefined,
+          razorpayPaymentId: extraDetails?.razorpayPaymentId || undefined,
+          razorpayOrderId: extraDetails?.razorpayOrderId || undefined,
+          upiTransactionId: extraDetails?.upiTransactionId || undefined,
+        },
+      });
+
+      // If registered by an authenticated Field Agent, create ₹25 Worker Registration Incentive
+      if (isAgentRegistration && registeringAgentId) {
+        incentiveRecord = await tx.workerRegistrationIncentive.create({
+          data: {
+            agentId: registeringAgentId,
+            workerId: createdUser.id,
+            amount: 25.0,
+            type: 'WORKER_REGISTRATION_INCENTIVE',
+            status: 'CREDITED',
+            reference: `REG-${createdUser.employeeCode || createdUser.id}`,
+          },
+        });
+      }
+
+      // Initialize wallet if needed
+      if (createdUser.role === 'WORKER' || createdUser.role === 'AGENT') {
+        await tx.wallet
+          .create({
+            data: {
+              workerId: createdUser.id,
+              balance: 0,
+            },
+          })
+          .catch(() => {});
+      }
+
+      return createdUser;
     });
   } catch (createErr: any) {
-    if (createErr?.message?.includes("Unknown argument") || createErr?.message?.includes("bankAccountNo")) {
-      console.warn("⚠️ Prisma Client metadata mismatch detected. Executing resilient database fallback...");
+    if (
+      createErr?.message?.includes('Unknown argument') ||
+      createErr?.message?.includes('bankAccountNo')
+    ) {
+      console.warn(
+        '⚠️ Prisma Client metadata mismatch detected. Executing resilient database fallback...'
+      );
       user = await prisma.user.create({
         data: {
           name,
@@ -103,11 +162,17 @@ export const registerUser = async (
           password: hashedPassword,
           role: targetRole,
           phone,
-          designation: designation || (targetRole === "WORKER" ? "Mason / Carpenter" : targetRole === "CUSTOMER_SUPPORT" ? "Customer Support Agent" : "Field Supervisor"),
+          designation:
+            designation ||
+            (targetRole === 'WORKER'
+              ? 'Mason / Carpenter'
+              : targetRole === 'CUSTOMER_SUPPORT'
+              ? 'Customer Support Agent'
+              : 'Field Supervisor'),
           employeeCode: finalCode,
-          salary: salary || (targetRole === "WORKER" ? 25500 : 45000),
+          salary: salary || (targetRole === 'WORKER' ? 25500 : 45000),
           siteId: siteId || undefined,
-          assignedAgentId: extraDetails?.assignedAgentId ? Number(extraDetails.assignedAgentId) : undefined,
+          assignedAgentId: effectiveAssignedAgentId || undefined,
           profileImage: avatar || undefined,
         },
       });
@@ -118,30 +183,72 @@ export const registerUser = async (
           extraDetails?.bankAccountNo || null,
           extraDetails?.ifscCode || null,
           extraDetails?.address || null,
-          extraDetails?.registrationAmount ? Number(extraDetails.registrationAmount) : null,
+          extraDetails?.registrationAmount
+            ? Number(extraDetails.registrationAmount)
+            : null,
           extraDetails?.paymentMethod || null,
           extraDetails?.razorpayPaymentId || null,
           extraDetails?.razorpayOrderId || null,
           extraDetails?.upiTransactionId || null,
           user.id,
-          extraDetails?.assignedAgentId ? Number(extraDetails.assignedAgentId) : null
+          effectiveAssignedAgentId ? Number(effectiveAssignedAgentId) : null
         );
       } catch (sqlErr: any) {
-        console.warn("⚠️ Banking SQL update warning:", sqlErr.message);
+        console.warn('⚠️ Banking SQL update warning:', sqlErr.message);
+      }
+
+      // Create incentive in fallback path if applicable
+      if (isAgentRegistration && registeringAgentId) {
+        try {
+          incentiveRecord = await prisma.workerRegistrationIncentive.create({
+            data: {
+              agentId: registeringAgentId,
+              workerId: user.id,
+              amount: 25.0,
+              type: 'WORKER_REGISTRATION_INCENTIVE',
+              status: 'CREDITED',
+              reference: `REG-${user.employeeCode || user.id}`,
+            },
+          });
+        } catch (incErr: any) {
+          console.warn('⚠️ Incentive creation fallback warning:', incErr.message);
+        }
+      }
+
+      if (user.role === 'WORKER' || user.role === 'AGENT') {
+        await prisma.wallet
+          .create({
+            data: {
+              workerId: user.id,
+              balance: 0,
+            },
+          })
+          .catch(() => {});
       }
     } else {
       throw createErr;
     }
   }
 
-  if (user.role === "WORKER" || user.role === "AGENT") {
-    await prisma.wallet.create({
-      data: {
-        workerId: user.id,
-        balance: 0,
-      },
-    }).catch(() => {});
+  // Real-time broadcast for Super Agent and Agent dashboards
+  if (isAgentRegistration && registeringAgentId) {
+    emitIncentiveUpdate({
+      agentId: registeringAgentId,
+      workerId: user.id,
+      workerName: user.name,
+      employeeCode: user.employeeCode,
+      amount: 25.0,
+      timestamp: Date.now(),
+    });
   }
+
+  emitWorkerRegistration({
+    workerId: user.id,
+    workerName: user.name,
+    employeeCode: user.employeeCode,
+    assignedAgentId: user.assignedAgentId,
+    timestamp: Date.now(),
+  });
 
   return user;
 };

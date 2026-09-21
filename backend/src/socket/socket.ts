@@ -84,12 +84,16 @@ export const getSocketIO = (): Server => {
 export const emitAttendanceUpdate = (data: any) => {
   if (io) {
     io.emit("attendance:updated", data);
+    // Also broadcast staff-level event so the Super Agent dashboard panel refreshes
+    io.emit("attendance:staff:updated", { userId: data.workerId, timestamp: Date.now() });
   }
 };
 
 export const emitLeaveUpdate = (data: any) => {
   if (io) {
     io.emit("leave:updated", data);
+    // Also broadcast staff-level event so attendance panel reflects leave status change
+    io.emit("leave:staff:updated", { userId: data.workerId, status: data.status, timestamp: Date.now() });
     if (data.workerId) {
       io.to(`user:${data.workerId}`).emit("notification", {
         title: "Leave Status Updated",
@@ -156,5 +160,27 @@ export const emitSitePaymentUpdate = (data: any) => {
     io.emit("sitePayment:updated", data);
   }
 };
+
+export const emitIncentiveUpdate = (data: any) => {
+  if (io) {
+    io.emit("incentive:credited", data);
+    io.emit("incentive:updated", data);
+    if (data.agentId) {
+      io.to(`user:${data.agentId}`).emit("notification", {
+        title: "Worker Registration Incentive Credited",
+        message: `₹${data.amount || 25} Worker Registration Incentive credited for registering ${data.workerName || "new worker"} (${data.employeeCode || ""})`,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+};
+
+export const emitWorkerRegistration = (data: any) => {
+  if (io) {
+    io.emit("worker:registered", data);
+    io.emit("workers:updated", data);
+  }
+};
+
 
 
