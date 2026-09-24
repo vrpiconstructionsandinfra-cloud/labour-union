@@ -1576,6 +1576,28 @@ export const exportAgentIncentivesExcelApi = async (): Promise<void> => {
   window.URL.revokeObjectURL(url);
 };
 
+export const sendVerificationCodeApi = async (email: string, name?: string): Promise<{ success: boolean; message: string }> => {
+  const res = await fetch('/api/auth/send-verification-code', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, name })
+  });
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to send verification code');
+  }
+  return data;
+};
 
-
-
+export const verifyCodeApi = async (email: string, code: string): Promise<{ success: boolean; verified: boolean; message: string }> => {
+  const res = await fetch('/api/auth/verify-code', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, code })
+  });
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.message || 'Failed to verify code');
+  }
+  return data;
+};

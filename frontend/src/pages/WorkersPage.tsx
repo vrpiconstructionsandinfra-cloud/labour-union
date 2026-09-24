@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, UserPlus, Phone, MapPin, DollarSign, Eye, Edit, Trash2, UserCheck, Loader2 } from 'lucide-react';
+import { Plus, UserPlus, Phone, MapPin, DollarSign, Eye, Edit, Trash2, UserCheck, Loader2, MoreVertical } from 'lucide-react';
 import { fetchWorkersApi, deleteUserApi, assignWorkerToAgentApi, removeWorkerFromAgentApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import type { WorkerItem } from '../types';
@@ -46,12 +46,11 @@ export const WorkersPage: React.FC<WorkersPageProps> = ({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [assigningWorkerId, setAssigningWorkerId] = useState<string | null>(null);
   const [selectedWorkerForDetails, setSelectedWorkerForDetails] = useState<WorkerItem | null>(null);
+  const [openMenuWorkerId, setOpenMenuWorkerId] = useState<string | null>(null);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-
-  const isSuperAgent = role === 'SUPER_AGENT';
 
   const loadWorkers = () => {
     setIsLoading(true);
@@ -69,8 +68,22 @@ export const WorkersPage: React.FC<WorkersPageProps> = ({
     setCurrentPage(1);
   }, [searchTerm, skillFilter, itemsPerPage]);
 
+  // Close 3-dots action menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.worker-action-menu-container')) {
+        setOpenMenuWorkerId(null);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
+
   const handleDeleteWorker = async (workerId: string, workerName: string) => {
-    if (!window.confirm(`Are you sure you want to delete worker "${workerName}" from the system?`)) {
+    if (!window.confirm(`Are you sure you want to delete worker "${workerName}" from the system? This action cannot be undone.`)) {
       return;
     }
 
@@ -179,9 +192,9 @@ export const WorkersPage: React.FC<WorkersPageProps> = ({
         <>
           {/* DESKTOP & TABLET DATA TABLE (≥ 768px) */}
           <div className="table-desktop-view">
-            <div className="table-card">
-              <div className="table-responsive">
-                <table className="custom-table">
+            <div className="table-card" style={{ minHeight: '340px' }}>
+              <div className="table-responsive" style={{ overflow: 'visible' }}>
+                <table className="custom-table" style={{ width: '100%' }}>
                   <thead>
                     <tr>
                       <th>Worker</th>
@@ -192,14 +205,16 @@ export const WorkersPage: React.FC<WorkersPageProps> = ({
                       <th>Assigned Agent</th>
                       <th>Daily Wage</th>
                       <th>Status</th>
-                      <th>Actions</th>
+                      <th style={{ textAlign: 'center', width: '90px' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {paginatedWorkers.map((worker) => {
+                    {paginatedWorkers.map((worker, index) => {
                       const isAssignedToMe =
                         worker.assignedAgentId === String(user?.id) ||
                         (user?.name && worker.agentName === user.name);
+                      
+                      const isNearBottom = index >= paginatedWorkers.length - 2 && paginatedWorkers.length > 2;
 
                       return (
                         <tr key={worker.id}>
@@ -249,77 +264,221 @@ export const WorkersPage: React.FC<WorkersPageProps> = ({
                           <td>
                             <StatusBadge status={worker.status || 'ACTIVE'} size="sm" />
                           </td>
-                          <td>
-                            <div className="action-buttons-group" style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          <td style={{ textAlign: 'center', position: 'relative' }}>
+                            {/* 3-Dots Action Menu Container */}
+                            <div className="worker-action-menu-container" style={{ position: 'relative', display: 'inline-block' }}>
                               <button
-                                className="list-btn list-btn-outline touch-target"
-                                style={{ padding: '4px 8px', fontSize: '11.5px', minHeight: '32px' }}
-                                onClick={() => window.open(`/worker-details?id=${worker.id}`, '_blank')}
-                                title="Open full worker details in new tab"
+                                type="button"
+                                className="touch-target"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenMenuWorkerId((prev) => (prev === worker.id ? null : worker.id));
+                                }}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: '34px',
+                                  height: '34px',
+                                  borderRadius: '8px',
+                                  backgroundColor: openMenuWorkerId === worker.id ? '#EEF2FF' : '#F8FAFC',
+                                  border: openMenuWorkerId === worker.id ? '1.5px solid #6366F1' : '1px solid #CBD5E1',
+                                  color: openMenuWorkerId === worker.id ? '#4F46E5' : '#475569',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s'
+                                }}
+                                title="Worker Actions (View, Edit, Delete)"
                               >
-                                <Eye size={13} />
-                                <span>Details ↗</span>
+                                <MoreVertical size={17} />
                               </button>
 
-                              {isSuperAgent ? (
-                                <span style={{ fontSize: '11.5px', color: '#94A3B8', fontStyle: 'italic' }}>View Only</span>
-                              ) : role === 'AGENT' ? (
-                                <>
-                                  {isAssignedToMe ? (
-                                    <button
-                                      className="list-btn touch-target"
-                                      style={{ padding: '4px 8px', fontSize: '11.5px', minHeight: '32px', backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}
-                                      disabled={assigningWorkerId === worker.id}
-                                      onClick={() => handleUnassignFromMe(worker)}
-                                    >
-                                      {assigningWorkerId === worker.id ? <Loader2 size={12} className="spinner" /> : 'Unassign'}
-                                    </button>
-                                  ) : (
-                                    <button
-                                      className="list-btn list-btn-primary touch-target"
-                                      style={{ padding: '4px 8px', fontSize: '11.5px', minHeight: '32px' }}
-                                      disabled={assigningWorkerId === worker.id}
-                                      onClick={() => handleAssignToMe(worker)}
-                                    >
-                                      {assigningWorkerId === worker.id ? (
-                                        <Loader2 size={12} className="spinner" />
-                                      ) : (
-                                        <>
-                                          <UserPlus size={13} />
-                                          <span>Assign</span>
-                                        </>
-                                      )}
-                                    </button>
+                              {/* 3-Dots Dropdown Popup */}
+                              {openMenuWorkerId === worker.id && (
+                                <div
+                                  className="worker-action-dropdown animate-fade-in"
+                                  style={{
+                                    position: 'absolute',
+                                    right: 0,
+                                    ...(isNearBottom ? { bottom: 'calc(100% + 4px)' } : { top: 'calc(100% + 4px)' }),
+                                    minWidth: '175px',
+                                    backgroundColor: '#FFFFFF',
+                                    borderRadius: '12px',
+                                    border: '1.5px solid #E2E8F0',
+                                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                                    padding: '6px',
+                                    zIndex: 9999,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '2px',
+                                    textAlign: 'left'
+                                  }}
+                                >
+                                  {/* 1. View Details Option */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenMenuWorkerId(null);
+                                      window.open(`/worker-details?id=${worker.id}`, '_blank');
+                                    }}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '9px',
+                                      width: '100%',
+                                      padding: '8px 12px',
+                                      border: 'none',
+                                      borderRadius: '8px',
+                                      backgroundColor: 'transparent',
+                                      color: '#1E293B',
+                                      fontSize: '12.5px',
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                      transition: 'background-color 0.15s'
+                                    }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F1F5F9')}
+                                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                  >
+                                    <Eye size={15} color="#2563EB" />
+                                    <span>View Details</span>
+                                  </button>
+
+                                  {/* 2. Edit Worker Option */}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenMenuWorkerId(null);
+                                      if (onOpenEditWorkerModal) {
+                                        onOpenEditWorkerModal(worker);
+                                      } else {
+                                        onOpenModal('edit_worker');
+                                      }
+                                    }}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '9px',
+                                      width: '100%',
+                                      padding: '8px 12px',
+                                      border: 'none',
+                                      borderRadius: '8px',
+                                      backgroundColor: 'transparent',
+                                      color: '#1E293B',
+                                      fontSize: '12.5px',
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                      transition: 'background-color 0.15s'
+                                    }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F1F5F9')}
+                                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                  >
+                                    <Edit size={15} color="#059669" />
+                                    <span>Edit Worker</span>
+                                  </button>
+
+                                  {/* 3. Assign / Unassign for Field Agent */}
+                                  {role === 'AGENT' && (
+                                    isAssignedToMe ? (
+                                      <button
+                                        type="button"
+                                        disabled={assigningWorkerId === worker.id}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setOpenMenuWorkerId(null);
+                                          handleUnassignFromMe(worker);
+                                        }}
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '9px',
+                                          width: '100%',
+                                          padding: '8px 12px',
+                                          border: 'none',
+                                          borderRadius: '8px',
+                                          backgroundColor: 'transparent',
+                                          color: '#D97706',
+                                          fontSize: '12.5px',
+                                          fontWeight: 600,
+                                          cursor: 'pointer',
+                                          transition: 'background-color 0.15s'
+                                        }}
+                                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#FFFBEB')}
+                                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                      >
+                                        <UserCheck size={15} color="#D97706" />
+                                        <span>{assigningWorkerId === worker.id ? 'Unassigning...' : 'Unassign from Me'}</span>
+                                      </button>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        disabled={assigningWorkerId === worker.id}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setOpenMenuWorkerId(null);
+                                          handleAssignToMe(worker);
+                                        }}
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '9px',
+                                          width: '100%',
+                                          padding: '8px 12px',
+                                          border: 'none',
+                                          borderRadius: '8px',
+                                          backgroundColor: 'transparent',
+                                          color: '#2563EB',
+                                          fontSize: '12.5px',
+                                          fontWeight: 600,
+                                          cursor: 'pointer',
+                                          transition: 'background-color 0.15s'
+                                        }}
+                                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#EFF6FF')}
+                                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                                      >
+                                        <UserPlus size={15} color="#2563EB" />
+                                        <span>{assigningWorkerId === worker.id ? 'Assigning...' : 'Assign to Me'}</span>
+                                      </button>
+                                    )
                                   )}
 
+                                  <div style={{ height: '1px', backgroundColor: '#F1F5F9', margin: '4px 0' }} />
+
+                                  {/* 4. Delete Worker Option (Super Agent, Agent, Customer Support, etc.) */}
                                   <button
-                                    className="list-btn list-btn-outline touch-target"
-                                    style={{ padding: '4px 8px', fontSize: '11.5px', minHeight: '32px' }}
-                                    onClick={() => onOpenEditWorkerModal ? onOpenEditWorkerModal(worker) : onOpenModal('edit_worker')}
-                                  >
-                                    <Edit size={13} />
-                                    <span>Edit</span>
-                                  </button>
-                                </>
-                              ) : (
-                                <>
-                                  <button
-                                    className="list-btn list-btn-outline touch-target"
-                                    style={{ padding: '4px 8px', fontSize: '11.5px', minHeight: '32px' }}
-                                    onClick={() => onOpenEditWorkerModal ? onOpenEditWorkerModal(worker) : onOpenModal('edit_worker')}
-                                  >
-                                    <Edit size={13} />
-                                    <span>Edit</span>
-                                  </button>
-                                  <button
-                                    className="list-btn touch-target"
-                                    style={{ padding: '4px 8px', fontSize: '11.5px', minHeight: '32px', backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}
+                                    type="button"
                                     disabled={deletingId === worker.id}
-                                    onClick={() => handleDeleteWorker(worker.id, worker.name)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenMenuWorkerId(null);
+                                      handleDeleteWorker(worker.id, worker.name);
+                                    }}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '9px',
+                                      width: '100%',
+                                      padding: '8px 12px',
+                                      border: 'none',
+                                      borderRadius: '8px',
+                                      backgroundColor: 'transparent',
+                                      color: '#DC2626',
+                                      fontSize: '12.5px',
+                                      fontWeight: 700,
+                                      cursor: deletingId === worker.id ? 'not-allowed' : 'pointer',
+                                      transition: 'background-color 0.15s'
+                                    }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#FEF2F2')}
+                                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                                   >
-                                    {deletingId === worker.id ? <Loader2 size={12} className="spinner" /> : <Trash2 size={13} />}
+                                    {deletingId === worker.id ? (
+                                      <Loader2 size={15} className="spinner" />
+                                    ) : (
+                                      <Trash2 size={15} color="#DC2626" />
+                                    )}
+                                    <span>{deletingId === worker.id ? 'Deleting...' : 'Delete Worker'}</span>
                                   </button>
-                                </>
+                                </div>
                               )}
                             </div>
                           </td>
@@ -376,15 +535,11 @@ export const WorkersPage: React.FC<WorkersPageProps> = ({
                     variant: 'primary'
                   }}
                   secondaryActions={[
-                    ...(!isSuperAgent && onOpenEditWorkerModal
-                      ? [
-                          {
-                            label: 'Edit Worker Details',
-                            icon: <Edit size={14} />,
-                            onClick: () => onOpenEditWorkerModal(worker)
-                          }
-                        ]
-                      : []),
+                    {
+                      label: 'Edit Worker Details',
+                      icon: <Edit size={14} />,
+                      onClick: () => onOpenEditWorkerModal ? onOpenEditWorkerModal(worker) : onOpenModal('edit_worker')
+                    },
                     ...(role === 'AGENT'
                       ? isAssignedToMe
                         ? [
@@ -403,16 +558,12 @@ export const WorkersPage: React.FC<WorkersPageProps> = ({
                             }
                           ]
                       : []),
-                    ...(!isSuperAgent && role !== 'AGENT'
-                      ? [
-                          {
-                            label: 'Delete Worker',
-                            icon: <Trash2 size={14} />,
-                            variant: 'danger' as const,
-                            onClick: () => handleDeleteWorker(worker.id, worker.name)
-                          }
-                        ]
-                      : [])
+                    {
+                      label: 'Delete Worker',
+                      icon: <Trash2 size={14} />,
+                      variant: 'danger' as const,
+                      onClick: () => handleDeleteWorker(worker.id, worker.name)
+                    }
                   ]}
                 />
               );
@@ -441,3 +592,5 @@ export const WorkersPage: React.FC<WorkersPageProps> = ({
     </div>
   );
 };
+
+export default WorkersPage;
