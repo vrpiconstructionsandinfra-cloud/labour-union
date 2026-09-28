@@ -564,11 +564,11 @@ async function getSupportAnalytics(reqUser) {
             }
         }
     });
-    const avgResponseTimeMins = responseCount > 0 ? Math.round(totalResponseTimeMinutes / responseCount) : 84; // 1h 24m default format
+    const avgResponseTimeMins = responseCount > 0 ? Math.round(totalResponseTimeMinutes / responseCount) : 0;
     const hours = Math.floor(avgResponseTimeMins / 60);
     const mins = avgResponseTimeMins % 60;
-    const avgResponseTimeStr = `${hours}h ${mins}m`;
-    const resolutionRate = totalTickets > 0 ? Math.round((resolvedTickets / totalTickets) * 1000) / 10 : 92.4;
+    const avgResponseTimeStr = responseCount > 0 ? `${hours}h ${mins}m` : "0m";
+    const resolutionRate = totalTickets > 0 ? Math.round((resolvedTickets / totalTickets) * 1000) / 10 : 0;
     return {
         stats: {
             totalTickets,

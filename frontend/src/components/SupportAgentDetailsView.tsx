@@ -249,7 +249,7 @@ export const SupportAgentDetailsView: React.FC<SupportAgentDetailsViewProps> = (
               <span>Handled Tickets</span>
               <MessageSquare size={15} color="#2563EB" />
             </div>
-            <div className="support-stat-pill-value">{totalTickets || 4}</div>
+            <div className="support-stat-pill-value">{totalTickets}</div>
             <div className="support-stat-pill-sub">Lifetime ticket requests</div>
           </div>
 

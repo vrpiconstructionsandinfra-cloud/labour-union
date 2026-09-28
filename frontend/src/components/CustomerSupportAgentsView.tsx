@@ -251,7 +251,7 @@ export const CustomerSupportAgentsView: React.FC<CustomerSupportAgentsViewProps>
   // Calculate Summary Metrics
   const totalSupportAgents = supportAgents.length;
   const activeCount = supportAgents.filter((a) => (a.status || '').toUpperCase() !== 'INACTIVE').length;
-  const totalTicketsCount = tickets.length || 4;
+  const totalTicketsCount = tickets.length;
   const resolvedTicketsCount = tickets.filter((t) => t.status === 'RESOLVED' || t.status === 'CLOSED').length;
 
   // Pagination Math
