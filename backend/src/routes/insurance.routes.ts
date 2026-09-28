@@ -21,13 +21,13 @@ router.use(authenticate);
  */
 router.post(
   "/",
-  authorize("SUPER_AGENT", "AGENT"),
+  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT"),
   createInsurance
 );
 
 router.get(
   "/",
-  authorize("SUPER_AGENT", "AGENT", "WORKER"),
+  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT", "AGENT", "WORKER"),
   getAllInsurance
 );
 
@@ -36,28 +36,28 @@ router.get(
  */
 router.get(
   "/my",
-  authorize("WORKER"),
+  authorize("WORKER", "AGENT"),
   getMyInsurance
 );
 
 /*
- * Super Agent
+ * Super Agent & Customer Support
  */
 router.get(
   "/:workerId",
-  authorize("SUPER_AGENT"),
+  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT"),
   getWorkerInsurance
 );
 
 router.patch(
   "/:id",
-  authorize("SUPER_AGENT", "AGENT"),
+  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT"),
   updateInsurance
 );
 
 router.delete(
   "/:id",
-  authorize("SUPER_AGENT", "AGENT"),
+  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT"),
   deleteInsurance
 );
 

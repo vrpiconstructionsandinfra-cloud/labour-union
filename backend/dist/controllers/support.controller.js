@@ -51,6 +51,7 @@ exports.updateSiteStatus = updateSiteStatus;
 exports.getAgentMessages = getAgentMessages;
 exports.sendAgentMessage = sendAgentMessage;
 exports.raiseTicketFromChat = raiseTicketFromChat;
+exports.deleteSupportTicket = deleteSupportTicket;
 const supportService = __importStar(require("../services/support.service"));
 /*
  * Worker - Create Ticket
@@ -458,6 +459,32 @@ async function raiseTicketFromChat(req, res) {
         res.status(400).json({
             success: false,
             message: error.message || "Failed to raise support ticket",
+        });
+    }
+}
+/*
+ * Delete Support Ticket
+ */
+async function deleteSupportTicket(req, res) {
+    try {
+        const id = Number(req.params.id);
+        if (!id || isNaN(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid ticket ID",
+            });
+        }
+        const deleted = await supportService.deleteTicket(id);
+        res.json({
+            success: true,
+            message: "Support ticket deleted successfully",
+            data: deleted,
+        });
+    }
+    catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message || "Failed to delete support ticket",
         });
     }
 }

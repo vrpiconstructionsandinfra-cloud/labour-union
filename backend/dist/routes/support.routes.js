@@ -34,4 +34,5 @@ router.patch("/:id/reply", (0, role_middleware_1.authorize)("AGENT", "SUPER_AGEN
 router.patch("/:id/close", (0, role_middleware_1.authorize)("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"), support_controller_1.closeTicket);
 router.get("/:id/comments", (0, role_middleware_1.authorize)("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"), support_controller_1.getTicketComments);
 router.post("/:id/comments", (0, role_middleware_1.authorize)("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"), support_controller_1.addTicketComment);
+router.delete("/:id", (0, role_middleware_1.authorize)("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"), support_controller_1.deleteSupportTicket);
 exports.default = router;

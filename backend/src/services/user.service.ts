@@ -153,86 +153,122 @@ export async function deleteUser(id: number, reqUser?: { id: number; role: strin
   if (!user) {
     throw new Error("User not found");
   }
-  if (reqUser?.role === UserRole.SUPER_AGENT && user.role === UserRole.WORKER) {
-    throw new Error("Super Agents cannot remove worker records");
+
+  if (user.role === UserRole.SUPER_AGENT) {
+    throw new Error("Super Agent account cannot be deleted.");
   }
 
-  return prisma.$transaction(async (tx) => {
-    // 1. Unassign tickets handled by this agent
-    await tx.supportTicket.updateMany({
-      where: { handledById: id },
-      data: { handledById: null }
-    });
+  return prisma.$transaction(
+    async (tx) => {
+      // 1. Parallelize all independent cascade cleanups
+      await Promise.all([
+        // Unassign tickets handled by this agent
+        tx.supportTicket.updateMany({
+          where: { handledById: id },
+          data: { handledById: null },
+        }).catch(() => {}),
 
-    // 2. Unassign workers assigned to this agent
-    await tx.user.updateMany({
-      where: { assignedAgentId: id },
-      data: { assignedAgentId: null }
-    });
+        // Unassign workers assigned to this agent
+        tx.user.updateMany({
+          where: { assignedAgentId: id },
+          data: { assignedAgentId: null },
+        }).catch(() => {}),
 
-    // 3. Clear created sites reference
-    await tx.site.updateMany({
-      where: { createdById: id },
-      data: { createdById: reqUser?.id && reqUser.id !== id ? reqUser.id : 1 }
-    }).catch(() => {});
+        // Unassign agents managed by this support agent
+        tx.user.updateMany({
+          where: { managedBySupportId: id },
+          data: { managedBySupportId: null },
+        }).catch(() => {}),
 
-    // 4. Delete user's attendance logs
-    await tx.attendance.deleteMany({
-      where: { OR: [{ workerId: id }, { markedById: id }] }
-    });
+        // Clear created sites reference
+        tx.site.updateMany({
+          where: { createdById: id },
+          data: { createdById: reqUser?.id && reqUser.id !== id ? reqUser.id : 1 },
+        }).catch(() => {}),
 
-    // 5. Delete user's leave requests
-    await tx.leave.deleteMany({
-      where: { OR: [{ workerId: id }, { approvedById: id }] }
-    });
+        // Delete user's attendance logs
+        tx.attendance.deleteMany({
+          where: { OR: [{ workerId: id }, { markedById: id }] },
+        }).catch(() => {}),
 
-    // 6. Delete user's wallet transactions & wallet
-    const userWallet = await tx.wallet.findUnique({ where: { workerId: id } });
-    if (userWallet) {
-      await tx.walletTransaction.deleteMany({
-        where: { walletId: userWallet.id }
+        // Delete user's leave requests
+        tx.leave.deleteMany({
+          where: { OR: [{ workerId: id }, { approvedById: id }] },
+        }).catch(() => {}),
+
+        // Delete user's payments
+        tx.payment.deleteMany({
+          where: { workerId: id },
+        }).catch(() => {}),
+
+        // Delete user's insurance
+        tx.insurance.deleteMany({
+          where: { workerId: id },
+        }).catch(() => {}),
+
+        // Delete user's disbursement requests
+        tx.disbursementRequest.deleteMany({
+          where: { OR: [{ agentId: id }, { workerId: id }] },
+        }).catch(() => {}),
+
+        // Delete user's ticket comments or comments on tickets created by user
+        tx.supportTicketComment.deleteMany({
+          where: { OR: [{ authorId: id }, { ticket: { workerId: id } }] },
+        }).catch(() => {}),
+
+        // Delete user's support tickets created by user
+        tx.supportTicket.deleteMany({
+          where: { workerId: id },
+        }).catch(() => {}),
+
+        // Delete user's notifications
+        tx.notification.deleteMany({
+          where: { userId: id },
+        }).catch(() => {}),
+
+        // Delete worker registration incentives
+        tx.workerRegistrationIncentive.deleteMany({
+          where: { OR: [{ workerId: id }, { agentId: id }] },
+        }).catch(() => {}),
+
+        // Delete site assignments
+        tx.siteAssignment.deleteMany({
+          where: { OR: [{ agentId: id }, { assignedById: id }] },
+        }).catch(() => {}),
+
+        // Delete support agent messages
+        tx.supportAgentMessage.deleteMany({
+          where: { OR: [{ senderId: id }, { supportAgentId: id }, { fieldAgentId: id }] },
+        }).catch(() => {}),
+
+        // Delete site payments
+        tx.sitePayment.deleteMany({
+          where: { payerId: id },
+        }).catch(() => {}),
+      ]);
+
+      // 2. Delete user's wallet & wallet transactions if any
+      const userWallet = await tx.wallet.findUnique({ where: { workerId: id } }).catch(() => null);
+      if (userWallet) {
+        await tx.walletTransaction.deleteMany({
+          where: { walletId: userWallet.id },
+        }).catch(() => {});
+        await tx.wallet.delete({
+          where: { id: userWallet.id },
+        }).catch(() => {});
+      }
+
+      // 3. Delete user record
+      return tx.user.delete({
+        where: { id },
+        select: userSelect,
       });
-      await tx.wallet.delete({
-        where: { id: userWallet.id }
-      });
+    },
+    {
+      maxWait: 10000,
+      timeout: 30000,
     }
-
-    // 7. Delete user's payments
-    await tx.payment.deleteMany({
-      where: { workerId: id }
-    });
-
-    // 8. Delete user's insurance
-    await tx.insurance.deleteMany({
-      where: { workerId: id }
-    });
-
-    // 9. Delete user's disbursement requests
-    await tx.disbursementRequest.deleteMany({
-      where: { OR: [{ agentId: id }, { workerId: id }] }
-    });
-
-    // 10. Delete user's ticket comments
-    await tx.supportTicketComment.deleteMany({
-      where: { authorId: id }
-    });
-
-    // 11. Delete user's support tickets created by user
-    await tx.supportTicket.deleteMany({
-      where: { workerId: id }
-    });
-
-    // 12. Delete user's notifications
-    await tx.notification.deleteMany({
-      where: { userId: id }
-    });
-
-    // 13. Delete user record
-    return tx.user.delete({
-      where: { id },
-      select: userSelect,
-    });
-  });
+  );
 }
 
 /*

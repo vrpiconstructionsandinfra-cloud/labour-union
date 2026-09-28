@@ -26,6 +26,7 @@ import { getSocket } from '../services/socket';
 import type { AgentItem, WorkerItem, SiteItem } from '../types';
 import { UserAvatar } from '../components/UserAvatar';
 import { AgentDetailsView } from '../components/AgentDetailsView';
+import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 import {
   ListHeader,
   StatusBadge,
@@ -770,45 +771,22 @@ export const AgentsPage: React.FC<AgentsPageProps> = ({
       )}
 
       {/* Delete Confirmation Modal */}
-      {deletingAgent && (
-        <div className="header-modal-overlay animate-fade-in" onClick={() => setDeletingAgent(null)}>
-          <div className="header-modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="header-modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Trash2 size={18} color="#EF4444" />
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#991B1B' }}>Delete Agent</h3>
-              </div>
-              <button type="button" className="header-modal-close" onClick={() => setDeletingAgent(null)}>
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="header-modal-body">
-              <p style={{ fontSize: '14px', color: '#475569', margin: 0 }}>
-                Are you sure you want to delete <strong>{deletingAgent.name}</strong> ({deletingAgent.employeeCode || `AGT-${deletingAgent.id}`})?
-              </p>
-              <p style={{ fontSize: '12px', color: '#DC2626', margin: '6px 0 0 0' }}>
-                Workers currently assigned to this agent will be set to unassigned.
-              </p>
-
-              <div className="header-modal-footer" style={{ marginTop: '16px' }}>
-                <button type="button" className="list-btn list-btn-outline" onClick={() => setDeletingAgent(null)}>
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="list-btn list-btn-danger"
-                  style={{ backgroundColor: '#DC2626', color: '#fff' }}
-                  onClick={handleDeleteAgentConfirm}
-                  disabled={isSubmittingDelete}
-                >
-                  {isSubmittingDelete ? <Loader2 size={15} className="spinner" /> : 'Confirm Delete'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmModal
+        isOpen={Boolean(deletingAgent)}
+        onClose={() => setDeletingAgent(null)}
+        onConfirm={handleDeleteAgentConfirm}
+        isDeleting={isSubmittingDelete}
+        title="Delete Field Agent"
+        itemType="agent"
+        itemName={deletingAgent?.name || ''}
+        itemCode={deletingAgent?.employeeCode || (deletingAgent?.id ? `AGT-${deletingAgent.id}` : undefined)}
+        itemRole="Field Agent"
+        itemEmail={deletingAgent?.email}
+        itemPhone={deletingAgent?.phone}
+        itemAvatar={deletingAgent?.avatar || deletingAgent?.profileImage}
+        warningNote="Workers currently assigned to this field agent will be moved to unassigned. The agent will no longer be able to log in or manage worker attendance and assignments."
+        confirmButtonText="Delete Agent"
+      />
     </div>
   );
 };

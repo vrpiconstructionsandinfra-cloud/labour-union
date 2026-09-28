@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, MapPin, Users, ChevronDown, ChevronUp, UserX, Loader2, CheckCircle2, Building, UserPlus } from 'lucide-react';
-import { fetchSitesApi, fetchAgentsApi, removeAgentFromSiteApi, updateSiteApi } from '../services/api';
+import { Plus, MapPin, Users, ChevronDown, ChevronUp, UserX, Loader2, CheckCircle2, Building, UserPlus, Trash2 } from 'lucide-react';
+import { fetchSitesApi, fetchAgentsApi, removeAgentFromSiteApi, updateSiteApi, deleteSiteApi } from '../services/api';
+import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 import { queryClient, QUERY_KEYS } from '../services/queryClient';
 import { useAuth } from '../context/AuthContext';
 import type { SiteItem, AgentItem } from '../types';
@@ -42,7 +43,12 @@ export const SitesPage: React.FC<SitesPageProps> = ({
   const [unassigningAgentId, setUnassigningAgentId] = useState<string | null>(null);
   const [updatingStatusSiteId, setUpdatingStatusSiteId] = useState<string | null>(null);
 
+  // Deletion Modal State
+  const [deletingSite, setDeletingSite] = useState<SiteItem | null>(null);
+  const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
+
   const isAgentRole = role === 'AGENT';
+  const canManageSites = role === 'SUPER_AGENT' || role === 'CUSTOMER_SUPPORT';
 
   const loadData = () => {
     setIsLoading(true);
@@ -90,6 +96,22 @@ export const SitesPage: React.FC<SitesPageProps> = ({
       alert(err.message || 'Failed to unassign agent from site');
     } finally {
       setUnassigningAgentId(null);
+    }
+  };
+
+  const handleDeleteSiteConfirm = async () => {
+    if (!deletingSite) return;
+    setIsSubmittingDelete(true);
+    try {
+      await deleteSiteApi(deletingSite.id);
+      setDeletingSite(null);
+      loadData();
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.sites });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboardStats });
+    } catch (err: any) {
+      alert(err?.message || 'Failed to delete working site.');
+    } finally {
+      setIsSubmittingDelete(false);
     }
   };
 
@@ -277,6 +299,28 @@ export const SitesPage: React.FC<SitesPageProps> = ({
                         {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                         <span>{isExpanded ? 'Hide' : 'Agents'}</span>
                       </button>
+                      {canManageSites && (
+                        <button
+                          type="button"
+                          className="list-btn touch-target"
+                          style={{
+                            padding: '7px 10px',
+                            fontSize: '12.5px',
+                            backgroundColor: '#FEF2F2',
+                            color: '#DC2626',
+                            border: '1px solid #FECACA',
+                            borderRadius: '6px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => setDeletingSite(site)}
+                          title="Delete Working Site"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
 
                     {isExpanded && (
@@ -404,12 +448,41 @@ export const SitesPage: React.FC<SitesPageProps> = ({
                       }
                     }
                   }}
+                  secondaryActions={
+                    canManageSites
+                      ? [
+                          {
+                            label: 'Delete Site',
+                            icon: <Trash2 size={14} />,
+                            variant: 'danger' as const,
+                            onClick: () => setDeletingSite(site)
+                          }
+                        ]
+                      : undefined
+                  }
                 />
               );
             })}
           </div>
         </>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(deletingSite)}
+        onClose={() => setDeletingSite(null)}
+        onConfirm={handleDeleteSiteConfirm}
+        isDeleting={isSubmittingDelete}
+        title="Delete Working Site"
+        itemType="custom"
+        itemName={deletingSite?.siteName || 'Working Site'}
+        itemCode={deletingSite?.siteCode || (deletingSite?.id ? `SITE-${deletingSite.id}` : undefined)}
+        itemRole={deletingSite?.companyName || 'Working Site'}
+        itemEmail={deletingSite?.city ? `Location: ${deletingSite.city}${deletingSite.state ? ', ' + deletingSite.state : ''}` : undefined}
+        itemPhone={deletingSite?.totalWorkers !== undefined ? `${deletingSite.totalWorkers} Workers Registered` : undefined}
+        warningNote="All field agents and workers currently assigned to this site will be automatically unassigned. Working site attendances and historical payments will be preserved. This action cannot be undone."
+        confirmButtonText="Delete Working Site"
+      />
     </div>
   );
 };

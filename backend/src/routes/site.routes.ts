@@ -43,7 +43,7 @@ router.put(
 router.delete(
   "/:id",
   authenticate,
-  authorize("SUPER_AGENT"),
+  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT"),
   siteController.remove
 );
 

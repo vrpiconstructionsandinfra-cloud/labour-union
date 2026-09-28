@@ -112,7 +112,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'leaves', label: 'Leave Requests', description: 'Leave requests, applications and approvals', icon: FileText, tabKey: 'leaves' },
     { id: 'my_leaves', label: 'My Leaves', description: 'Personal leave applications and status', icon: FileText, tabKey: 'my_leaves' },
     { id: 'wallet', label: 'Wallet', description: 'Digital wallet balances and payout claims', icon: Wallet, tabKey: 'wallet' },
-    { id: 'insurance', label: 'Insurance', description: 'Active policy coverage and benefits', icon: ShieldCheck, tabKey: 'insurance' },
+    { id: 'insurance', label: role === 'SUPER_AGENT' ? 'Insurance' : 'My Insurance', description: 'Active policy coverage and benefits', icon: ShieldCheck, tabKey: 'insurance' },
     { id: 'agent_salary', label: 'Agent Salaries', description: 'Agent base salaries, bonuses and payouts', icon: CreditCard, tabKey: 'agent_salary' },
     { id: 'tickets', label: 'Customer Support', description: 'Customer support agents and ticket queue', icon: Headset, tabKey: (role as string) === 'SUPER_AGENT' ? 'support_agents' : 'tickets' },
     { id: 'my_details', label: 'My Details', description: 'QR code and personal account information', icon: QrCode, tabKey: 'my_details' },
@@ -346,7 +346,7 @@ export const Header: React.FC<HeaderProps> = ({
       case 'leaves': return 'Leave Requests';
       case 'payroll': return 'Payroll & Wages';
       case 'wallet': return 'Digital Wallet';
-      case 'insurance': return 'Insurance Policies';
+      case 'insurance': return role === 'SUPER_AGENT' ? 'Insurance Policies' : 'My Insurance';
       case 'tickets': return 'Support Tickets';
       case 'my_details': return 'My Details';
       default: return activeTab.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');

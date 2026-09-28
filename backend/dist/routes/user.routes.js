@@ -20,5 +20,5 @@ router.get("/:id", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGEN
 // Update user
 router.put("/:id", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.AGENT, client_1.UserRole.WORKER), user_controller_1.update);
 // Delete user
-router.delete("/:id", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.AGENT), user_controller_1.remove);
+router.delete("/:id", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.AGENT, client_1.UserRole.CUSTOMER_SUPPORT), user_controller_1.remove);
 exports.default = router;

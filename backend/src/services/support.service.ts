@@ -1062,4 +1062,38 @@ export async function raiseTicketFromSupportChat(data: {
   });
 
   return ticket;
+}
+
+/*
+ * Delete Support Ticket
+ */
+export async function deleteTicket(id: number) {
+  const ticket = await prisma.supportTicket.findUnique({
+    where: { id },
+    include: {
+      worker: true,
+      handledBy: true,
+    },
+  });
+
+  if (!ticket) {
+    throw new Error("Support ticket not found");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // 1. Delete associated ticket comments
+    await tx.supportTicketComment.deleteMany({
+      where: { ticketId: id },
+    }).catch(() => {});
+
+    // 2. Delete the support ticket
+    const deleted = await tx.supportTicket.delete({
+      where: { id },
+    });
+
+    // 3. Emit real-time ticket update / deletion
+    emitTicketUpdate({ ...deleted, isDeleted: true });
+
+    return deleted;
+  });
 }

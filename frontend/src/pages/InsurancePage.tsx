@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { fetchInsuranceApi, deleteInsuranceApi, fetchAttendanceLogsApi } from '../services/api';
 import { getSocket } from '../services/socket';
+import { useAuth } from '../context/AuthContext';
 import type { InsurancePolicy } from '../types';
 import {
   ListHeader,
@@ -42,6 +43,8 @@ export const InsurancePage: React.FC<InsurancePageProps> = ({
   onOpenModal,
   onOpenEditInsuranceModal
 }) => {
+  const { role } = useAuth();
+  const canManageInsurance = role === 'SUPER_AGENT' || role === 'CUSTOMER_SUPPORT';
   const [summary, setSummary] = useState({
     activePolicies: 0,
     expiringSoon: 0,
@@ -201,8 +204,12 @@ export const InsurancePage: React.FC<InsurancePageProps> = ({
     <div className="page-wrapper animate-fade-in">
       {/* Standardized Header */}
       <ListHeader
-        title="Insurance & Union Welfare"
-        subtitle="Group health insurance, accident coverage, policy renewals, and claims management."
+        title={role === 'SUPER_AGENT' ? 'Insurance & Union Welfare' : 'My Insurance'}
+        subtitle={
+          role === 'SUPER_AGENT'
+            ? 'Group health insurance, accident coverage, policy renewals, and claims management.'
+            : 'View your active group health insurance policy, enrolled coverage, and policy benefits.'
+        }
         badgeCount={totalItems}
         searchQuery={searchTerm}
         onSearchChange={setSearchTerm}
@@ -210,9 +217,9 @@ export const InsurancePage: React.FC<InsurancePageProps> = ({
         filterOptions={PRESET_FILTERS}
         activeFilter={activePreset}
         onFilterSelect={handleSelectPreset}
-        primaryActionLabel="Add New Policy"
-        primaryActionIcon={<Plus size={16} />}
-        onPrimaryAction={() => onOpenModal('add_insurance')}
+        primaryActionLabel={canManageInsurance ? "Add New Policy" : undefined}
+        primaryActionIcon={canManageInsurance ? <Plus size={16} /> : undefined}
+        onPrimaryAction={canManageInsurance ? () => onOpenModal('add_insurance') : undefined}
         customFilters={
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#475569', fontWeight: 600, flexWrap: 'wrap' }}>
             <Calendar size={14} color="#64748B" />
@@ -401,7 +408,7 @@ export const InsurancePage: React.FC<InsurancePageProps> = ({
                       <th>Monthly Premium</th>
                       <th>Expiry Date</th>
                       <th>Status</th>
-                      <th>Actions</th>
+                      {canManageInsurance && <th>Actions</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -429,29 +436,31 @@ export const InsurancePage: React.FC<InsurancePageProps> = ({
                         <td>
                           <StatusBadge status={p.status} size="sm" />
                         </td>
-                        <td>
-                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                            {onOpenEditInsuranceModal && (
+                        {canManageInsurance && (
+                          <td>
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                              {onOpenEditInsuranceModal && (
+                                <button
+                                  className="list-btn list-btn-outline touch-target"
+                                  style={{ padding: '3px 8px', fontSize: '11px', minHeight: '30px' }}
+                                  onClick={() => onOpenEditInsuranceModal(p)}
+                                  title="Edit Policy"
+                                >
+                                  <Edit size={12} />
+                                  <span>Edit</span>
+                                </button>
+                              )}
                               <button
-                                className="list-btn list-btn-outline touch-target"
-                                style={{ padding: '3px 8px', fontSize: '11px', minHeight: '30px' }}
-                                onClick={() => onOpenEditInsuranceModal(p)}
-                                title="Edit Policy"
+                                className="list-btn touch-target"
+                                style={{ padding: '3px 8px', fontSize: '11px', minHeight: '30px', backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}
+                                onClick={() => handleDeletePolicy(p.id)}
+                                title="Delete Policy"
                               >
-                                <Edit size={12} />
-                                <span>Edit</span>
+                                <Trash2 size={12} />
                               </button>
-                            )}
-                            <button
-                              className="list-btn touch-target"
-                              style={{ padding: '3px 8px', fontSize: '11px', minHeight: '30px', backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}
-                              onClick={() => handleDeletePolicy(p.id)}
-                              title="Delete Policy"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          </div>
-                        </td>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -487,23 +496,27 @@ export const InsurancePage: React.FC<InsurancePageProps> = ({
                     icon: <Calendar size={13} color="#64748B" />
                   }
                 ]}
-                secondaryActions={[
-                  ...(onOpenEditInsuranceModal
+                secondaryActions={
+                  canManageInsurance
                     ? [
+                        ...(onOpenEditInsuranceModal
+                          ? [
+                              {
+                                label: 'Edit Policy',
+                                icon: <Edit size={14} />,
+                                onClick: () => onOpenEditInsuranceModal(p)
+                              }
+                            ]
+                          : []),
                         {
-                          label: 'Edit Policy',
-                          icon: <Edit size={14} />,
-                          onClick: () => onOpenEditInsuranceModal(p)
+                          label: 'Delete Policy',
+                          icon: <Trash2 size={14} />,
+                          variant: 'danger' as const,
+                          onClick: () => handleDeletePolicy(p.id)
                         }
                       ]
-                    : []),
-                  {
-                    label: 'Delete Policy',
-                    icon: <Trash2 size={14} />,
-                    variant: 'danger' as const,
-                    onClick: () => handleDeletePolicy(p.id)
-                  }
-                ]}
+                    : undefined
+                }
               />
             ))}
           </div>

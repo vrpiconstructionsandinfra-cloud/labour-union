@@ -10,10 +10,8 @@ import {
   Phone,
   Mail,
   UserCheck,
-  Loader2,
   MessageSquare,
-  Sparkles,
-  X
+  Sparkles
 } from 'lucide-react';
 import {
   fetchUsersApi,
@@ -25,6 +23,7 @@ import { getSocket } from '../services/socket';
 import { UserAvatar } from './UserAvatar';
 import { SupportAgentModal } from './SupportAgentModal';
 import { SupportAgentDetailsView } from './SupportAgentDetailsView';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 import {
   ListHeader,
   StatusBadge,
@@ -137,36 +136,6 @@ export const CustomerSupportAgentsView: React.FC<CustomerSupportAgentsViewProps>
           }
         }
       });
-
-      // Provide demo records if none in database for testing visual completeness
-      if (realSupportAgents.length === 0) {
-        realSupportAgents.push(
-          {
-            id: '1',
-            numericId: 1,
-            name: 'Manasa',
-            employeeCode: 'CSA-002',
-            email: 'goudaashish994@gmail.com',
-            phone: '+91 98765 43211',
-            department: 'HQ Support (1 Active)',
-            joinedDate: '12 Jan, 2025',
-            status: 'Active',
-            avatar: ''
-          },
-          {
-            id: '2',
-            numericId: 2,
-            name: 'Mega',
-            employeeCode: 'CSA-001',
-            email: 'ashish123@gmail.com',
-            phone: '+91 98765 43212',
-            department: 'HQ Support Center',
-            joinedDate: '01 Jan, 2025',
-            status: 'Active',
-            avatar: ''
-          }
-        );
-      }
 
       setSupportAgents(realSupportAgents);
 
@@ -629,45 +598,22 @@ export const CustomerSupportAgentsView: React.FC<CustomerSupportAgentsViewProps>
       />
 
       {/* Delete Confirmation Modal */}
-      {deletingAgent && (
-        <div className="header-modal-overlay animate-fade-in" onClick={() => setDeletingAgent(null)}>
-          <div className="header-modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="header-modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Trash2 size={18} color="#EF4444" />
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#991B1B' }}>Delete Support Agent</h3>
-              </div>
-              <button type="button" className="header-modal-close" onClick={() => setDeletingAgent(null)}>
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="header-modal-body">
-              <p style={{ fontSize: '14px', color: '#475569', margin: 0 }}>
-                Are you sure you want to delete support agent <strong>{deletingAgent.name}</strong> ({deletingAgent.employeeCode || `CSA-${deletingAgent.id}`})?
-              </p>
-              <p style={{ fontSize: '12px', color: '#DC2626', margin: '6px 0 0 0' }}>
-                Open tickets assigned to this agent will be returned to the unassigned queue.
-              </p>
-
-              <div className="header-modal-footer" style={{ marginTop: '16px' }}>
-                <button type="button" className="list-btn list-btn-outline" onClick={() => setDeletingAgent(null)}>
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="list-btn list-btn-danger"
-                  style={{ backgroundColor: '#DC2626', color: '#fff' }}
-                  onClick={handleDeleteConfirm}
-                  disabled={isSubmittingDelete}
-                >
-                  {isSubmittingDelete ? <Loader2 size={15} className="spinner" /> : 'Confirm Delete'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmModal
+        isOpen={Boolean(deletingAgent)}
+        onClose={() => setDeletingAgent(null)}
+        onConfirm={handleDeleteConfirm}
+        isDeleting={isSubmittingDelete}
+        title="Delete Customer Support Agent"
+        itemType="support_agent"
+        itemName={deletingAgent?.name || ''}
+        itemCode={deletingAgent?.employeeCode || (deletingAgent?.id ? `CSA-${deletingAgent.id}` : undefined)}
+        itemRole="Customer Support Agent"
+        itemEmail={deletingAgent?.email}
+        itemPhone={deletingAgent?.phone}
+        itemAvatar={deletingAgent?.profilePhoto || (deletingAgent as any)?.avatar}
+        warningNote="Open support tickets assigned to this agent will be returned to the unassigned queue. The support agent will no longer be able to log in to the system."
+        confirmButtonText="Delete Support Agent"
+      />
     </div>
   );
 };

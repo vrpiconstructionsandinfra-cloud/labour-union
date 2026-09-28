@@ -77,7 +77,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'leaves', label: 'Leave Requests', icon: FileText },
     { id: 'my_leaves', label: 'My Leaves', icon: FileText },
     { id: 'wallet', label: 'Wallet', icon: Wallet },
-    { id: 'insurance', label: 'Insurance', icon: ShieldCheck },
+    { id: 'insurance', label: role === 'SUPER_AGENT' ? 'Insurance' : 'My Insurance', icon: ShieldCheck },
     { id: 'agent_salary', label: 'Agent Salaries', icon: CreditCard },
     { id: 'tickets', label: 'Customer Support', icon: Headset },
     { id: 'my_details', label: 'My Details', icon: QrCode }

@@ -9,16 +9,16 @@ router.use(auth_middleware_1.authenticate);
 /*
  * Super Agent
  */
-router.post("/", (0, role_middleware_1.authorize)("SUPER_AGENT", "AGENT"), insurance_controller_1.createInsurance);
-router.get("/", (0, role_middleware_1.authorize)("SUPER_AGENT", "AGENT", "WORKER"), insurance_controller_1.getAllInsurance);
+router.post("/", (0, role_middleware_1.authorize)("SUPER_AGENT", "CUSTOMER_SUPPORT"), insurance_controller_1.createInsurance);
+router.get("/", (0, role_middleware_1.authorize)("SUPER_AGENT", "CUSTOMER_SUPPORT", "AGENT", "WORKER"), insurance_controller_1.getAllInsurance);
 /*
  * Worker
  */
-router.get("/my", (0, role_middleware_1.authorize)("WORKER"), insurance_controller_1.getMyInsurance);
+router.get("/my", (0, role_middleware_1.authorize)("WORKER", "AGENT"), insurance_controller_1.getMyInsurance);
 /*
- * Super Agent
+ * Super Agent & Customer Support
  */
-router.get("/:workerId", (0, role_middleware_1.authorize)("SUPER_AGENT"), insurance_controller_1.getWorkerInsurance);
-router.patch("/:id", (0, role_middleware_1.authorize)("SUPER_AGENT", "AGENT"), insurance_controller_1.updateInsurance);
-router.delete("/:id", (0, role_middleware_1.authorize)("SUPER_AGENT", "AGENT"), insurance_controller_1.deleteInsurance);
+router.get("/:workerId", (0, role_middleware_1.authorize)("SUPER_AGENT", "CUSTOMER_SUPPORT"), insurance_controller_1.getWorkerInsurance);
+router.patch("/:id", (0, role_middleware_1.authorize)("SUPER_AGENT", "CUSTOMER_SUPPORT"), insurance_controller_1.updateInsurance);
+router.delete("/:id", (0, role_middleware_1.authorize)("SUPER_AGENT", "CUSTOMER_SUPPORT"), insurance_controller_1.deleteInsurance);
 exports.default = router;

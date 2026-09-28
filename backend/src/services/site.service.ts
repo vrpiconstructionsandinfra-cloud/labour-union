@@ -96,16 +96,47 @@ export const updateSite = async (
   return updatedSite;
 };
 
-export const deleteSite = async (
-  id: number
-) => {
+export const deleteSite = async (id: number) => {
+  const existingSite = await prisma.site.findUnique({ where: { id } });
+  if (!existingSite) {
+    throw new Error("Working site not found");
+  }
 
-  return prisma.site.delete({
+  const result = await prisma.$transaction(async (tx) => {
+    // 1. Unlink workers/users assigned to this site
+    await tx.user.updateMany({
+      where: { siteId: id },
+      data: { siteId: null }
+    });
 
-    where: {
-      id
-    }
+    // 2. Unlink attendance records linked to this site
+    await tx.attendance.updateMany({
+      where: { siteId: id },
+      data: { siteId: null }
+    });
 
+    // 3. Delete site assignments
+    await tx.siteAssignment.deleteMany({
+      where: { siteId: id }
+    });
+
+    // 4. Delete site payments
+    await tx.sitePayment.deleteMany({
+      where: { siteId: id }
+    });
+
+    // 5. Delete the site
+    return tx.site.delete({
+      where: { id }
+    });
   });
 
+  createNotification({
+    role: "SUPER_AGENT",
+    title: "Working Site Deleted",
+    message: `Site "${existingSite.siteName}" (${existingSite.siteCode}) has been deleted.`,
+    type: "SITE"
+  }).catch(() => {});
+
+  return result;
 };

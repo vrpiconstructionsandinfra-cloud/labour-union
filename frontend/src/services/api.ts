@@ -546,6 +546,13 @@ export const updateSupportTicketApi = async (
   return res.data;
 };
 
+export const deleteSupportTicketApi = async (id: string | number) => {
+  const res = await fetchWithAuth(`/api/support/${id}`, {
+    method: 'DELETE'
+  });
+  return res.data;
+};
+
 export const checkInApi = async () => {
   const res = await fetchWithAuth('/api/attendance/check-in', {
     method: 'POST'
@@ -830,6 +837,13 @@ export const updateSiteApi = async (siteId: string | number, siteData: any) => {
   const res = await fetchWithAuth(`/api/sites/${siteId}`, {
     method: 'PUT',
     body: JSON.stringify(siteData)
+  });
+  return res.data;
+};
+
+export const deleteSiteApi = async (siteId: string | number) => {
+  const res = await fetchWithAuth(`/api/sites/${siteId}`, {
+    method: 'DELETE'
   });
   return res.data;
 };

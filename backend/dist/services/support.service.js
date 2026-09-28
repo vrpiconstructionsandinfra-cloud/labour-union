@@ -21,6 +21,7 @@ exports.updateSiteStatusBySupport = updateSiteStatusBySupport;
 exports.getSupportAgentMessages = getSupportAgentMessages;
 exports.sendSupportAgentMessage = sendSupportAgentMessage;
 exports.raiseTicketFromSupportChat = raiseTicketFromSupportChat;
+exports.deleteTicket = deleteTicket;
 const prisma_1 = __importDefault(require("../config/prisma"));
 const client_1 = require("@prisma/client");
 const socket_1 = require("../socket/socket");
@@ -943,4 +944,32 @@ async function raiseTicketFromSupportChat(data) {
         ticketId: ticket.id,
     });
     return ticket;
+}
+/*
+ * Delete Support Ticket
+ */
+async function deleteTicket(id) {
+    const ticket = await prisma_1.default.supportTicket.findUnique({
+        where: { id },
+        include: {
+            worker: true,
+            handledBy: true,
+        },
+    });
+    if (!ticket) {
+        throw new Error("Support ticket not found");
+    }
+    return prisma_1.default.$transaction(async (tx) => {
+        // 1. Delete associated ticket comments
+        await tx.supportTicketComment.deleteMany({
+            where: { ticketId: id },
+        }).catch(() => { });
+        // 2. Delete the support ticket
+        const deleted = await tx.supportTicket.delete({
+            where: { id },
+        });
+        // 3. Emit real-time ticket update / deletion
+        (0, socket_1.emitTicketUpdate)({ ...deleted, isDeleted: true });
+        return deleted;
+    });
 }

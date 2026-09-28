@@ -509,4 +509,32 @@ export async function raiseTicketFromChat(req: Request, res: Response) {
     });
   }
 }
+
+/*
+ * Delete Support Ticket
+ */
+export async function deleteSupportTicket(req: Request, res: Response) {
+  try {
+    const id = Number(req.params.id);
+    if (!id || isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid ticket ID",
+      });
+    }
+
+    const deleted = await supportService.deleteTicket(id);
+
+    res.json({
+      success: true,
+      message: "Support ticket deleted successfully",
+      data: deleted,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to delete support ticket",
+    });
+  }
+}
 

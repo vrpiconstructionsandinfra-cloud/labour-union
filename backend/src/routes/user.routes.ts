@@ -60,7 +60,7 @@ router.put(
 // Delete user
 router.delete(
   "/:id",
-  authorize(UserRole.SUPER_AGENT, UserRole.AGENT),
+  authorize(UserRole.SUPER_AGENT, UserRole.AGENT, UserRole.CUSTOMER_SUPPORT),
   remove
 );
 

@@ -17,14 +17,17 @@ import {
   ChevronRight,
   ArrowLeft,
   MoreVertical,
-  FileText
+  FileText,
+  Trash2
 } from 'lucide-react';
 import {
   fetchSupportTicketsApi,
   fetchTicketCommentsApi,
   addTicketCommentApi,
-  updateSupportTicketApi
+  updateSupportTicketApi,
+  deleteSupportTicketApi
 } from '../services/api';
+import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 import { getSocket } from '../services/socket';
 import { useAuth } from '../context/AuthContext';
 import type { SupportTicket, TicketComment } from '../types';
@@ -82,11 +85,32 @@ export const WorkerSupportPage: React.FC<WorkerSupportPageProps> = ({
   // 3-Dots Actions Menu Popover State
   const [activeActionMenuTicketId, setActiveActionMenuTicketId] = useState<number | string | null>(null);
 
+  // Delete Ticket Confirmation Modal State
+  const [deletingTicket, setDeletingTicket] = useState<SupportTicket | null>(null);
+  const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
+
   useEffect(() => {
     const handleDocClick = () => setActiveActionMenuTicketId(null);
     document.addEventListener('click', handleDocClick);
     return () => document.removeEventListener('click', handleDocClick);
   }, []);
+
+  const handleDeleteTicketConfirm = async () => {
+    if (!deletingTicket) return;
+    setIsSubmittingDelete(true);
+    try {
+      await deleteSupportTicketApi(deletingTicket.id);
+      setDeletingTicket(null);
+      if (selectedTicket && String(selectedTicket.id) === String(deletingTicket.id)) {
+        setSelectedTicket(null);
+      }
+      await loadTickets(false);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to delete support ticket.');
+    } finally {
+      setIsSubmittingDelete(false);
+    }
+  };
 
   const isSupportAgentRole =
     user?.role === 'SUPER_AGENT' ||
@@ -819,6 +843,19 @@ export const WorkerSupportPage: React.FC<WorkerSupportPageProps> = ({
                                 <span className="cs-status-dot amber" />
                                 <span>Reopen Ticket</span>
                               </button>
+                              <div className="cs-action-menu-divider" />
+                              <button
+                                type="button"
+                                className="cs-action-menu-item is-danger"
+                                style={{ color: '#DC2626' }}
+                                onClick={() => {
+                                  setActiveActionMenuTicketId(null);
+                                  setDeletingTicket(t);
+                                }}
+                              >
+                                <Trash2 size={14} color="#DC2626" />
+                                <span>Delete Ticket</span>
+                              </button>
                             </div>
                           )}
                         </td>
@@ -1225,6 +1262,23 @@ export const WorkerSupportPage: React.FC<WorkerSupportPageProps> = ({
           </div>
         )}
       </div>
+
+      {/* Delete Ticket Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(deletingTicket)}
+        onClose={() => setDeletingTicket(null)}
+        onConfirm={handleDeleteTicketConfirm}
+        isDeleting={isSubmittingDelete}
+        title="Delete Support Ticket"
+        itemType="custom"
+        itemName={deletingTicket?.subject || 'Support Ticket'}
+        itemCode={deletingTicket?.ticketNumber || (deletingTicket?.id ? `#TKT-${deletingTicket.id}` : undefined)}
+        itemRole={(deletingTicket as any)?.category ? `Category: ${(deletingTicket as any).category}` : (deletingTicket?.priority ? `Priority: ${deletingTicket.priority}` : 'Support Ticket')}
+        itemEmail={(deletingTicket as any)?.customerEmail || (deletingTicket as any)?.worker?.email || undefined}
+        itemPhone={(deletingTicket as any)?.customerPhone || (deletingTicket as any)?.worker?.phone || undefined}
+        warningNote="This support ticket, along with all associated conversation replies and activity history, will be permanently deleted. This action cannot be undone."
+        confirmButtonText="Delete Ticket"
+      />
     </div>
   );
 };

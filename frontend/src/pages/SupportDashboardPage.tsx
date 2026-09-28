@@ -6,6 +6,7 @@ import {
   fetchWorkersApi,
   fetchAgentsApi,
   updateSupportTicketApi,
+  deleteSupportTicketApi,
   checkInApi,
   checkOutApi,
   fetchTodayAttendanceStatusApi,
@@ -17,11 +18,13 @@ import {
 } from '../services/api';
 import { getSocket, joinUserRoom } from '../services/socket';
 import { TicketDetailModal } from '../components/TicketDetailModal';
+import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 import { SupportPage } from './SupportPage';
 import { LeavePage } from './LeavePage';
 import { EnquiriesPage } from './EnquiriesPage';
 import { AgentMyDetailsView } from '../components/AgentMyDetailsView';
 import { SupportFieldAgentsView } from '../components/SupportFieldAgentsView';
+import { SupportSitesView } from '../components/SupportSitesView';
 import { SitePaymentsView } from '../components/SitePaymentsView';
 import { ActionModal } from '../components/ActionModal';
 import { MobileBottomNav } from '../components/MobileBottomNav';
@@ -30,6 +33,7 @@ import {
   Headset,
   LayoutDashboard,
   Users,
+  Building2,
   User,
   CreditCard,
   FileSpreadsheet,
@@ -190,6 +194,20 @@ export const SupportDashboardPage: React.FC = () => {
   const [isApplyLeaveModalOpen, setIsApplyLeaveModalOpen] = useState(false);
   const [isAddAgentModalOpen, setIsAddAgentModalOpen] = useState(false);
 
+  // Delete Ticket State
+  const [deletingTicket, setDeletingTicket] = useState<any | null>(null);
+  const [isSubmittingDeleteTicket, setIsSubmittingDeleteTicket] = useState(false);
+  const [openDropdownTicketId, setOpenDropdownTicketId] = useState<number | string | null>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleOutsideClick = () => {
+      setOpenDropdownTicketId(null);
+    };
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, []);
+
   // Standalone tab state data
   const [usersList, setUsersList] = useState<any[]>([]);
   const [notificationsList, setNotificationsList] = useState<any[]>([]);
@@ -319,13 +337,32 @@ export const SupportDashboardPage: React.FC = () => {
     socket.on('ticket:created', handleUpdate);
     socket.on('ticket:updated', handleUpdate);
     socket.on('ticket:assigned', handleUpdate);
+    socket.on('ticket:deleted', handleUpdate);
 
     return () => {
       socket.off('ticket:created', handleUpdate);
       socket.off('ticket:updated', handleUpdate);
       socket.off('ticket:assigned', handleUpdate);
+      socket.off('ticket:deleted', handleUpdate);
     };
   }, []);
+
+  const handleDeleteTicketConfirm = async () => {
+    if (!deletingTicket) return;
+    setIsSubmittingDeleteTicket(true);
+    try {
+      await deleteSupportTicketApi(deletingTicket.id);
+      setDeletingTicket(null);
+      if (selectedTicketModal && String(selectedTicketModal.id) === String(deletingTicket.id)) {
+        setSelectedTicketModal(null);
+      }
+      await loadAnalytics();
+    } catch (err: any) {
+      alert(err?.message || 'Failed to delete support ticket.');
+    } finally {
+      setIsSubmittingDeleteTicket(false);
+    }
+  };
 
   const isTicketAssignedToMe = (t: any) => {
     if (!user) return false;
@@ -466,6 +503,14 @@ export const SupportDashboardPage: React.FC = () => {
       return (
         <div className="tab-standalone-page animate-fade-in" style={{ padding: 0, backgroundColor: 'transparent', border: 'none', boxShadow: 'none' }}>
           <SupportFieldAgentsView onOpenRegisterModal={() => setActiveModal('add_agent')} />
+        </div>
+      );
+    }
+
+    if (activeTab === 'sites' || activeTab === 'working_sites') {
+      return (
+        <div className="tab-standalone-page animate-fade-in" style={{ padding: 0, backgroundColor: 'transparent', border: 'none', boxShadow: 'none' }}>
+          <SupportSitesView onOpenCreateSiteModal={() => setActiveModal('add_site')} />
         </div>
       );
     }
@@ -935,12 +980,90 @@ export const SupportDashboardPage: React.FC = () => {
                               Assigned: {typeof t.handledBy === 'object' && t.handledBy !== null ? t.handledBy.name : String(t.handledBy || '')}
                             </span>
                           )}
-                          <button
-                            className="action-dots-btn"
-                            onClick={(e) => { e.stopPropagation(); setSelectedTicketModal(t); }}
-                          >
-                            <MoreVertical size={16} />
-                          </button>
+                          <div className="table-action-dropdown-wrap" style={{ display: 'inline-block', position: 'relative' }}>
+                            <button
+                              type="button"
+                              className="action-dots-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenDropdownTicketId(openDropdownTicketId === t.id ? null : t.id);
+                              }}
+                              title="Ticket Options"
+                            >
+                              <MoreVertical size={16} />
+                            </button>
+                            {openDropdownTicketId === t.id && (
+                              <div
+                                className="table-action-dropdown animate-fade-in"
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  position: 'absolute',
+                                  right: 0,
+                                  top: '100%',
+                                  zIndex: 50,
+                                  minWidth: '150px',
+                                  background: '#ffffff',
+                                  border: '1px solid #e2e8f0',
+                                  borderRadius: '8px',
+                                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                                  padding: '4px 0',
+                                  textAlign: 'left'
+                                }}
+                              >
+                                <button
+                                  type="button"
+                                  className="table-action-dropdown-item"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenDropdownTicketId(null);
+                                    setSelectedTicketModal(t);
+                                  }}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    width: '100%',
+                                    padding: '8px 12px',
+                                    fontSize: '13px',
+                                    fontWeight: 500,
+                                    color: '#334155',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  <FileText size={14} color="#2563EB" />
+                                  <span>View Details</span>
+                                </button>
+                                <div style={{ height: '1px', backgroundColor: '#e2e8f0', margin: '4px 0' }} />
+                                <button
+                                  type="button"
+                                  className="table-action-dropdown-item is-danger"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenDropdownTicketId(null);
+                                    setDeletingTicket(t);
+                                  }}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    width: '100%',
+                                    padding: '8px 12px',
+                                    fontSize: '13px',
+                                    fontWeight: 500,
+                                    color: '#DC2626',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  <Trash2 size={14} color="#DC2626" />
+                                  <span>Delete Ticket</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -1033,6 +1156,30 @@ export const SupportDashboardPage: React.FC = () => {
                       >
                         Details
                       </button>
+
+                      <button
+                        type="button"
+                        className="mobile-delete-btn"
+                        style={{
+                          backgroundColor: '#FEF2F2',
+                          color: '#DC2626',
+                          border: '1px solid #FECACA',
+                          borderRadius: '6px',
+                          padding: '6px 10px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeletingTicket(t);
+                        }}
+                      >
+                        <Trash2 size={13} /> Delete
+                      </button>
                     </div>
                   </div>
                 ))
@@ -1100,6 +1247,14 @@ export const SupportDashboardPage: React.FC = () => {
           >
             <Users size={18} />
             {!sidebarCollapsed && <span>Field Agents</span>}
+          </button>
+
+          <button
+            className={`nav-item ${activeTab === 'working_sites' || activeTab === 'sites' ? 'active' : ''}`}
+            onClick={() => handleNavTabClick('working_sites')}
+          >
+            <Building2 size={18} />
+            {!sidebarCollapsed && <span>Working Sites</span>}
           </button>
 
           <button
@@ -1638,6 +1793,23 @@ export const SupportDashboardPage: React.FC = () => {
           ticket={selectedTicketModal}
           onClose={() => setSelectedTicketModal(null)}
           onRefresh={loadAnalytics}
+        />
+
+        {/* Delete Ticket Confirmation Modal */}
+        <DeleteConfirmModal
+          isOpen={Boolean(deletingTicket)}
+          onClose={() => setDeletingTicket(null)}
+          onConfirm={handleDeleteTicketConfirm}
+          isDeleting={isSubmittingDeleteTicket}
+          title="Delete Support Ticket"
+          itemType="custom"
+          itemName={deletingTicket?.subject || 'Support Ticket'}
+          itemCode={deletingTicket?.ticketNumber || (deletingTicket?.id ? `#TKT-${deletingTicket.id}` : undefined)}
+          itemRole={deletingTicket?.category ? `Category: ${deletingTicket.category}` : (deletingTicket?.priority ? `Priority: ${deletingTicket.priority}` : 'Support Ticket')}
+          itemEmail={deletingTicket?.customerEmail || undefined}
+          itemPhone={deletingTicket?.customerPhone || undefined}
+          warningNote="This support ticket, along with all associated conversation replies and activity history, will be permanently deleted. This action cannot be undone."
+          confirmButtonText="Delete Ticket"
         />
 
         {/* Create Ticket Modal */}

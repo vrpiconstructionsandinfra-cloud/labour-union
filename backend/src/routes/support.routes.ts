@@ -19,6 +19,7 @@ import {
   getAgentMessages,
   sendAgentMessage,
   raiseTicketFromChat,
+  deleteSupportTicket,
 } from "../controllers/support.controller";
 
 import { authenticate } from "../middleware/auth.middleware";
@@ -144,6 +145,12 @@ router.post(
   "/:id/comments",
   authorize("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"),
   addTicketComment
+);
+
+router.delete(
+  "/:id",
+  authorize("AGENT", "SUPER_AGENT", "CUSTOMER_SUPPORT"),
+  deleteSupportTicket
 );
 
 export default router;
