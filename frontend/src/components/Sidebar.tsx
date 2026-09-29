@@ -1,7 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { fetchNotificationsApi } from '../services/api';
-import { getSocket } from '../services/socket';
 import {
   LayoutDashboard,
   Building2,
@@ -13,7 +11,6 @@ import {
   Wallet,
   ShieldCheck,
   Headset,
-  Bell,
   Phone,
   LogOut,
   ChevronRight,
@@ -21,7 +18,8 @@ import {
   FileSpreadsheet,
   X,
   Settings,
-  Coins
+  Coins,
+  Banknote
 } from 'lucide-react';
 import { UserAvatar } from './UserAvatar';
 import './Sidebar.css';
@@ -30,7 +28,7 @@ interface SidebarProps {
   collapsed: boolean;
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  onOpenModal: (modalType: string) => void;
+  onOpenModal?: (modalType: string) => void;
   setSidebarCollapsed?: (collapsed: boolean | ((prev: boolean) => boolean)) => void;
 }
 
@@ -38,30 +36,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   collapsed,
   activeTab,
   setActiveTab,
-  onOpenModal,
+  onOpenModal: _onOpenModal,
   setSidebarCollapsed
 }) => {
-  const { user, role, logout, hasPermission } = useAuth();
-  const [unreadCount, setUnreadCount] = useState<number>(0);
-
-  useEffect(() => {
-    fetchNotificationsApi()
-      .then((data) => {
-        const unread = (data || []).filter((n: any) => !n.isRead).length;
-        setUnreadCount(unread);
-      })
-      .catch(() => {});
-
-    const socket = getSocket();
-    const handleNotification = () => {
-      setUnreadCount((prev) => prev + 1);
-    };
-
-    socket.on('notification', handleNotification);
-    return () => {
-      socket.off('notification', handleNotification);
-    };
-  }, [user]);
+  const { role, logout, hasPermission } = useAuth();
 
   const allManagementNav = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, isDashboard: true },
@@ -83,8 +61,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'my_details', label: 'My Details', icon: QrCode }
   ];
 
-  const allMoreNav = [
-    { id: 'notifications', label: 'Notifications', icon: Bell, badge: unreadCount > 0 ? String(unreadCount) : undefined },
+  const allMoreNav: Array<{ id: string; label: string; icon: any; badge?: string }> = [
+    { id: 'salary_management', label: 'Salary Management', icon: Banknote },
     { id: 'settings', label: 'Settings', icon: Settings }
   ];
 
@@ -95,8 +73,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const handleNavClick = (id: string) => {
     if (id === 'tickets' && role === 'SUPER_AGENT') {
       setActiveTab('support_agents');
-    } else if (id === 'notifications') {
-      onOpenModal('notifications');
     } else {
       setActiveTab(id);
     }

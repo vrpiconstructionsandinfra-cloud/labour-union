@@ -22,6 +22,7 @@ const TAB_LABELS: Record<string, string> = {
   tickets: 'Support Tickets',
   reports: 'Reports',
   settings: 'Settings',
+  salary_management: 'Salary Management',
   notifications: 'Notifications',
 };
 

@@ -9,12 +9,14 @@ export interface TradeWageItem {
   monthlyWage: number;
   category?: string;
   description?: string;
+  isCustom?: boolean;
 }
 
 export interface WageConfigData {
   registrationFee: number;
   agentRegistrationFee?: number;
   isRegistrationFeeMandatory: boolean;
+  isAgentRegistrationFeeMandatory?: boolean;
   lockAgentWages: boolean;
   tradeWages: TradeWageItem[];
   updatedAt: string;
@@ -25,6 +27,7 @@ const DEFAULT_CONFIG: WageConfigData = {
   registrationFee: 500,
   agentRegistrationFee: 1000,
   isRegistrationFeeMandatory: true,
+  isAgentRegistrationFeeMandatory: true,
   lockAgentWages: false,
   tradeWages: [
     { id: "1", name: "General Helper / Helper", dailyWage: 600, monthlyWage: 18000, category: "Unskilled / Semi-skilled", description: "General site support, material handling & cleaning" },
@@ -81,14 +84,23 @@ export const getWageConfig = async (req: Request, res: Response) => {
 
 export const updateWageConfig = async (req: Request, res: Response) => {
   try {
-    const { registrationFee, isRegistrationFeeMandatory, lockAgentWages, tradeWages } = req.body;
+    const {
+      registrationFee,
+      agentRegistrationFee,
+      isRegistrationFeeMandatory,
+      isAgentRegistrationFeeMandatory,
+      lockAgentWages,
+      tradeWages
+    } = req.body;
     const user = (req as any).user;
 
     const currentConfig = readConfig();
 
     const updatedConfig: WageConfigData = {
       registrationFee: typeof registrationFee === "number" ? Math.max(0, registrationFee) : currentConfig.registrationFee,
+      agentRegistrationFee: typeof agentRegistrationFee === "number" ? Math.max(0, agentRegistrationFee) : (currentConfig.agentRegistrationFee !== undefined ? currentConfig.agentRegistrationFee : 1000),
       isRegistrationFeeMandatory: typeof isRegistrationFeeMandatory === "boolean" ? isRegistrationFeeMandatory : currentConfig.isRegistrationFeeMandatory,
+      isAgentRegistrationFeeMandatory: typeof isAgentRegistrationFeeMandatory === "boolean" ? isAgentRegistrationFeeMandatory : (currentConfig.isAgentRegistrationFeeMandatory !== undefined ? currentConfig.isAgentRegistrationFeeMandatory : true),
       lockAgentWages: typeof lockAgentWages === "boolean" ? lockAgentWages : currentConfig.lockAgentWages,
       tradeWages: Array.isArray(tradeWages) && tradeWages.length > 0 ? tradeWages : currentConfig.tradeWages,
       updatedAt: new Date().toISOString(),

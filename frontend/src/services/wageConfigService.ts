@@ -5,12 +5,14 @@ export interface TradeWageItem {
   monthlyWage: number;
   category?: string;
   description?: string;
+  isCustom?: boolean;
 }
 
 export interface WageConfigData {
   registrationFee: number;
   agentRegistrationFee?: number;
   isRegistrationFeeMandatory: boolean;
+  isAgentRegistrationFeeMandatory?: boolean;
   lockAgentWages: boolean;
   tradeWages: TradeWageItem[];
   updatedAt: string;
@@ -18,12 +20,13 @@ export interface WageConfigData {
 }
 
 const STORAGE_KEY = 'labor_union_wage_config_v1';
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '/api';
 
 export const DEFAULT_WAGE_CONFIG: WageConfigData = {
   registrationFee: 500,
   agentRegistrationFee: 1000,
   isRegistrationFeeMandatory: true,
+  isAgentRegistrationFeeMandatory: true,
   lockAgentWages: false,
   tradeWages: [
     { id: '1', name: 'General Helper / Helper', dailyWage: 600, monthlyWage: 18000, category: 'Unskilled / Semi-skilled', description: 'General site support, material handling & cleaning' },
@@ -172,6 +175,11 @@ export const getTradeWage = (tradeName: string): { dailyWage: number; monthlyWag
 export const getRegistrationFee = (): number => {
   const config = getWageConfig();
   return typeof config.registrationFee === 'number' ? config.registrationFee : 500;
+};
+
+export const getAgentRegistrationFee = (): number => {
+  const config = getWageConfig();
+  return typeof config.agentRegistrationFee === 'number' ? config.agentRegistrationFee : 1000;
 };
 
 export const subscribeWageConfig = (callback: (config: WageConfigData) => void): (() => void) => {

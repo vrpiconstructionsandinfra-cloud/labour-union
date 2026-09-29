@@ -1,0 +1,67 @@
+{
+  "registrationFee": 500,
+  "agentRegistrationFee": 1000,
+  "isRegistrationFeeMandatory": true,
+  "isAgentRegistrationFeeMandatory": true,
+  "lockAgentWages": false,
+  "tradeWages": [
+    {
+      "id": "1",
+      "name": "General Helper / Helper",
+      "dailyWage": 600,
+      "monthlyWage": 18000,
+      "category": "Unskilled / Semi-skilled",
+      "description": "General site support, material handling & cleaning"
+    },
+    {
+      "id": "2",
+      "name": "Mason / Carpenter",
+      "dailyWage": 850,
+      "monthlyWage": 25500,
+      "category": "Skilled Trade",
+      "description": "Bricklaying, plastering, formwork, carpentry"
+    },
+    {
+      "id": "3",
+      "name": "Electrician",
+      "dailyWage": 950,
+      "monthlyWage": 28500,
+      "category": "Certified Skilled",
+      "description": "Wiring, conduits, panels, installation & safety"
+    },
+    {
+      "id": "4",
+      "name": "Plumber",
+      "dailyWage": 950,
+      "monthlyWage": 28500,
+      "category": "Certified Skilled",
+      "description": "Piping, fittings, sanitation & water supply systems"
+    },
+    {
+      "id": "5",
+      "name": "Scaffolder",
+      "dailyWage": 900,
+      "monthlyWage": 27000,
+      "category": "Skilled Trade",
+      "description": "Erection, inspection, high-rise structural scaffolding"
+    },
+    {
+      "id": "6",
+      "name": "Welder / Fabricator",
+      "dailyWage": 1000,
+      "monthlyWage": 30000,
+      "category": "Specialized Technical",
+      "description": "Structural welding, arc/TIG, fabrication & cutting"
+    },
+    {
+      "id": "7",
+      "name": "Site Technician / Supervisor",
+      "dailyWage": 1100,
+      "monthlyWage": 33000,
+      "category": "Technical Specialist",
+      "description": "Site machinery, heavy equipment operation & quality checks"
+    }
+  ],
+  "updatedAt": "2026-09-29T05:13:57.475Z",
+  "updatedBy": "Super Admin"
+}

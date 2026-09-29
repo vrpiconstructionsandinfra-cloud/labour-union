@@ -40,6 +40,7 @@ const WorkerQrCardsView = lazy(() => import('./components/WorkerQrCardsView').th
 const SitePaymentsView = lazy(() => import('./components/SitePaymentsView').then(m => ({ default: m.SitePaymentsView })));
 const RegisterWorkerPage = lazy(() => import('./pages/RegisterWorkerPage').then(m => ({ default: m.RegisterWorkerPage })));
 const AgentIncentivesPage = lazy(() => import('./pages/AgentIncentivesPage').then(m => ({ default: m.AgentIncentivesPage })));
+const SalaryManagementPage = lazy(() => import('./pages/SalaryManagementPage').then(m => ({ default: m.SalaryManagementPage })));
 
 function PageFallback() {
   return (
@@ -476,6 +477,8 @@ function MainAppContent() {
         return <CustomerSupportAgentsView onNavigateTab={(tab) => setActiveTab(tab)} />;
       case 'reports':
         return <ReportsPage />;
+      case 'salary_management':
+        return <SalaryManagementPage />;
       case 'settings':
         return <SettingsPage />;
       case 'my_details':
