@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ShieldCheck, MapPin, Phone, Mail, UserCheck, Briefcase, Loader2 } from 'lucide-react';
 import { UserAvatar } from './UserAvatar';
+import { getApiUrl } from '../services/api';
 
 interface PublicWorkerVerificationViewProps {
   workerId?: string | number;
@@ -25,7 +26,7 @@ export const PublicWorkerVerificationView: React.FC<PublicWorkerVerificationView
 
     const numericId = targetId ? String(targetId).replace(/\D/g, '') : '10';
 
-    fetch(`/api/users/public/${numericId}`)
+    fetch(getApiUrl(`/api/users/public/${numericId}`))
       .then((res) => res.json())
       .then((resData) => {
         setLoading(false);

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileSpreadsheet, Mail, Download, Zap, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { getApiUrl } from '../services/api';
 import './SaturdayReportBanner.css';
 
 export const SaturdayReportBanner: React.FC = () => {
@@ -21,7 +22,7 @@ export const SaturdayReportBanner: React.FC = () => {
   const fetchStatus = async () => {
     try {
       const authToken = getEffectiveToken();
-      const res = await fetch(`/api/reports/saturday-weekly-status?demo=${demoMode}`, {
+      const res = await fetch(getApiUrl(`/api/reports/saturday-weekly-status?demo=${demoMode}`), {
         headers: { Authorization: `Bearer ${authToken}` }
       });
       if (res.ok) {
@@ -60,7 +61,7 @@ export const SaturdayReportBanner: React.FC = () => {
     setIsDownloading(true);
     try {
       const authToken = getEffectiveToken();
-      const response = await fetch(`/api/reports/saturday-weekly-excel?demo=${demoMode}`, {
+      const response = await fetch(getApiUrl(`/api/reports/saturday-weekly-excel?demo=${demoMode}`), {
         headers: { Authorization: `Bearer ${authToken}` }
       });
 
@@ -92,7 +93,7 @@ export const SaturdayReportBanner: React.FC = () => {
     setEmailStatus(null);
     try {
       const authToken = getEffectiveToken();
-      const response = await fetch('/api/reports/send-saturday-email', {
+      const response = await fetch(getApiUrl('/api/reports/send-saturday-email'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

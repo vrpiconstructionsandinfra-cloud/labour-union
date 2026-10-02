@@ -6,10 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 require("dotenv/config");
 const prisma_1 = __importDefault(require("./config/prisma"));
 async function main() {
-    const deletedComments = await prisma_1.default.supportTicketComment.deleteMany({});
-    const deletedTickets = await prisma_1.default.supportTicket.deleteMany({});
-    console.log(`Deleted ${deletedComments.count} comments and ${deletedTickets.count} tickets from backend database.`);
-    const remaining = await prisma_1.default.supportTicket.count();
-    console.log(`Remaining tickets in database: ${remaining}`);
+    const count = await prisma_1.default.supportTicket.count();
+    console.log(`Verified database support tickets count: ${count}`);
 }
 main().catch(console.error).finally(() => prisma_1.default.$disconnect());

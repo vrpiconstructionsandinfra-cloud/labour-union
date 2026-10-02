@@ -20,7 +20,14 @@ export interface WageConfigData {
 }
 
 const STORAGE_KEY = 'labor_union_wage_config_v1';
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '/api';
+
+const getApiBase = () => {
+  const envUrl = ((import.meta as any).env?.VITE_API_URL || '').trim();
+  if (!envUrl) return '/api';
+  const clean = envUrl.replace(/\/+$/, '');
+  return clean.endsWith('/api') ? clean : `${clean}/api`;
+};
+const API_BASE_URL = getApiBase();
 
 export const DEFAULT_WAGE_CONFIG: WageConfigData = {
   registrationFee: 500,

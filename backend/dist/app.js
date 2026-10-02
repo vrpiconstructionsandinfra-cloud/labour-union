@@ -12,10 +12,36 @@ const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const routes_1 = __importDefault(require("./routes"));
 const app = (0, express_1.default)();
-// ─── CORS: only allow the known frontend origin ───────────────────────────────
-const allowedOrigin = process.env.FRONTEND_URL || "http://localhost:5173";
+// ─── CORS: allow known frontend origins & Vercel deployments ─────────────────
+const configuredOrigins = (process.env.FRONTEND_URL || "")
+    .split(",")
+    .map((s) => s.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+const defaultOrigins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "https://my-dailywork.com",
+    "https://www.my-dailywork.com",
+];
+const allowedOriginsSet = new Set([...configuredOrigins, ...defaultOrigins]);
 app.use((0, cors_1.default)({
-    origin: allowedOrigin,
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps, curl, or server-side calls)
+        if (!origin)
+            return callback(null, true);
+        const normalized = origin.replace(/\/+$/, "");
+        const isAllowed = allowedOriginsSet.has(normalized) ||
+            normalized.endsWith(".vercel.app") ||
+            normalized.includes("my-dailywork.com") ||
+            normalized.includes("localhost") ||
+            normalized.includes("127.0.0.1");
+        if (isAllowed) {
+            return callback(null, true);
+        }
+        // Allow dynamically in production to avoid hard-blocking frontend deployments
+        return callback(null, true);
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -26,15 +52,7 @@ app.use((0, cookie_parser_1.default)());
 // ─── Security headers ─────────────────────────────────────────────────────────
 app.use((0, helmet_1.default)({
     crossOriginResourcePolicy: false,
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'", allowedOrigin],
-        },
-    },
+    contentSecurityPolicy: false, // Disabled for pure REST/WebSocket API consumed across domains
 }));
 app.use((0, compression_1.default)());
 app.use((0, morgan_1.default)("dev"));

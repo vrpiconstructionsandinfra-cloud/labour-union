@@ -1,4 +1,6 @@
-﻿/**
+import { getApiUrl } from '../services/api';
+
+/**
  * Razorpay Standard Web Checkout Client
  */
 
@@ -65,7 +67,7 @@ export const createRazorpayOrder = async (params: {
   receipt?: string;
   notes?: Record<string, string | number>;
 }): Promise<CreateOrderResponse> => {
-  const res = await fetch('/api/create-order', {
+  const res = await fetch(getApiUrl('/api/create-order'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -86,7 +88,7 @@ export const verifyRazorpayPayment = async (params: {
   razorpay_payment_id: string;
   razorpay_signature: string;
 }): Promise<VerifyPaymentResponse> => {
-  const res = await fetch('/api/verify-payment', {
+  const res = await fetch(getApiUrl('/api/verify-payment'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),

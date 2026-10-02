@@ -65,6 +65,25 @@ const safeParseJson = async (response: Response) => {
   }
 };
 
+// Helper to resolve API URLs against configured backend
+export const getApiUrl = (endpoint: string): string => {
+  if (!endpoint) return '';
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+    return endpoint;
+  }
+  const rawBase = ((import.meta as any).env?.VITE_API_URL || '').trim();
+  if (!rawBase) {
+    return endpoint;
+  }
+  const cleanBase = rawBase.replace(/\/+$/, '');
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+  if (cleanEndpoint.startsWith('/api') && cleanBase.endsWith('/api')) {
+    return `${cleanBase.slice(0, -4)}${cleanEndpoint}`;
+  }
+  return `${cleanBase}${cleanEndpoint}`;
+};
+
 // Helper for authenticated backend requests
 const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
   const token = sessionStorage.getItem('token');
@@ -76,7 +95,7 @@ const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
 
   let response: Response;
   try {
-    response = await fetch(url, { ...options, headers });
+    response = await fetch(getApiUrl(url), { ...options, headers });
   } catch {
     throw new Error('Unable to connect to server. Please check backend connection.');
   }
@@ -115,7 +134,7 @@ export const loginApi = async (email: string, password: string, portal?: 'MAIN' 
 
   let response: Response;
   try {
-    response = await fetch('/api/auth/login', {
+    response = await fetch(getApiUrl('/api/auth/login'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -660,7 +679,7 @@ export const registerUserApi = async (userData: {
 
 export const createRazorpayOrderApi = async (amount: number, isINR = true) => {
   const payload = isINR ? { amountInINR: amount } : { amount };
-  const res = await fetch('/api/create-order', {
+  const res = await fetch(getApiUrl('/api/create-order'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
@@ -677,7 +696,7 @@ export const verifyRazorpayPaymentApi = async (data: {
   razorpay_payment_id: string;
   razorpay_signature: string;
 }) => {
-  const res = await fetch('/api/verify-payment', {
+  const res = await fetch(getApiUrl('/api/verify-payment'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
@@ -785,7 +804,7 @@ export const deleteUserApi = async (userId: string | number) => {
 
 // 19. Forgot Password API Endpoint
 export const forgotPasswordApi = async (email: string) => {
-  const response = await fetch('/api/auth/forgot-password', {
+  const response = await fetch(getApiUrl('/api/auth/forgot-password'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email })
@@ -800,7 +819,7 @@ export const forgotPasswordApi = async (email: string) => {
 
 // 20. Reset Password API Endpoint
 export const resetPasswordApi = async (token: string, password: string) => {
-  const response = await fetch('/api/auth/reset-password', {
+  const response = await fetch(getApiUrl('/api/auth/reset-password'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token, password })
@@ -956,7 +975,7 @@ export const removeAgentFromSiteApi = async (agentId: string | number) => {
 
 // 27. Mobile Email Approval Authentication Endpoints
 export const requestMobileApprovalApi = async (email: string) => {
-  const res = await fetch('/api/auth/request-mobile-approval', {
+  const res = await fetch(getApiUrl('/api/auth/request-mobile-approval'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email })
@@ -969,7 +988,7 @@ export const requestMobileApprovalApi = async (email: string) => {
 };
 
 export const checkApprovalStatusApi = async (authRequestId: string) => {
-  const res = await fetch(`/api/auth/approval-status/${authRequestId}`);
+  const res = await fetch(getApiUrl(`/api/auth/approval-status/${authRequestId}`));
   const data = await res.json();
   if (!res.ok || !data.success) {
     return { status: 'PENDING' };
@@ -978,7 +997,7 @@ export const checkApprovalStatusApi = async (authRequestId: string) => {
 };
 
 export const approveLoginTokenApi = async (token: string) => {
-  const res = await fetch('/api/auth/approve-login-token', {
+  const res = await fetch(getApiUrl('/api/auth/approve-login-token'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token })
@@ -1135,7 +1154,7 @@ export const submitEnquiryApi = async (data: {
   address?: string;
   designation: 'WORKER' | 'AGENT';
 }): Promise<{ success: boolean; message: string; data: EnquiryItem }> => {
-  const res = await fetch('/api/enquiries', {
+  const res = await fetch(getApiUrl('/api/enquiries'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -1429,7 +1448,7 @@ export const exportSitePaymentsExcelApi = async (filters: {
   }
 
   const queryString = params.toString() ? `?${params.toString()}` : '';
-  const response = await fetch(`/api/site-payments/export-excel${queryString}`, {
+  const response = await fetch(getApiUrl(`/api/site-payments/export-excel${queryString}`), {
     headers,
   });
 
@@ -1571,7 +1590,7 @@ export const exportAgentIncentivesExcelApi = async (): Promise<void> => {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch('/api/incentives/export', {
+  const response = await fetch(getApiUrl('/api/incentives/export'), {
     headers,
   });
 
@@ -1591,7 +1610,7 @@ export const exportAgentIncentivesExcelApi = async (): Promise<void> => {
 };
 
 export const sendVerificationCodeApi = async (email: string, name?: string): Promise<{ success: boolean; message: string }> => {
-  const res = await fetch('/api/auth/send-verification-code', {
+  const res = await fetch(getApiUrl('/api/auth/send-verification-code'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, name })
@@ -1604,7 +1623,7 @@ export const sendVerificationCodeApi = async (email: string, name?: string): Pro
 };
 
 export const verifyCodeApi = async (email: string, code: string): Promise<{ success: boolean; verified: boolean; message: string }> => {
-  const res = await fetch('/api/auth/verify-code', {
+  const res = await fetch(getApiUrl('/api/auth/verify-code'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, code })
