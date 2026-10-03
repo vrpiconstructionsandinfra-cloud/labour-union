@@ -65,13 +65,24 @@ const safeParseJson = async (response: Response) => {
   }
 };
 
+const DEFAULT_PROD_API_URL = 'https://labour-union.onrender.com';
+
 // Helper to resolve API URLs against configured backend
 export const getApiUrl = (endpoint: string): string => {
   if (!endpoint) return '';
   if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
     return endpoint;
   }
-  const rawBase = ((import.meta as any).env?.VITE_API_URL || '').trim();
+  let rawBase = ((import.meta as any).env?.VITE_API_URL || '').trim();
+  if (!rawBase && typeof window !== 'undefined') {
+    const isLocalhost =
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname === '0.0.0.0';
+    if (!isLocalhost) {
+      rawBase = DEFAULT_PROD_API_URL;
+    }
+  }
   if (!rawBase) {
     return endpoint;
   }

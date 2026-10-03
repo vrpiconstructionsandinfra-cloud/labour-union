@@ -21,8 +21,19 @@ export interface WageConfigData {
 
 const STORAGE_KEY = 'labor_union_wage_config_v1';
 
+const DEFAULT_PROD_API_URL = 'https://labour-union.onrender.com';
+
 const getApiBase = () => {
-  const envUrl = ((import.meta as any).env?.VITE_API_URL || '').trim();
+  let envUrl = ((import.meta as any).env?.VITE_API_URL || '').trim();
+  if (!envUrl && typeof window !== 'undefined') {
+    const isLocalhost =
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname === '0.0.0.0';
+    if (!isLocalhost) {
+      envUrl = DEFAULT_PROD_API_URL;
+    }
+  }
   if (!envUrl) return '/api';
   const clean = envUrl.replace(/\/+$/, '');
   return clean.endsWith('/api') ? clean : `${clean}/api`;
