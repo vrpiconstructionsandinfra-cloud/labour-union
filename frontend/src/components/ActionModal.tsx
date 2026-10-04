@@ -282,6 +282,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
   const [insurancePolicyNumber, setInsurancePolicyNumber] = useState('');
   const [insuranceCoverage, setInsuranceCoverage] = useState('');
   const [insurancePremium, setInsurancePremium] = useState('');
+  const [insuranceStartDate, setInsuranceStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [insuranceEndDate, setInsuranceEndDate] = useState('');
   const [insuranceStatus, setInsuranceStatus] = useState('ACTIVE');
 
@@ -451,6 +452,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
       setInsurancePolicyNumber('');
       setInsuranceCoverage('');
       setInsurancePremium('');
+      setInsuranceStartDate(new Date().toISOString().split('T')[0]);
       setInsuranceEndDate('');
 
       if (type === 'create_ticket') {
@@ -498,6 +500,14 @@ export const ActionModal: React.FC<ActionModalProps> = ({
           setInsuranceCoverage(targetInsurance.coverageAmount ? String(targetInsurance.coverageAmount) : '');
           setInsurancePremium(targetInsurance.premiumAmount ? String(targetInsurance.premiumAmount) : '');
           setInsuranceStatus(targetInsurance.status || 'ACTIVE');
+          if (targetInsurance.rawStartDate || targetInsurance.startDate) {
+            try {
+              const d = new Date(targetInsurance.rawStartDate || targetInsurance.startDate);
+              if (!isNaN(d.getTime())) setInsuranceStartDate(d.toISOString().split('T')[0]);
+            } catch (e) {}
+          } else {
+            setInsuranceStartDate(new Date().toISOString().split('T')[0]);
+          }
           if (targetInsurance.rawEndDate) {
             try {
               const d = new Date(targetInsurance.rawEndDate);
@@ -517,6 +527,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
           setInsurancePolicyNumber('');
           setInsuranceCoverage('');
           setInsurancePremium('');
+          setInsuranceStartDate(new Date().toISOString().split('T')[0]);
           setInsuranceEndDate('');
           setInsuranceStatus('ACTIVE');
         }
@@ -847,12 +858,14 @@ export const ActionModal: React.FC<ActionModalProps> = ({
 
       setIsLoading(true);
       try {
+        const numericMemberId = Number(String(selectedWorkerId).replace(/\D/g, '')) || Number(selectedWorkerId);
         await createInsuranceApi({
-          workerId: selectedWorkerId,
+          workerId: numericMemberId,
           provider: insuranceProvider.trim() || undefined,
           policyNumber: insurancePolicyNumber.trim() || undefined,
           coverageAmount: insuranceCoverage ? Number(insuranceCoverage) : undefined,
           premiumAmount: insurancePremium ? Number(insurancePremium) : undefined,
+          startDate: insuranceStartDate || new Date().toISOString().split('T')[0],
           endDate: insuranceEndDate || undefined
         });
 
@@ -876,12 +889,14 @@ export const ActionModal: React.FC<ActionModalProps> = ({
 
       setIsLoading(true);
       try {
+        const numericMemberId = Number(String(selectedWorkerId).replace(/\D/g, '')) || Number(selectedWorkerId);
         await updateInsuranceApi(targetInsurance.id, {
-          workerId: selectedWorkerId,
+          workerId: numericMemberId,
           provider: insuranceProvider.trim() || undefined,
           policyNumber: insurancePolicyNumber.trim() || undefined,
           coverageAmount: insuranceCoverage ? Number(insuranceCoverage) : undefined,
           premiumAmount: insurancePremium ? Number(insurancePremium) : undefined,
+          startDate: insuranceStartDate || undefined,
           endDate: insuranceEndDate || undefined,
           status: insuranceStatus || undefined
         });
@@ -1964,6 +1979,14 @@ export const ActionModal: React.FC<ActionModalProps> = ({
                 </div>
 
                 <div className="form-row">
+                  <div className="form-group flex-1">
+                    <label>Policy Start Date</label>
+                    <input
+                      type="date"
+                      value={insuranceStartDate}
+                      onChange={(e) => setInsuranceStartDate(e.target.value)}
+                    />
+                  </div>
                   <div className="form-group flex-1">
                     <label>Policy Expiry Date</label>
                     <input

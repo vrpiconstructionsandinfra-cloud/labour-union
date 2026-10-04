@@ -24,7 +24,30 @@ export async function createInsurance(data: any) {
   });
 
   if (existing) {
-    throw new Error("An insurance policy already exists for this union member");
+    const updatedPolicy = await prisma.insurance.update({
+      where: {
+        id: existing.id,
+      },
+      data: {
+        provider: data.provider || existing.provider || "Star Health Insurance & Union Care",
+        policyNumber: data.policyNumber || existing.policyNumber || `POL-${Math.floor(100000 + Math.random() * 900000)}`,
+        coverageAmount: data.coverageAmount !== undefined && data.coverageAmount !== null && data.coverageAmount !== ""
+          ? Number(data.coverageAmount)
+          : existing.coverageAmount,
+        premiumAmount: data.premiumAmount !== undefined && data.premiumAmount !== null && data.premiumAmount !== ""
+          ? Number(data.premiumAmount)
+          : existing.premiumAmount,
+        startDate: data.startDate ? new Date(data.startDate) : existing.startDate,
+        endDate: data.endDate ? new Date(data.endDate) : existing.endDate,
+        status: data.status || "ACTIVE",
+      },
+      include: {
+        worker: true,
+      },
+    });
+
+    emitInsuranceUpdate(updatedPolicy);
+    return updatedPolicy;
   }
 
   const policy = await prisma.insurance.create({
@@ -36,6 +59,10 @@ export async function createInsurance(data: any) {
       premiumAmount: Number(data.premiumAmount) || 450,
       startDate: data.startDate ? new Date(data.startDate) : new Date(),
       endDate: data.endDate ? new Date(data.endDate) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      status: data.status || "ACTIVE",
+    },
+    include: {
+      worker: true,
     },
   });
 

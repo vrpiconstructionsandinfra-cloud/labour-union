@@ -21,9 +21,20 @@ export async function createInsurance(
       data: insurance,
     });
   } catch (error: any) {
+    let msg = error.message;
+    if (error?.errors && Array.isArray(error.errors)) {
+      msg = error.errors.map((e: any) => `${e.path?.join('.') || 'field'}: ${e.message}`).join(', ');
+    } else if (typeof msg === 'string' && msg.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(msg);
+        if (Array.isArray(parsed)) {
+          msg = parsed.map((e: any) => `${e.path?.join('.') || 'field'}: ${e.message}`).join(', ');
+        }
+      } catch {}
+    }
     res.status(400).json({
       success: false,
-      message: error.message,
+      message: msg,
     });
   }
 }

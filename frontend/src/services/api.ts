@@ -119,11 +119,19 @@ const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
   const result = await safeParseJson(response);
 
   if (!response.ok || !result || !result.success) {
-    const errorMsg = result?.message || (
+    let errorMsg = result?.message || (
       response.status === 401 ? 'Unauthorized / Invalid session' :
       response.status === 502 ? 'Backend Server Unavailable (502 Bad Gateway)' :
       `API Error (${response.status})`
     );
+    if (typeof errorMsg === 'string' && errorMsg.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(errorMsg);
+        if (Array.isArray(parsed)) {
+          errorMsg = parsed.map((e: any) => `${e.path?.join('.') || 'field'}: ${e.message}`).join(', ');
+        }
+      } catch {}
+    }
     throw new Error(errorMsg);
   }
   return result;

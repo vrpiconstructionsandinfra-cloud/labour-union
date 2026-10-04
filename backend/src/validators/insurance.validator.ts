@@ -1,17 +1,44 @@
 import { z } from "zod";
 
+const parseWorkerId = z.preprocess((val) => {
+  if (typeof val === "number") return val;
+  if (typeof val === "string") {
+    const digits = val.replace(/\D/g, "");
+    if (digits) return Number(digits);
+    return Number(val);
+  }
+  return val;
+}, z.number().positive());
+
+const optionalTrimmedString = (minLen = 1) =>
+  z.preprocess((val) => {
+    if (typeof val === "string") {
+      const trimmed = val.trim();
+      return trimmed === "" ? undefined : trimmed;
+    }
+    return val === null ? undefined : val;
+  }, z.string().min(minLen).optional());
+
+const optionalNumeric = z.preprocess((val) => {
+  if (val === "" || val === null || val === undefined) return undefined;
+  const num = Number(val);
+  return isNaN(num) ? undefined : num;
+}, z.number().positive().optional());
+
 export const insuranceSchema = z.object({
-  workerId: z.number().positive(),
+  workerId: parseWorkerId,
 
-  provider: z.string().min(2),
+  provider: optionalTrimmedString(2),
 
-  policyNumber: z.string().min(3),
+  policyNumber: optionalTrimmedString(2),
 
-  coverageAmount: z.number().positive(),
+  coverageAmount: optionalNumeric,
 
-  premiumAmount: z.number().positive(),
+  premiumAmount: optionalNumeric,
 
-  startDate: z.string(),
+  startDate: optionalTrimmedString(1),
 
-  endDate: z.string(),
+  endDate: optionalTrimmedString(1),
+
+  status: z.enum(["ACTIVE", "EXPIRED", "PENDING", "CANCELLED"]).optional(),
 });
