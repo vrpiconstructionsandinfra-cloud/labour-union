@@ -219,18 +219,44 @@ async function updateInsurance(id, data) {
     if (data.premiumAmount !== undefined && data.premiumAmount !== null && data.premiumAmount !== '') {
         updateData.premiumAmount = Number(data.premiumAmount);
     }
-    if (data.status !== undefined)
-        updateData.status = String(data.status);
+    if (data.status !== undefined && data.status !== null && data.status !== '') {
+        const s = String(data.status).toUpperCase().trim();
+        if (s === 'ACTIVE' || s === 'INACTIVE' || s === 'EXPIRED' || s === 'CANCELLED' || s === 'PENDING') {
+            updateData.status = s;
+        }
+    }
     if (data.startDate)
         updateData.startDate = new Date(data.startDate);
     if (data.endDate)
         updateData.endDate = new Date(data.endDate);
-    return prisma_1.default.insurance.update({
-        where: {
-            id,
-        },
-        data: updateData,
-    });
+    try {
+        const updated = await prisma_1.default.insurance.update({
+            where: {
+                id,
+            },
+            data: updateData,
+            include: {
+                worker: true,
+            },
+        });
+        (0, socket_1.emitInsuranceUpdate)(updated);
+        return updated;
+    }
+    catch (err) {
+        if (err?.message?.includes('InsuranceStatus') && updateData.status === 'INACTIVE') {
+            updateData.status = 'CANCELLED';
+            const fallback = await prisma_1.default.insurance.update({
+                where: { id },
+                data: updateData,
+                include: {
+                    worker: true,
+                },
+            });
+            (0, socket_1.emitInsuranceUpdate)(fallback);
+            return fallback;
+        }
+        throw err;
+    }
 }
 /*
  * Delete Insurance

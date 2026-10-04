@@ -40,5 +40,5 @@ export const insuranceSchema = z.object({
 
   endDate: optionalTrimmedString(1),
 
-  status: z.enum(["ACTIVE", "EXPIRED", "PENDING", "CANCELLED"]).optional(),
+  status: z.enum(["ACTIVE", "INACTIVE", "EXPIRED", "PENDING", "CANCELLED"]).optional(),
 });

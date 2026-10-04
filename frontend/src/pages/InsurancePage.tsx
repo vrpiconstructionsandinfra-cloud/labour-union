@@ -97,7 +97,7 @@ export const InsurancePage: React.FC<InsurancePageProps> = ({
             );
             return {
               ...p,
-              status: isPresent ? 'ACTIVE' : 'INACTIVE',
+              status: p.status || (isPresent ? 'ACTIVE' : 'INACTIVE'),
               isPresentToday: isPresent
             };
           });

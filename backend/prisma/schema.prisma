@@ -57,8 +57,10 @@ enum PaymentFrequency {
 
 enum InsuranceStatus {
   ACTIVE
+  INACTIVE
   EXPIRED
   CANCELLED
+  PENDING
 }
 
 enum DisbursementStatus {

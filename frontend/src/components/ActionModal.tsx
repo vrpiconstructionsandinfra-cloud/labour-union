@@ -2003,7 +2003,9 @@ export const ActionModal: React.FC<ActionModalProps> = ({
                         onChange={(e) => setInsuranceStatus(e.target.value)}
                       >
                         <option value="ACTIVE">ACTIVE</option>
+                        <option value="INACTIVE">INACTIVE</option>
                         <option value="EXPIRED">EXPIRED</option>
+                        <option value="CANCELLED">CANCELLED</option>
                         <option value="PENDING">PENDING</option>
                       </select>
                     </div>

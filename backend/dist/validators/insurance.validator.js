@@ -34,5 +34,5 @@ exports.insuranceSchema = zod_1.z.object({
     premiumAmount: optionalNumeric,
     startDate: optionalTrimmedString(1),
     endDate: optionalTrimmedString(1),
-    status: zod_1.z.enum(["ACTIVE", "EXPIRED", "PENDING", "CANCELLED"]).optional(),
+    status: zod_1.z.enum(["ACTIVE", "INACTIVE", "EXPIRED", "PENDING", "CANCELLED"]).optional(),
 });
