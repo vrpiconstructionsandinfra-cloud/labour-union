@@ -74,33 +74,6 @@ export async function createInsurance(data: any) {
  * Get All Insurance
  */
 export async function getAllInsurance(reqUser?: { id: number; role: string }) {
-  // Ensure all registered Workers and Agents without insurance get enrolled automatically
-  const usersWithoutInsurance = await prisma.user.findMany({
-    where: {
-      role: { in: [UserRole.WORKER, UserRole.AGENT] },
-      insurance: null,
-    },
-  });
-
-  for (const u of usersWithoutInsurance) {
-    try {
-      await prisma.insurance.create({
-        data: {
-          workerId: u.id,
-          provider: "Star Health Insurance & Union Care",
-          policyNumber: `POL-${Math.floor(100000 + Math.random() * 900000)}`,
-          coverageAmount: 500000,
-          premiumAmount: 450,
-          startDate: new Date("2024-01-01"),
-          endDate: new Date("2026-12-31"),
-          status: "ACTIVE",
-        },
-      });
-    } catch (e) {
-      // Ignore if concurrently created
-    }
-  }
-
   const where: any = {};
   if (reqUser?.role === "WORKER") {
     where.workerId = reqUser.id;
@@ -291,9 +264,12 @@ export async function deleteInsurance(
     throw new Error("Insurance not found");
   }
 
-  return prisma.insurance.delete({
+  const deleted = await prisma.insurance.delete({
     where: {
       id,
     },
   });
+
+  emitInsuranceUpdate({ id, deleted: true, workerId: insurance.workerId });
+  return deleted;
 }

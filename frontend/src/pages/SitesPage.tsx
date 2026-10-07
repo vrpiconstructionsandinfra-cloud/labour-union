@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, MapPin, Users, ChevronDown, ChevronUp, UserX, Loader2, CheckCircle2, Building, UserPlus, Trash2 } from 'lucide-react';
-import { fetchSitesApi, fetchAgentsApi, removeAgentFromSiteApi, updateSiteApi, deleteSiteApi } from '../services/api';
+import { Plus, MapPin, Users, ChevronDown, ChevronUp, UserX, Loader2, CheckCircle2, Building, UserPlus, Trash2, ShieldCheck } from 'lucide-react';
+import { fetchSitesApi, fetchAgentsApi, fetchAdminsApi, removeAgentFromSiteApi, updateSiteApi, deleteSiteApi } from '../services/api';
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
+import { AssignAdminModal } from '../components/AssignAdminModal';
 import { queryClient, QUERY_KEYS } from '../services/queryClient';
 import { useAuth } from '../context/AuthContext';
-import type { SiteItem, AgentItem } from '../types';
+import type { SiteItem, AgentItem, AdminItem } from '../types';
 import {
   ListHeader,
   StatusBadge,
@@ -36,6 +37,7 @@ export const SitesPage: React.FC<SitesPageProps> = ({
   const { user, role } = useAuth();
   const [sites, setSites] = useState<SiteItem[]>([]);
   const [agents, setAgents] = useState<AgentItem[]>([]);
+  const [admins, setAdmins] = useState<AdminItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -47,6 +49,9 @@ export const SitesPage: React.FC<SitesPageProps> = ({
   const [deletingSite, setDeletingSite] = useState<SiteItem | null>(null);
   const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
 
+  // Assign Admin Modal State
+  const [assigningAdminSite, setAssigningAdminSite] = useState<SiteItem | null>(null);
+
   const isAgentRole = role === 'AGENT';
   const canManageSites = role === 'SUPER_AGENT' || role === 'CUSTOMER_SUPPORT';
 
@@ -54,11 +59,13 @@ export const SitesPage: React.FC<SitesPageProps> = ({
     setIsLoading(true);
     Promise.all([
       fetchSitesApi().catch(() => []),
-      fetchAgentsApi().catch(() => [])
+      fetchAgentsApi().catch(() => []),
+      fetchAdminsApi().catch(() => [])
     ])
-      .then(([sitesData, agentsData]) => {
+      .then(([sitesData, agentsData, adminsData]) => {
         setSites(sitesData);
         setAgents(agentsData);
+        setAdmins(adminsData);
       })
       .finally(() => setIsLoading(false));
   };
@@ -275,9 +282,44 @@ export const SitesPage: React.FC<SitesPageProps> = ({
                         <Users size={15} color="#2563EB" />
                         <span>{siteAgents.length || site.assignedAgents} Agents Assigned • {site.totalWorkers} Workers</span>
                       </div>
+                      <div className="info-row">
+                        <ShieldCheck size={15} color={site.adminName && site.adminRole === 'ADMIN' ? '#7C3AED' : '#94A3B8'} />
+                        <span>
+                          Area Admin:{' '}
+                          <strong style={{ color: site.adminName && site.adminRole === 'ADMIN' ? '#7C3AED' : 'inherit' }}>
+                            {site.adminName && site.adminRole === 'ADMIN'
+                              ? `${site.adminName}${site.adminCode ? ` (${site.adminCode})` : ''}`
+                              : 'Unassigned'}
+                          </strong>
+                        </span>
+                      </div>
                     </div>
 
                     <div className="card-footer-actions" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {canManageSites && (
+                        <button
+                          type="button"
+                          className="list-btn touch-target"
+                          style={{
+                            padding: '7px 11px',
+                            fontSize: '12px',
+                            backgroundColor: '#F5F3FF',
+                            color: '#6D28D9',
+                            border: '1px solid #DDD6FE',
+                            borderRadius: '6px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '5px',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => setAssigningAdminSite(site)}
+                          title="Assign working site to an Area Administrator"
+                        >
+                          <ShieldCheck size={14} /> Assign Admin
+                        </button>
+                      )}
                       <button
                         className="list-btn list-btn-primary touch-target"
                         style={{ flex: 1, padding: '7px 12px', fontSize: '12.5px', justifyContent: 'center' }}
@@ -431,6 +473,13 @@ export const SitesPage: React.FC<SitesPageProps> = ({
                       label: 'Workforce',
                       value: `${site.totalWorkers} Workers • ${siteAgents.length} Agents`,
                       icon: <Users size={13} color="#2563EB" />
+                    },
+                    {
+                      label: 'Area Admin',
+                      value: site.adminName && site.adminRole === 'ADMIN'
+                        ? `${site.adminName} (${site.adminCode || `ADM-${site.adminId}`})`
+                        : 'Unassigned',
+                      icon: <ShieldCheck size={13} color={site.adminName && site.adminRole === 'ADMIN' ? '#7C3AED' : '#94A3B8'} />
                     }
                   ]}
                   expandableRows={siteAgents.map((a) => ({
@@ -451,6 +500,11 @@ export const SitesPage: React.FC<SitesPageProps> = ({
                   secondaryActions={
                     canManageSites
                       ? [
+                          {
+                            label: 'Assign Admin',
+                            icon: <ShieldCheck size={14} />,
+                            onClick: () => setAssigningAdminSite(site)
+                          },
                           {
                             label: 'Delete Site',
                             icon: <Trash2 size={14} />,
@@ -482,6 +536,17 @@ export const SitesPage: React.FC<SitesPageProps> = ({
         itemPhone={deletingSite?.totalWorkers !== undefined ? `${deletingSite.totalWorkers} Workers Registered` : undefined}
         warningNote="All field agents and workers currently assigned to this site will be automatically unassigned. Working site attendances and historical payments will be preserved. This action cannot be undone."
         confirmButtonText="Delete Working Site"
+      />
+
+      {/* Assign to Area Administrator Modal */}
+      <AssignAdminModal
+        isOpen={Boolean(assigningAdminSite)}
+        onClose={() => setAssigningAdminSite(null)}
+        site={assigningAdminSite}
+        admins={admins}
+        onAssigned={(updatedSite) => {
+          setSites((prev) => prev.map((s) => (s.id === updatedSite.id ? updatedSite : s)));
+        }}
       />
     </div>
   );

@@ -80,6 +80,34 @@ export const update = async (req: Request, res: Response) => {
   }
 };
 
+export const assignAdmin = async (req: Request, res: Response) => {
+  try {
+    const siteId = Number(req.params.id);
+    const { adminId } = req.body;
+    if (adminId === undefined || adminId === null) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin ID is required to assign site"
+      });
+    }
+
+    const site = await siteService.updateSite(siteId, {
+      adminId: Number(adminId)
+    });
+
+    res.json({
+      success: true,
+      message: "Site assigned to Area Administrator successfully",
+      data: site
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to assign site to admin"
+    });
+  }
+};
+
 export const remove = async (req: Request, res: Response) => {
   try {
     await siteService.deleteSite(Number(req.params.id));

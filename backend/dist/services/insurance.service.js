@@ -10,7 +10,6 @@ exports.getInsurance = getInsurance;
 exports.updateInsurance = updateInsurance;
 exports.deleteInsurance = deleteInsurance;
 const prisma_1 = __importDefault(require("../config/prisma"));
-const client_1 = require("@prisma/client");
 const socket_1 = require("../socket/socket");
 /*
  * Create Insurance
@@ -77,32 +76,6 @@ async function createInsurance(data) {
  * Get All Insurance
  */
 async function getAllInsurance(reqUser) {
-    // Ensure all registered Workers and Agents without insurance get enrolled automatically
-    const usersWithoutInsurance = await prisma_1.default.user.findMany({
-        where: {
-            role: { in: [client_1.UserRole.WORKER, client_1.UserRole.AGENT] },
-            insurance: null,
-        },
-    });
-    for (const u of usersWithoutInsurance) {
-        try {
-            await prisma_1.default.insurance.create({
-                data: {
-                    workerId: u.id,
-                    provider: "Star Health Insurance & Union Care",
-                    policyNumber: `POL-${Math.floor(100000 + Math.random() * 900000)}`,
-                    coverageAmount: 500000,
-                    premiumAmount: 450,
-                    startDate: new Date("2024-01-01"),
-                    endDate: new Date("2026-12-31"),
-                    status: "ACTIVE",
-                },
-            });
-        }
-        catch (e) {
-            // Ignore if concurrently created
-        }
-    }
     const where = {};
     if (reqUser?.role === "WORKER") {
         where.workerId = reqUser.id;
@@ -270,9 +243,11 @@ async function deleteInsurance(id) {
     if (!insurance) {
         throw new Error("Insurance not found");
     }
-    return prisma_1.default.insurance.delete({
+    const deleted = await prisma_1.default.insurance.delete({
         where: {
             id,
         },
     });
+    (0, socket_1.emitInsuranceUpdate)({ id, deleted: true, workerId: insurance.workerId });
+    return deleted;
 }

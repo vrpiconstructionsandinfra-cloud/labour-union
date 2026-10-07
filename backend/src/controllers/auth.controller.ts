@@ -28,11 +28,15 @@ export const register = async (
       razorpayPaymentId,
       razorpayOrderId,
       upiTransactionId,
-      assignedAgentId
+      assignedAgentId,
+      assignedAdminId
     } = req.body;
 
     const isAgentUser = (req as any).user?.role === 'AGENT';
     const effectiveAgentId = assignedAgentId ? Number(assignedAgentId) : (isAgentUser ? (req as any).user?.id : undefined);
+
+    const isAdminUser = (req as any).user?.role === 'ADMIN';
+    const effectiveAdminId = assignedAdminId ? Number(assignedAdminId) : (isAdminUser ? (req as any).user?.id : undefined);
 
     const user =
       await authService.registerUser(
@@ -56,17 +60,18 @@ export const register = async (
           razorpayOrderId,
           upiTransactionId,
           assignedAgentId: effectiveAgentId ? Number(effectiveAgentId) : undefined,
+          assignedAdminId: effectiveAdminId ? Number(effectiveAdminId) : undefined,
           creatorRole: (req as any).user?.role,
           creatorId: (req as any).user?.id ? Number((req as any).user.id) : undefined,
         }
       );
 
     if (user && user.email) {
-      if (role === 'AGENT' || role === 'SUPER_AGENT' || role === 'CUSTOMER_SUPPORT') {
+      if (role === 'ADMIN' || role === 'AGENT' || role === 'SUPER_AGENT' || role === 'CUSTOMER_SUPPORT') {
         sendAgentCredentialsEmail(
           user.email,
           user.name,
-          user.employeeCode || employeeCode || `AGT-${user.id}`,
+          user.employeeCode || employeeCode || (role === 'ADMIN' ? `ADM-${user.id}` : `AGT-${user.id}`),
           password
         ).catch((err) => console.warn('Agent Welcome email error:', err.message));
       } else {
@@ -111,8 +116,16 @@ export const login = async (
     });
   } catch (error: any) {
     let msg = error.message || "Invalid credentials";
-    if (msg.includes("Connection terminated") || msg.includes("closed") || msg.includes("ECONNRESET")) {
-      msg = "Database connection temporarily reset. Please click Sign In again.";
+    const lower = msg.toLowerCase();
+    if (
+      lower.includes("connection terminated") ||
+      lower.includes("closed") ||
+      lower.includes("econnreset") ||
+      lower.includes("reach database server") ||
+      lower.includes("etimedout") ||
+      lower.includes("busy or resuming")
+    ) {
+      msg = "Database connection temporarily reset or resuming. Please try signing in again.";
     }
     res.status(401).json({
       success: false,
@@ -317,6 +330,45 @@ export const verifyCode = async (req: Request, res: Response) => {
     res.status(400).json({
       success: false,
       message: error.message || 'Failed to verify code'
+    });
+  }
+};
+
+/*
+ * Change First-Time Password (Requires valid authentication token)
+ */
+export const changeFirstTimePassword = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const userId = (req as any).user?.id;
+    const { newPassword } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Invalid or expired session",
+      });
+    }
+
+    if (!newPassword || newPassword.trim().length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be at least 6 characters long",
+      });
+    }
+
+    const result = await authService.changeFirstTimePassword(Number(userId), newPassword);
+
+    res.json({
+      success: true,
+      ...result,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to update first-time password",
     });
   }
 };

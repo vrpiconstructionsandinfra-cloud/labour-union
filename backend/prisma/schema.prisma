@@ -8,6 +8,7 @@ datasource db {
 
 enum UserRole {
   SUPER_AGENT
+  ADMIN
   AGENT
   WORKER
   CUSTOMER_SUPPORT
@@ -92,6 +93,11 @@ model User {
   assignedAgent   User?  @relation("AgentWorkers", fields: [assignedAgentId], references: [id])
   workers         User[] @relation("AgentWorkers")
 
+  // Admin -> Agent Relation (Admins manage Agents)
+  assignedAdminId Int?
+  assignedAdmin   User?  @relation("AdminAgents", fields: [assignedAdminId], references: [id])
+  agents          User[] @relation("AdminAgents")
+
   // Agent Information
   employeeCode String?   @unique
   designation  String?
@@ -154,6 +160,8 @@ model User {
   resetToken      String?
   resetTokenExpiry DateTime?
 
+  mustChangePassword Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -161,6 +169,7 @@ model User {
   @@index([status])
   @@index([siteId])
   @@index([assignedAgentId])
+  @@index([assignedAdminId])
   @@index([managedBySupportId])
 }
 

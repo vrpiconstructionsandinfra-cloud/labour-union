@@ -23,6 +23,7 @@ const enquiry_routes_1 = __importDefault(require("./enquiry.routes"));
 const sitePayment_routes_1 = __importDefault(require("./sitePayment.routes"));
 const settings_routes_1 = __importDefault(require("./settings.routes"));
 const incentive_routes_1 = __importDefault(require("./incentive.routes"));
+const admin_routes_1 = __importDefault(require("./admin.routes"));
 const payment_controller_1 = require("../controllers/payment.controller");
 const router = (0, express_1.Router)();
 // ─── Direct Razorpay Standard Checkout Endpoints ──────────
@@ -49,4 +50,5 @@ router.use("/reports", report_routes_1.default);
 router.use("/enquiries", enquiry_routes_1.default);
 router.use("/settings", settings_routes_1.default);
 router.use("/incentives", incentive_routes_1.default);
+router.use("/admins", admin_routes_1.default);
 exports.default = router;

@@ -3,13 +3,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.approveLoginToken = exports.checkApprovalStatus = exports.requestMobileApproval = exports.getUserProfile = exports.resetPassword = exports.forgotPassword = exports.loginUser = exports.registerUser = void 0;
+exports.changeFirstTimePassword = exports.approveLoginToken = exports.checkApprovalStatus = exports.requestMobileApproval = exports.getUserProfile = exports.resetPassword = exports.forgotPassword = exports.loginUser = exports.registerUser = void 0;
 const prisma_1 = __importDefault(require("../config/prisma"));
 const crypto_1 = __importDefault(require("crypto"));
 const hash_1 = require("../utils/hash");
 const jwt_1 = require("../utils/jwt");
 const mail_service_1 = require("./mail.service");
 const socket_1 = require("../socket/socket");
+const cache_1 = require("../utils/cache");
 /*
  * Register User (SUPER_AGENT, AGENT, WORKER)
  */
@@ -26,7 +27,7 @@ const registerUser = async (name, email, password, role, phone, designation, emp
         }
     }
     // Ensure unique employee code to prevent Prisma unique constraint errors
-    const prefix = role === "WORKER" ? "WRK" : role === "AGENT" ? "AGT" : "SUP";
+    const prefix = role === "WORKER" ? "WRK" : role === "AGENT" ? "AGT" : role === "ADMIN" ? "ADM" : "SUP";
     let finalCode = employeeCode?.trim();
     if (!finalCode) {
         throw new Error("Employee Code is required");
@@ -50,6 +51,13 @@ const registerUser = async (name, email, password, role, phone, designation, emp
     const effectiveAssignedAgentId = extraDetails?.assignedAgentId
         ? Number(extraDetails.assignedAgentId)
         : registeringAgentId;
+    // Determine if this agent registration was performed by an authenticated ADMIN
+    const isAdminAgentCreation = targetRole === 'AGENT' &&
+        extraDetails?.creatorRole === 'ADMIN' &&
+        Boolean(extraDetails?.creatorId);
+    const effectiveAssignedAdminId = extraDetails?.assignedAdminId
+        ? Number(extraDetails.assignedAdminId)
+        : (isAdminAgentCreation ? Number(extraDetails?.creatorId) : undefined);
     let user;
     let incentiveRecord = null;
     try {
@@ -66,11 +74,14 @@ const registerUser = async (name, email, password, role, phone, designation, emp
                             ? 'Mason / Carpenter'
                             : targetRole === 'CUSTOMER_SUPPORT'
                                 ? 'Customer Support Agent'
-                                : 'Field Supervisor'),
+                                : targetRole === 'ADMIN'
+                                    ? 'Regional Administrator'
+                                    : 'Field Supervisor'),
                     employeeCode: finalCode,
-                    salary: salary || (targetRole === 'WORKER' ? 25500 : 45000),
+                    salary: salary || (targetRole === 'WORKER' ? 25500 : targetRole === 'ADMIN' ? 65000 : 45000),
                     siteId: siteId || undefined,
                     assignedAgentId: effectiveAssignedAgentId || undefined,
+                    assignedAdminId: effectiveAssignedAdminId || undefined,
                     profileImage: avatar || undefined,
                     bankAccountNo: extraDetails?.bankAccountNo || undefined,
                     ifscCode: extraDetails?.ifscCode || undefined,
@@ -82,6 +93,7 @@ const registerUser = async (name, email, password, role, phone, designation, emp
                     razorpayPaymentId: extraDetails?.razorpayPaymentId || undefined,
                     razorpayOrderId: extraDetails?.razorpayOrderId || undefined,
                     upiTransactionId: extraDetails?.upiTransactionId || undefined,
+                    mustChangePassword: targetRole === 'AGENT' || targetRole === 'ADMIN',
                 },
             });
             // If registered by an authenticated Field Agent, create ₹25 Worker Registration Incentive
@@ -194,6 +206,9 @@ const registerUser = async (name, email, password, role, phone, designation, emp
         assignedAgentId: user.assignedAgentId,
         timestamp: Date.now(),
     });
+    cache_1.memoryCache.delPrefix("users_");
+    cache_1.memoryCache.delPrefix("dashboard_");
+    cache_1.memoryCache.delPrefix("admins_");
     return user;
 };
 exports.registerUser = registerUser;
@@ -223,22 +238,51 @@ const loginUser = async (email, password, portal) => {
                 phone: true,
             },
         },
+        assignedAdminId: true,
+        assignedAdmin: {
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                employeeCode: true,
+                phone: true,
+            },
+        },
         employeeCode: true,
         designation: true,
         joiningDate: true,
         salary: true,
         profileImage: true,
         active: true,
+        mustChangePassword: true,
         resetToken: true,
         resetTokenExpiry: true,
         createdAt: true,
         updatedAt: true,
     };
     let lastErr = null;
+    const isTransientDbError = (msg) => {
+        if (!msg)
+            return false;
+        const lower = msg.toLowerCase();
+        return (lower.includes("connection terminated") ||
+            lower.includes("closed") ||
+            lower.includes("econnreset") ||
+            lower.includes("etimedout") ||
+            lower.includes("connection") ||
+            lower.includes("reach database server") ||
+            lower.includes("timed out") ||
+            lower.includes("timeout"));
+    };
     for (let attempt = 1; attempt <= 3; attempt++) {
         try {
-            user = await prisma_1.default.user.findUnique({
-                where: { email: cleanEmail },
+            user = await prisma_1.default.user.findFirst({
+                where: {
+                    OR: [
+                        { email: cleanEmail },
+                        { employeeCode: { equals: email.trim(), mode: "insensitive" } },
+                    ],
+                },
                 select: loginSelect,
             });
             lastErr = null;
@@ -246,13 +290,9 @@ const loginUser = async (email, password, portal) => {
         }
         catch (err) {
             lastErr = err;
-            if (attempt < 3 &&
-                (err.message?.includes("Connection terminated") ||
-                    err.message?.includes("closed") ||
-                    err.message?.includes("ECONNRESET") ||
-                    err.message?.includes("connection"))) {
-                console.warn(`Transient pool disconnect on login attempt ${attempt}. Retrying in ${attempt * 300}ms...`);
-                await new Promise((r) => setTimeout(r, attempt * 300));
+            if (attempt < 3 && isTransientDbError(err.message)) {
+                console.warn(`Transient database disconnect on login attempt ${attempt}. Retrying in ${attempt * 500}ms...`);
+                await new Promise((r) => setTimeout(r, attempt * 500));
             }
             else {
                 break;
@@ -260,10 +300,7 @@ const loginUser = async (email, password, portal) => {
         }
     }
     if (lastErr && !user) {
-        if (lastErr.message?.includes("Connection terminated") ||
-            lastErr.message?.includes("closed") ||
-            lastErr.message?.includes("ECONNRESET") ||
-            lastErr.message?.includes("connection")) {
+        if (isTransientDbError(lastErr.message)) {
             throw new Error("Database server is currently busy or resuming. Please try signing in again.");
         }
         throw lastErr;
@@ -283,7 +320,10 @@ const loginUser = async (email, password, portal) => {
         throw new Error("Access Denied: Customer Support Agents must log in via the Customer Support Portal Login page.");
     }
     if (portal === 'SUPPORT' && !isSupportUser) {
-        throw new Error("Access Denied: Super Agents, Field Agents, and Workers must log in via the Main System Login page.");
+        throw new Error("Access Denied: Super Agents, Area Admins, Field Agents, and Workers must log in via the Main System Login page.");
+    }
+    if (portal === 'ADMIN' && roleStr !== 'ADMIN') {
+        throw new Error("Access Denied: Only Area Administrators can log into the Admin Portal. Super Agents, Field Agents, and Workers must log in via the Main Portal.");
     }
     const token = (0, jwt_1.generateToken)(user.id, user.role);
     const { password: _, resetToken, resetTokenExpiry, ...userWithoutPassword } = user;
@@ -293,6 +333,7 @@ const loginUser = async (email, password, portal) => {
         siteCode: user.site?.siteCode || null,
         siteAddress: user.site?.address || null,
         assignedAgentName: user.assignedAgent?.name || null,
+        assignedAdminName: user.assignedAdmin?.name || null,
     };
     return {
         token,
@@ -393,6 +434,7 @@ const getUserProfile = async (userId) => {
             salary: true,
             profileImage: true,
             active: true,
+            mustChangePassword: true,
             bankAccountNo: true,
             ifscCode: true,
             address: true,
@@ -506,3 +548,42 @@ const approveLoginToken = async (token) => {
     };
 };
 exports.approveLoginToken = approveLoginToken;
+/*
+ * Change Password on First-Time Login
+ */
+const changeFirstTimePassword = async (userId, newPassword) => {
+    if (!newPassword || newPassword.trim().length < 6) {
+        throw new Error("New password must be at least 6 characters long");
+    }
+    const user = await prisma_1.default.user.findUnique({
+        where: { id: userId },
+        select: { id: true, email: true, name: true, role: true, mustChangePassword: true },
+    });
+    if (!user) {
+        throw new Error("User not found");
+    }
+    const hashedPassword = await (0, hash_1.hashPassword)(newPassword.trim());
+    const updatedUser = await prisma_1.default.user.update({
+        where: { id: userId },
+        data: {
+            password: hashedPassword,
+            mustChangePassword: false,
+        },
+        select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            employeeCode: true,
+            designation: true,
+            mustChangePassword: true,
+        },
+    });
+    cache_1.memoryCache.delPrefix("users_");
+    cache_1.memoryCache.delPrefix("admins_");
+    return {
+        message: "Password changed successfully. Your account is now fully secured.",
+        user: updatedUser,
+    };
+};
+exports.changeFirstTimePassword = changeFirstTimePassword;

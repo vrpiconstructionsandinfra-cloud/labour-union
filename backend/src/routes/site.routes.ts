@@ -11,7 +11,7 @@ const router = Router();
 router.post(
   "/",
   authenticate,
-  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT"),
+  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT", "ADMIN"),
   siteController.create
 );
 
@@ -19,7 +19,7 @@ router.post(
 router.get(
   "/",
   authenticate,
-  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT", "AGENT"),
+  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT", "AGENT", "ADMIN"),
   siteController.findAll
 );
 
@@ -27,7 +27,7 @@ router.get(
 router.get(
   "/:id",
   authenticate,
-  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT", "AGENT"),
+  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT", "AGENT", "ADMIN"),
   siteController.findOne
 );
 
@@ -35,15 +35,23 @@ router.get(
 router.put(
   "/:id",
   authenticate,
-  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT", "AGENT"),
+  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT", "AGENT", "ADMIN"),
   siteController.update
+);
+
+// Assign Site to Admin
+router.post(
+  "/:id/assign-admin",
+  authenticate,
+  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT", "ADMIN"),
+  siteController.assignAdmin
 );
 
 // Delete Site
 router.delete(
   "/:id",
   authenticate,
-  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT"),
+  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT", "ADMIN"),
   siteController.remove
 );
 

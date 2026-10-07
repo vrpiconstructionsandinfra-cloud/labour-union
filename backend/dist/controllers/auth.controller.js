@@ -33,15 +33,17 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyCode = exports.sendVerificationCode = exports.approveLoginToken = exports.checkApprovalStatus = exports.requestMobileApproval = exports.getMe = exports.resetPassword = exports.forgotPassword = exports.login = exports.register = void 0;
+exports.changeFirstTimePassword = exports.verifyCode = exports.sendVerificationCode = exports.approveLoginToken = exports.checkApprovalStatus = exports.requestMobileApproval = exports.getMe = exports.resetPassword = exports.forgotPassword = exports.login = exports.register = void 0;
 const authService = __importStar(require("../services/auth.service"));
 const mail_service_1 = require("../services/mail.service");
 const verificationOtps = new Map();
 const register = async (req, res) => {
     try {
-        const { name, email, password, role, phone, designation, employeeCode, salary, siteId, avatar, bankAccountNo, ifscCode, address, registrationAmount, paymentMethod, razorpayPaymentId, razorpayOrderId, upiTransactionId, assignedAgentId } = req.body;
+        const { name, email, password, role, phone, designation, employeeCode, salary, siteId, avatar, bankAccountNo, ifscCode, address, registrationAmount, paymentMethod, razorpayPaymentId, razorpayOrderId, upiTransactionId, assignedAgentId, assignedAdminId } = req.body;
         const isAgentUser = req.user?.role === 'AGENT';
         const effectiveAgentId = assignedAgentId ? Number(assignedAgentId) : (isAgentUser ? req.user?.id : undefined);
+        const isAdminUser = req.user?.role === 'ADMIN';
+        const effectiveAdminId = assignedAdminId ? Number(assignedAdminId) : (isAdminUser ? req.user?.id : undefined);
         const user = await authService.registerUser(name, email, password, role || "WORKER", phone, designation, employeeCode, salary ? Number(salary) : undefined, siteId ? Number(siteId) : undefined, avatar, {
             bankAccountNo,
             ifscCode,
@@ -52,12 +54,13 @@ const register = async (req, res) => {
             razorpayOrderId,
             upiTransactionId,
             assignedAgentId: effectiveAgentId ? Number(effectiveAgentId) : undefined,
+            assignedAdminId: effectiveAdminId ? Number(effectiveAdminId) : undefined,
             creatorRole: req.user?.role,
             creatorId: req.user?.id ? Number(req.user.id) : undefined,
         });
         if (user && user.email) {
-            if (role === 'AGENT' || role === 'SUPER_AGENT' || role === 'CUSTOMER_SUPPORT') {
-                (0, mail_service_1.sendAgentCredentialsEmail)(user.email, user.name, user.employeeCode || employeeCode || `AGT-${user.id}`, password).catch((err) => console.warn('Agent Welcome email error:', err.message));
+            if (role === 'ADMIN' || role === 'AGENT' || role === 'SUPER_AGENT' || role === 'CUSTOMER_SUPPORT') {
+                (0, mail_service_1.sendAgentCredentialsEmail)(user.email, user.name, user.employeeCode || employeeCode || (role === 'ADMIN' ? `ADM-${user.id}` : `AGT-${user.id}`), password).catch((err) => console.warn('Agent Welcome email error:', err.message));
             }
             else {
                 (0, mail_service_1.sendWorkerWelcomeCredentialsEmail)(user.email, user.name, user.employeeCode || employeeCode || `WRK-${user.id}`, password).catch((err) => console.warn('Welcome email error:', err.message));
@@ -87,8 +90,14 @@ const login = async (req, res) => {
     }
     catch (error) {
         let msg = error.message || "Invalid credentials";
-        if (msg.includes("Connection terminated") || msg.includes("closed") || msg.includes("ECONNRESET")) {
-            msg = "Database connection temporarily reset. Please click Sign In again.";
+        const lower = msg.toLowerCase();
+        if (lower.includes("connection terminated") ||
+            lower.includes("closed") ||
+            lower.includes("econnreset") ||
+            lower.includes("reach database server") ||
+            lower.includes("etimedout") ||
+            lower.includes("busy or resuming")) {
+            msg = "Database connection temporarily reset or resuming. Please try signing in again.";
         }
         res.status(401).json({
             success: false,
@@ -273,3 +282,36 @@ const verifyCode = async (req, res) => {
     }
 };
 exports.verifyCode = verifyCode;
+/*
+ * Change First-Time Password (Requires valid authentication token)
+ */
+const changeFirstTimePassword = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        const { newPassword } = req.body;
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Unauthorized: Invalid or expired session",
+            });
+        }
+        if (!newPassword || newPassword.trim().length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: "New password must be at least 6 characters long",
+            });
+        }
+        const result = await authService.changeFirstTimePassword(Number(userId), newPassword);
+        res.json({
+            success: true,
+            ...result,
+        });
+    }
+    catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message || "Failed to update first-time password",
+        });
+    }
+};
+exports.changeFirstTimePassword = changeFirstTimePassword;

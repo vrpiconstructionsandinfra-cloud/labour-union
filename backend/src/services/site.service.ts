@@ -1,6 +1,12 @@
 import prisma from "../config/prisma";
 import { CreateSiteInput } from "../validators/site.validator";
 import { createNotification } from "./notification.service";
+import { memoryCache } from "../utils/cache";
+
+export function invalidateSiteCache(): void {
+  memoryCache.delPrefix("sites_");
+  memoryCache.delPrefix("dashboard_");
+}
 
 export const createSite = async (
   data: CreateSiteInput,
@@ -18,24 +24,36 @@ export const createSite = async (
     siteCode = `SITE-${Date.now().toString().slice(-6)}`;
   }
 
-  return prisma.site.create({
+  const newSite = await prisma.site.create({
     data: {
       ...data,
       siteCode,
       createdById
     }
   });
+
+  invalidateSiteCache();
+  return newSite;
 };
 
 export const getAllSites = async () => {
+  const cacheKey = "sites_all";
+  const cached = memoryCache.get<any>(cacheKey);
+  if (cached) {
+    return cached;
+  }
 
-  return prisma.site.findMany({
+  const sites = await prisma.site.findMany({
     include: {
       createdBy: {
         select: {
           id: true,
           name: true,
-          email: true
+          email: true,
+          role: true,
+          employeeCode: true,
+          designation: true,
+          phone: true
         }
       },
 
@@ -43,7 +61,8 @@ export const getAllSites = async () => {
         select: {
           id: true,
           name: true,
-          role: true
+          role: true,
+          employeeCode: true
         }
       }
     },
@@ -53,6 +72,8 @@ export const getAllSites = async () => {
     }
   });
 
+  memoryCache.set(cacheKey, sites, 30);
+  return sites;
 };
 
 export const getSiteById = async (
@@ -67,7 +88,17 @@ export const getSiteById = async (
 
     include: {
       users: true,
-      createdBy: true
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          employeeCode: true,
+          designation: true,
+          phone: true
+        }
+      }
     }
 
   });
@@ -76,12 +107,66 @@ export const getSiteById = async (
 
 export const updateSite = async (
   id: number,
-  data: Partial<CreateSiteInput>
+  data: Partial<CreateSiteInput> & { createdById?: number; adminId?: number }
 ) => {
-  const existingSite = await prisma.site.findUnique({ where: { id } });
+  const existingSite = await prisma.site.findUnique({
+    where: { id },
+    include: { createdBy: true }
+  });
+
+  if (!existingSite) {
+    throw new Error("Working site not found");
+  }
+
+  const updateData: any = {};
+  if (data.siteName !== undefined) updateData.siteName = data.siteName;
+  if (data.siteCode !== undefined) updateData.siteCode = data.siteCode;
+  if (data.companyName !== undefined) updateData.companyName = data.companyName;
+  if (data.address !== undefined) updateData.address = data.address;
+  if (data.city !== undefined) updateData.city = data.city;
+  if (data.state !== undefined) updateData.state = data.state;
+  if (data.pincode !== undefined) updateData.pincode = data.pincode;
+  if (data.contactPerson !== undefined) updateData.contactPerson = data.contactPerson;
+  if (data.contactNumber !== undefined) updateData.contactNumber = data.contactNumber;
+  if (data.status !== undefined) updateData.status = data.status;
+  if ((data as any).active !== undefined) updateData.active = Boolean((data as any).active);
+
+  // Assign to Admin (via adminId or createdById)
+  const rawAdminId = data.adminId !== undefined ? data.adminId : data.createdById;
+  if (rawAdminId !== undefined) {
+    const targetAdminId = Number(rawAdminId);
+    if (!isNaN(targetAdminId) && targetAdminId > 0) {
+      const targetUser = await prisma.user.findUnique({ where: { id: targetAdminId } });
+      if (targetUser) {
+        updateData.createdById = targetAdminId;
+      }
+    }
+  }
+
   const updatedSite = await prisma.site.update({
     where: { id },
-    data
+    data: updateData,
+    include: {
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          employeeCode: true,
+          designation: true,
+          phone: true
+        }
+      },
+      users: {
+        select: {
+          id: true,
+          name: true,
+          role: true,
+          employeeCode: true
+        }
+      }
+    }
   });
 
   if (existingSite && (data as any).status && (existingSite as any).status !== (data as any).status) {
@@ -93,7 +178,22 @@ export const updateSite = async (
     }).catch(() => {});
   }
 
+  if (updateData.createdById && updateData.createdById !== existingSite.createdById) {
+    createNotification({
+      userId: updateData.createdById,
+      title: "Working Site Assigned",
+      message: `Working Site "${updatedSite.siteName}" (${updatedSite.siteCode}) has been assigned to your supervision.`,
+      type: "SITE"
+    }).catch(() => {});
+  }
+
+  memoryCache.delPrefix("admins_");
+  invalidateSiteCache();
   return updatedSite;
+};
+
+export const assignAdminToSite = async (siteId: number, adminId: number) => {
+  return updateSite(siteId, { adminId });
 };
 
 export const deleteSite = async (id: number) => {
@@ -138,5 +238,6 @@ export const deleteSite = async (id: number) => {
     type: "SITE"
   }).catch(() => {});
 
+  invalidateSiteCache();
   return result;
 };

@@ -26,6 +26,7 @@ import {
   ListEmptyState,
   ListLoadingState
 } from '../components/common';
+import { DeleteConfirmModal } from '../components/DeleteConfirmModal';
 import './Pages.css';
 
 interface InsurancePageProps {
@@ -44,7 +45,7 @@ export const InsurancePage: React.FC<InsurancePageProps> = ({
   onOpenEditInsuranceModal
 }) => {
   const { role } = useAuth();
-  const canManageInsurance = role === 'SUPER_AGENT' || role === 'CUSTOMER_SUPPORT';
+  const canManageInsurance = role === 'SUPER_AGENT' || role === 'CUSTOMER_SUPPORT' || role === 'ADMIN';
   const [summary, setSummary] = useState({
     activePolicies: 0,
     expiringSoon: 0,
@@ -54,6 +55,10 @@ export const InsurancePage: React.FC<InsurancePageProps> = ({
   const [policies, setPolicies] = useState<InsurancePolicy[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
+
+  // Delete modal state
+  const [policyToDelete, setPolicyToDelete] = useState<InsurancePolicy | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   // Date Filter & Pagination States
   const [activePreset, setActivePreset] = useState<'ALL' | 'TODAY' | 'THIS_MONTH' | 'CUSTOM'>('ALL');
@@ -127,13 +132,19 @@ export const InsurancePage: React.FC<InsurancePageProps> = ({
     };
   }, []);
 
-  const handleDeletePolicy = async (id: string | number) => {
-    if (!window.confirm('Are you sure you want to delete this enrolled insurance policy?')) return;
+  const confirmDeletePolicy = async () => {
+    if (!policyToDelete) return;
+    setIsDeleting(true);
     try {
-      await deleteInsuranceApi(id);
+      await deleteInsuranceApi(policyToDelete.id);
+      // Optimistically remove from state immediately
+      setPolicies((prev) => prev.filter((item) => String(item.id) !== String(policyToDelete.id)));
+      setPolicyToDelete(null);
       loadData();
     } catch (err: any) {
       alert(err.message || 'Failed to delete insurance policy');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -453,7 +464,7 @@ export const InsurancePage: React.FC<InsurancePageProps> = ({
                               <button
                                 className="list-btn touch-target"
                                 style={{ padding: '3px 8px', fontSize: '11px', minHeight: '30px', backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}
-                                onClick={() => handleDeletePolicy(p.id)}
+                                onClick={() => setPolicyToDelete(p)}
                                 title="Delete Policy"
                               >
                                 <Trash2 size={12} />
@@ -512,7 +523,7 @@ export const InsurancePage: React.FC<InsurancePageProps> = ({
                           label: 'Delete Policy',
                           icon: <Trash2 size={14} />,
                           variant: 'danger' as const,
-                          onClick: () => handleDeletePolicy(p.id)
+                          onClick: () => setPolicyToDelete(p)
                         }
                       ]
                     : undefined
@@ -532,6 +543,18 @@ export const InsurancePage: React.FC<InsurancePageProps> = ({
           />
         </>
       )}
+
+      {/* Confirmation Modal for Policy Deletion */}
+      <DeleteConfirmModal
+        isOpen={Boolean(policyToDelete)}
+        onClose={() => setPolicyToDelete(null)}
+        onConfirm={confirmDeletePolicy}
+        isDeleting={isDeleting}
+        title="Delete Insurance Policy"
+        itemName={policyToDelete ? `${policyToDelete.workerName} (${policyToDelete.policyNumber})` : ''}
+        itemRole="Enrolled Policy"
+        warningNote="This insurance policy enrollment will be permanently deleted from the member's profile. This action cannot be undone."
+      />
     </div>
   );
 };

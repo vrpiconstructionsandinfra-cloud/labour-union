@@ -213,6 +213,11 @@
   color: #D97706;
 }
 
+.salary-stat-icon.indigo {
+  background: #EEF2FF;
+  color: #4F46E5;
+}
+
 .salary-stat-content {
   display: flex;
   flex-direction: column;

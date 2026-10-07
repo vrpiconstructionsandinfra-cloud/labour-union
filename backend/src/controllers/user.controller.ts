@@ -18,7 +18,9 @@ export async function findAll(
   res: Response
 ) {
   try {
-    const users = await getAllUsers();
+    const reqUser = req.user ? { id: req.user.id, role: req.user.role } : undefined;
+    const role = req.query.role ? String(req.query.role) : undefined;
+    const users = await getAllUsers(role, reqUser);
 
     res.json({
       success: true,
@@ -205,8 +207,8 @@ export async function agents(
   res: Response
 ) {
   try {
-
-    const users = await getAgents();
+    const reqUser = req.user ? { id: req.user.id, role: req.user.role } : undefined;
+    const users = await getAgents(reqUser);
 
     res.json({
       success: true,

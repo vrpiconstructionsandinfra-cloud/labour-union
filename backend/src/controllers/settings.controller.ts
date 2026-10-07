@@ -15,8 +15,10 @@ export interface TradeWageItem {
 export interface WageConfigData {
   registrationFee: number;
   agentRegistrationFee?: number;
+  adminRegistrationFee?: number;
   isRegistrationFeeMandatory: boolean;
   isAgentRegistrationFeeMandatory?: boolean;
+  isAdminRegistrationFeeMandatory?: boolean;
   lockAgentWages: boolean;
   tradeWages: TradeWageItem[];
   updatedAt: string;
@@ -26,8 +28,10 @@ export interface WageConfigData {
 const DEFAULT_CONFIG: WageConfigData = {
   registrationFee: 500,
   agentRegistrationFee: 1000,
+  adminRegistrationFee: 2500,
   isRegistrationFeeMandatory: true,
   isAgentRegistrationFeeMandatory: true,
+  isAdminRegistrationFeeMandatory: true,
   lockAgentWages: false,
   tradeWages: [
     { id: "1", name: "General Helper / Helper", dailyWage: 600, monthlyWage: 18000, category: "Unskilled / Semi-skilled", description: "General site support, material handling & cleaning" },
@@ -87,8 +91,10 @@ export const updateWageConfig = async (req: Request, res: Response) => {
     const {
       registrationFee,
       agentRegistrationFee,
+      adminRegistrationFee,
       isRegistrationFeeMandatory,
       isAgentRegistrationFeeMandatory,
+      isAdminRegistrationFeeMandatory,
       lockAgentWages,
       tradeWages
     } = req.body;
@@ -99,8 +105,10 @@ export const updateWageConfig = async (req: Request, res: Response) => {
     const updatedConfig: WageConfigData = {
       registrationFee: typeof registrationFee === "number" ? Math.max(0, registrationFee) : currentConfig.registrationFee,
       agentRegistrationFee: typeof agentRegistrationFee === "number" ? Math.max(0, agentRegistrationFee) : (currentConfig.agentRegistrationFee !== undefined ? currentConfig.agentRegistrationFee : 1000),
+      adminRegistrationFee: typeof adminRegistrationFee === "number" ? Math.max(0, adminRegistrationFee) : (currentConfig.adminRegistrationFee !== undefined ? currentConfig.adminRegistrationFee : 2500),
       isRegistrationFeeMandatory: typeof isRegistrationFeeMandatory === "boolean" ? isRegistrationFeeMandatory : currentConfig.isRegistrationFeeMandatory,
       isAgentRegistrationFeeMandatory: typeof isAgentRegistrationFeeMandatory === "boolean" ? isAgentRegistrationFeeMandatory : (currentConfig.isAgentRegistrationFeeMandatory !== undefined ? currentConfig.isAgentRegistrationFeeMandatory : true),
+      isAdminRegistrationFeeMandatory: typeof isAdminRegistrationFeeMandatory === "boolean" ? isAdminRegistrationFeeMandatory : (currentConfig.isAdminRegistrationFeeMandatory !== undefined ? currentConfig.isAdminRegistrationFeeMandatory : true),
       lockAgentWages: typeof lockAgentWages === "boolean" ? lockAgentWages : currentConfig.lockAgentWages,
       tradeWages: Array.isArray(tradeWages) && tradeWages.length > 0 ? tradeWages : currentConfig.tradeWages,
       updatedAt: new Date().toISOString(),

@@ -10,15 +10,15 @@ const router = (0, express_1.Router)();
 router.get("/public/:id", user_controller_1.getPublicWorker);
 router.use(auth_middleware_1.authenticate);
 // Get all users
-router.get("/", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.AGENT), user_controller_1.findAll);
+router.get("/", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.ADMIN, client_1.UserRole.AGENT), user_controller_1.findAll);
 // Get all workers
-router.get("/workers", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.AGENT, client_1.UserRole.WORKER), user_controller_1.workers);
+router.get("/workers", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.ADMIN, client_1.UserRole.AGENT, client_1.UserRole.WORKER), user_controller_1.workers);
 // Get all agents
-router.get("/agents", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.AGENT), user_controller_1.agents);
+router.get("/agents", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.ADMIN, client_1.UserRole.AGENT), user_controller_1.agents);
 // Get user by ID
-router.get("/:id", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.AGENT), user_controller_1.findOne);
+router.get("/:id", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.ADMIN, client_1.UserRole.AGENT), user_controller_1.findOne);
 // Update user
-router.put("/:id", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.AGENT, client_1.UserRole.WORKER), user_controller_1.update);
+router.put("/:id", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.ADMIN, client_1.UserRole.AGENT, client_1.UserRole.WORKER), user_controller_1.update);
 // Delete user
-router.delete("/:id", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.AGENT, client_1.UserRole.CUSTOMER_SUPPORT), user_controller_1.remove);
+router.delete("/:id", (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.ADMIN, client_1.UserRole.AGENT, client_1.UserRole.CUSTOMER_SUPPORT), user_controller_1.remove);
 exports.default = router;

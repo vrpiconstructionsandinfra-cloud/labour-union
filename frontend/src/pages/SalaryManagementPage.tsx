@@ -27,7 +27,8 @@ import {
   Check,
   X,
   CreditCard,
-  ShieldAlert
+  ShieldAlert,
+  Shield
 } from 'lucide-react';
 import './SalaryManagementPage.css';
 
@@ -395,6 +396,17 @@ export const SalaryManagementPage: React.FC = () => {
             <span className="salary-stat-hint">{config.isAgentRegistrationFeeMandatory !== false ? 'Mandatory via Razorpay' : 'Optional'}</span>
           </div>
         </div>
+
+        <div className="salary-stat-card">
+          <div className="salary-stat-icon indigo">
+            <Shield size={22} />
+          </div>
+          <div className="salary-stat-content">
+            <span className="salary-stat-label">Admin Reg. Fee</span>
+            <span className="salary-stat-value">₹ {(config.adminRegistrationFee ?? 2500).toLocaleString('en-IN')}</span>
+            <span className="salary-stat-hint">{config.isAdminRegistrationFeeMandatory !== false ? 'Mandatory for Onboarding' : 'Optional / Waived'}</span>
+          </div>
+        </div>
       </div>
 
       {/* Section 1: Registration Fees & Wage Lock Policies */}
@@ -404,7 +416,7 @@ export const SalaryManagementPage: React.FC = () => {
             <CreditCard size={20} color="#4F46E5" />
             <div>
               <h2>Registration Fee & Wage Enforcement Rules</h2>
-              <p>Configure custom registration fees charged during worker and field agent enrollment, and lock wages.</p>
+              <p>Configure custom registration fees charged during worker, agent, and administrator enrollment, and lock wages.</p>
             </div>
           </div>
         </div>
@@ -522,6 +534,64 @@ export const SalaryManagementPage: React.FC = () => {
                   }
                 />
                 <span>Mandatory Agent Registration Fee (Require Razorpay checkout)</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Admin Registration Fee */}
+          <div className="fee-config-box">
+            <div className="fee-config-top">
+              <div>
+                <span className="fee-config-title">
+                  <Shield size={18} color="#4F46E5" /> Admin Registration Fee
+                </span>
+                <p className="fee-config-desc">
+                  Set the onboarding fee charged when enrolling an Area Administrator into the union system.
+                </p>
+              </div>
+            </div>
+
+            <div className="fee-input-row">
+              <div className="currency-input-wrap">
+                <span className="currency-symbol">₹</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="250"
+                  className="currency-input"
+                  value={config.adminRegistrationFee ?? 2500}
+                  onChange={(e) => {
+                    const val = Math.max(0, Number(e.target.value) || 0);
+                    updateLocalConfig((prev) => ({ ...prev, adminRegistrationFee: val }));
+                  }}
+                />
+              </div>
+
+              <div className="quick-presets">
+                {[0, 1000, 2500, 5000, 10000].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    className={`quick-preset-btn ${(config.adminRegistrationFee ?? 2500) === preset ? 'active' : ''}`}
+                    onClick={() => updateLocalConfig((prev) => ({ ...prev, adminRegistrationFee: preset }))}
+                  >
+                    {preset === 0 ? 'Free' : `₹${preset.toLocaleString('en-IN')}`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid #E2E8F0' }}>
+              <label className="toggle-switch-label">
+                <input
+                  type="checkbox"
+                  className="switch-input"
+                  checked={config.isAdminRegistrationFeeMandatory !== false}
+                  onChange={(e) =>
+                    updateLocalConfig((prev) => ({ ...prev, isAdminRegistrationFeeMandatory: e.target.checked }))
+                  }
+                />
+                <span>Mandatory Admin Registration Fee (Enforce enrollment fee)</span>
               </label>
             </div>
           </div>

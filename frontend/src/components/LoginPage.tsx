@@ -27,6 +27,7 @@ import {
   type ValidationErrors
 } from '../services/api';
 import { EnquiryModal } from './EnquiryModal';
+import { FirstTimePasswordModal } from './FirstTimePasswordModal';
 import './LoginPage.css';
 
 interface LoginPageProps {
@@ -41,14 +42,22 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   setDarkMode
 }) => {
   const [isEnquiryModalOpen, setIsEnquiryModalOpen] = useState(false);
+  const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
+  const [pendingAuthData, setPendingAuthData] = useState<{ token: string; user: any } | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
-  // Force empty fields on load
+  // Check for prefilled login identifier on load
   useEffect(() => {
-    setEmail('');
+    const prefill = sessionStorage.getItem('prefill_login_identifier');
+    if (prefill) {
+      setEmail(prefill);
+      sessionStorage.removeItem('prefill_login_identifier');
+    } else {
+      setEmail('');
+    }
     setPassword('');
   }, []);
 
@@ -67,41 +76,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [serverError, setServerError] = useState<string | null>(null);
   const [toastSuccess, setToastSuccess] = useState<string | null>(null);
 
-  // Brute-force lockout state
-  const MAX_ATTEMPTS = 5;
-  const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
-
-  const [failedAttempts, setFailedAttempts] = useState<number>(() => {
-    return parseInt(sessionStorage.getItem('login_attempts') || '0', 10);
-  });
-  const [lockoutUntil, setLockoutUntil] = useState<number>(() => {
-    return parseInt(sessionStorage.getItem('login_lockout_until') || '0', 10);
-  });
-  const [lockoutSecondsLeft, setLockoutSecondsLeft] = useState<number>(0);
-
-  const isLockedOut = lockoutUntil > Date.now();
-
+  // Ensure any previous lockout is immediately cleared
   useEffect(() => {
-    if (!isLockedOut) {
-      setLockoutSecondsLeft(0);
-      return;
-    }
-    const tick = () => {
-      const remaining = Math.ceil((lockoutUntil - Date.now()) / 1000);
-      if (remaining <= 0) {
-        setLockoutSecondsLeft(0);
-        setLockoutUntil(0);
-        setFailedAttempts(0);
-        sessionStorage.removeItem('login_lockout_until');
-        sessionStorage.removeItem('login_attempts');
-      } else {
-        setLockoutSecondsLeft(remaining);
-      }
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [lockoutUntil, isLockedOut]);
+    sessionStorage.removeItem('login_lockout_until');
+    sessionStorage.removeItem('login_attempts');
+  }, []);
 
   // Mobile Polling Hook
   useEffect(() => {
@@ -139,11 +118,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     };
   }, [waitingForMobileAuth, authRequestId, onLoginSuccess]);
 
-  const formatCountdown = (totalSec: number) => {
-    const m = Math.floor(totalSec / 60);
-    const s = totalSec % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  };
+
 
   // Trigger Mobile Approval Flow
   const handleTriggerMobileApproval = async (targetEmail: string) => {
@@ -166,8 +141,27 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const handleNavigateToSupportLogin = (targetEmailOrEvent?: string | React.MouseEvent) => {
     const emailToPass = typeof targetEmailOrEvent === 'string' ? targetEmailOrEvent : (email || '');
     const query = emailToPass ? `?email=${encodeURIComponent(emailToPass)}` : '';
-    window.history.pushState({}, '', `/support/login${query}`);
+    window.history.replaceState({}, '', `/support/login${query}`);
     window.dispatchEvent(new Event('popstate'));
+  };
+
+  const handleNavigateToAdminLogin = (targetEmailOrEvent?: string | React.MouseEvent) => {
+    const emailToPass = typeof targetEmailOrEvent === 'string' ? targetEmailOrEvent : '';
+    const query = emailToPass ? `?email=${encodeURIComponent(emailToPass)}` : '';
+    const { protocol, host, hostname } = window.location;
+    if (hostname.startsWith('admin.')) {
+      window.location.href = `${protocol}//${host}/`;
+      return;
+    }
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      window.history.replaceState({}, '', `/admin/login${query}`);
+      window.dispatchEvent(new Event('popstate'));
+    } else {
+      const parts = hostname.split('.');
+      const adminDomain = parts.length > 2 ? `admin.${parts.slice(-2).join('.')}` : `admin.${hostname}`;
+      const port = window.location.port ? `:${window.location.port}` : '';
+      window.location.href = `${protocol}//${adminDomain}${port}/${query}`;
+    }
   };
 
   // Submit Handler
@@ -176,10 +170,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     setServerError(null);
     setToastSuccess(null);
 
-    if (isLockedOut) {
-      setServerError(`Account temporarily locked. Please wait ${formatCountdown(lockoutSecondsLeft)}.`);
-      return;
-    }
+
 
     if (isForgotView) {
       if (!forgotEmail || !forgotEmail.trim()) {
@@ -226,14 +217,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         return;
       }
 
+      if (data.user?.mustChangePassword) {
+        setIsLoading(false);
+        setPendingAuthData(data);
+        setShowFirstTimeModal(true);
+        return;
+      }
+
       sessionStorage.setItem('token', data.token);
       sessionStorage.setItem('user', JSON.stringify(data.user));
       sessionStorage.removeItem('login_attempts');
       sessionStorage.removeItem('login_lockout_until');
-      setFailedAttempts(0);
-      setLockoutUntil(0);
 
-      setToastSuccess('✔ Sign in successful! Navigating to Dashboard...');
+      if (data.user?.role === 'ADMIN') {
+        setToastSuccess('🛡️ Administrator account verified! Navigating to Admin Portal...');
+      } else {
+        setToastSuccess('✔ Sign in successful! Navigating to Dashboard...');
+      }
 
       setTimeout(() => {
         setIsLoading(false);
@@ -265,20 +265,26 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         return;
       }
 
-      const newAttempts = failedAttempts + 1;
-      setFailedAttempts(newAttempts);
-      sessionStorage.setItem('login_attempts', String(newAttempts));
-
-      if (newAttempts >= MAX_ATTEMPTS) {
-        const lockUntil = Date.now() + LOCKOUT_DURATION_MS;
-        setLockoutUntil(lockUntil);
-        sessionStorage.setItem('login_lockout_until', String(lockUntil));
-        setServerError('Too many failed attempts. Your account is locked for 15 minutes.');
-      } else {
-        const attemptsLeft = MAX_ATTEMPTS - newAttempts;
-        setServerError(`${errMsg} — ${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} remaining.`);
-      }
+      setServerError(errMsg);
     }
+  };
+
+  const handleFirstTimeSuccess = (updatedUser: any) => {
+    if (!pendingAuthData) return;
+    const finalUser = {
+      ...pendingAuthData.user,
+      ...updatedUser,
+      mustChangePassword: false,
+    };
+    sessionStorage.setItem('token', pendingAuthData.token);
+    sessionStorage.setItem('user', JSON.stringify(finalUser));
+    sessionStorage.removeItem('login_attempts');
+    sessionStorage.removeItem('login_lockout_until');
+    setShowFirstTimeModal(false);
+    setToastSuccess('✔ Password updated successfully! Navigating to Dashboard...');
+    setTimeout(() => {
+      onLoginSuccess(pendingAuthData.token, finalUser);
+    }, 600);
   };
 
   return (
@@ -597,15 +603,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                   <button
                     type="submit"
                     className="auth-primary-btn"
-                    disabled={isLoading || isLockedOut}
+                    disabled={isLoading}
                   >
                     {isLoading ? (
                       <>
                         <Loader2 size={18} className="spinner" />
                         <span>Signing In...</span>
                       </>
-                    ) : isLockedOut ? (
-                      `Locked — ${formatCountdown(lockoutSecondsLeft)}`
                     ) : (
                       <>
                         <ArrowRight size={18} style={{ marginRight: '6px' }} />
@@ -634,6 +638,18 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                       onClick={handleNavigateToSupportLogin}
                     >
                       Support Portal Login
+                    </button>
+                  </div>
+
+                  <div className="auth-support-footer-row" style={{ marginTop: '6px' }}>
+                    <span>Area Administrator? </span>
+                    <button
+                      type="button"
+                      className="auth-link-orange"
+                      style={{ color: '#2563EB', fontWeight: 600 }}
+                      onClick={handleNavigateToAdminLogin}
+                    >
+                      Admin Portal Login
                     </button>
                   </div>
                 </>
@@ -850,15 +866,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 <button
                   type="submit"
                   className="auth-primary-btn"
-                  disabled={isLoading || isLockedOut}
+                  disabled={isLoading}
                 >
                   {isLoading ? (
                     <>
                       <Loader2 size={18} className="spinner" />
                       <span>Signing In...</span>
                     </>
-                  ) : isLockedOut ? (
-                    `Locked — ${formatCountdown(lockoutSecondsLeft)}`
                   ) : (
                     <>
                       <span>Sign In</span>
@@ -889,6 +903,18 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                     Support Portal Login
                   </button>
                 </div>
+
+                <div className="auth-support-footer-row mobile-footer-support" style={{ marginTop: '6px' }}>
+                  <span>Area Administrator? </span>
+                  <button
+                    type="button"
+                    className="auth-link-orange"
+                    style={{ color: '#2563EB', fontWeight: 600 }}
+                    onClick={handleNavigateToAdminLogin}
+                  >
+                    Admin Portal Login
+                  </button>
+                </div>
               </>
             )}
           </form>
@@ -900,6 +926,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         <EnquiryModal
           isOpen={isEnquiryModalOpen}
           onClose={() => setIsEnquiryModalOpen(false)}
+        />
+      )}
+
+      {/* First-Time Login Password Change Security Modal */}
+      {showFirstTimeModal && pendingAuthData && (
+        <FirstTimePasswordModal
+          isOpen={showFirstTimeModal}
+          userEmail={pendingAuthData.user?.email}
+          userName={pendingAuthData.user?.name}
+          userRole={pendingAuthData.user?.role}
+          token={pendingAuthData.token}
+          onSuccess={handleFirstTimeSuccess}
+          onCancel={() => {
+            setShowFirstTimeModal(false);
+            setPendingAuthData(null);
+            setPassword('');
+          }}
         />
       )}
     </div>

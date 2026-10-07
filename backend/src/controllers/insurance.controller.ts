@@ -147,9 +147,15 @@ export async function deleteInsurance(
   res: Response
 ) {
   try {
-    await insuranceService.deleteInsurance(
-      Number(req.params.id)
-    );
+    const id = Number(req.params.id);
+    if (!id || isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "A valid numeric insurance ID is required",
+      });
+    }
+
+    await insuranceService.deleteInsurance(id);
 
     res.json({
       success: true,

@@ -2,6 +2,12 @@ import prisma from "../config/prisma";
 import { UserRole } from "@prisma/client";
 import { hashPassword, comparePassword } from "../utils/hash";
 import { createNotification } from "./notification.service";
+import { memoryCache } from "../utils/cache";
+
+export function invalidateUserCache(): void {
+  memoryCache.delPrefix("users_");
+  memoryCache.delPrefix("dashboard_");
+}
 
 const userSelect = {
   id: true,
@@ -19,6 +25,14 @@ const userSelect = {
   },
   assignedAgentId: true,
   assignedAgent: {
+    select: {
+      id: true,
+      name: true,
+      employeeCode: true,
+    },
+  },
+  assignedAdminId: true,
+  assignedAdmin: {
     select: {
       id: true,
       name: true,
@@ -46,16 +60,50 @@ const userSelect = {
 /*
  * Get all users with optional role filter
  */
-export async function getAllUsers(role?: string) {
+export async function getAllUsers(role?: string, reqUser?: { id: number; role: string }) {
+  const cacheKey = `users_all_${role || 'all'}_${reqUser?.id || 'all'}_${reqUser?.role || 'all'}`;
+  const cached = memoryCache.get<any>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const where: any = {};
   if (role) {
     where.role = role as UserRole;
   }
-  return prisma.user.findMany({
+
+  if (reqUser?.role === UserRole.ADMIN) {
+    if (role === UserRole.AGENT) {
+      where.assignedAdminId = reqUser.id;
+    } else if (role === UserRole.WORKER) {
+      const adminAgents = await prisma.user.findMany({
+        where: { role: UserRole.AGENT, assignedAdminId: reqUser.id },
+        select: { id: true },
+      });
+      const agentIds = adminAgents.map((a) => a.id);
+      where.assignedAgentId = { in: agentIds };
+    } else if (!role) {
+      const adminAgents = await prisma.user.findMany({
+        where: { role: UserRole.AGENT, assignedAdminId: reqUser.id },
+        select: { id: true },
+      });
+      const agentIds = adminAgents.map((a) => a.id);
+      where.OR = [
+        { id: reqUser.id },
+        { assignedAdminId: reqUser.id },
+        { assignedAgentId: { in: agentIds } }
+      ];
+    }
+  }
+
+  const result = await prisma.user.findMany({
     where,
     orderBy: { createdAt: "desc" },
     select: userSelect,
   });
+
+  memoryCache.set(cacheKey, result, 15);
+  return result;
 }
 
 /*
@@ -86,8 +134,29 @@ export async function updateUser(id: number, data: any, reqUser?: { id: number; 
     if (reqUser.role === UserRole.WORKER) {
       throw new Error("Workers can only update their own profile and password");
     }
+    if (reqUser.role === UserRole.ADMIN) {
+      if (user.role === UserRole.SUPER_AGENT || user.role === UserRole.ADMIN) {
+        throw new Error("Forbidden: Admins cannot modify other administrative accounts");
+      }
+      if (user.role === UserRole.AGENT) {
+        const targetAgent = await prisma.user.findUnique({
+          where: { id },
+          select: { assignedAdminId: true },
+        });
+        if (!targetAgent || targetAgent.assignedAdminId !== reqUser.id) {
+          throw new Error("Forbidden: You can only modify agents assigned under your supervision");
+        }
+      }
+    }
   }
   const updatePayload = { ...data };
+  if (reqUser && reqUser.role === UserRole.ADMIN) {
+    // Prevent Admin self-privilege-escalation on financial or status fields
+    delete updatePayload.salary;
+    delete updatePayload.active;
+    delete updatePayload.status;
+    delete updatePayload.role;
+  }
   if (updatePayload.avatar) {
     updatePayload.profileImage = updatePayload.avatar;
     delete updatePayload.avatar;
@@ -138,11 +207,14 @@ export async function updateUser(id: number, data: any, reqUser?: { id: number; 
     }).catch(() => {});
   }
 
-  return prisma.user.update({
+  const updated = await prisma.user.update({
     where: { id },
     data: updatePayload,
     select: userSelect,
   });
+
+  invalidateUserCache();
+  return updated;
 }
 
 /*
@@ -158,7 +230,31 @@ export async function deleteUser(id: number, reqUser?: { id: number; role: strin
     throw new Error("Super Agent account cannot be deleted.");
   }
 
-  return prisma.$transaction(
+  // Hierarchical authorization check
+  if (reqUser && reqUser.role === UserRole.ADMIN) {
+    if (user.role === UserRole.ADMIN) {
+      throw new Error("Forbidden: Admins cannot delete administrative accounts");
+    }
+    if (user.role === UserRole.AGENT) {
+      if (user.assignedAdminId !== reqUser.id) {
+        throw new Error("Forbidden: You can only delete agents assigned under your supervision");
+      }
+    } else if (user.role === UserRole.WORKER) {
+      if (user.assignedAgentId) {
+        const agent = await prisma.user.findUnique({
+          where: { id: user.assignedAgentId },
+          select: { assignedAdminId: true },
+        });
+        if (!agent || agent.assignedAdminId !== reqUser.id) {
+          throw new Error("Forbidden: You can only delete workers under your assigned agents");
+        }
+      }
+    } else {
+      throw new Error("Forbidden: You do not have permission to delete this user");
+    }
+  }
+
+  const result = await prisma.$transaction(
     async (tx) => {
       // 1. Parallelize all independent cascade cleanups
       await Promise.all([
@@ -172,6 +268,12 @@ export async function deleteUser(id: number, reqUser?: { id: number; role: strin
         tx.user.updateMany({
           where: { assignedAgentId: id },
           data: { assignedAgentId: null },
+        }).catch(() => {}),
+
+        // Unassign agents under this admin (if an admin is deleted)
+        tx.user.updateMany({
+          where: { assignedAdminId: id },
+          data: { assignedAdminId: null },
         }).catch(() => {}),
 
         // Unassign agents managed by this support agent
@@ -269,14 +371,24 @@ export async function deleteUser(id: number, reqUser?: { id: number; role: strin
       timeout: 30000,
     }
   );
+
+  invalidateUserCache();
+  return result;
 }
 
 /*
  * Get workers filtered by requesting user role:
  * - AGENT & SUPER_AGENT: sees all workers across the system
+ * - ADMIN: strictly sees only workers under their assigned agents
  * - WORKER: sees own profile / co-workers under same agent
  */
 export async function getWorkers(reqUser?: { id: number; role: string }) {
+  const cacheKey = `users_workers_${reqUser?.id || 'all'}_${reqUser?.role || 'all'}`;
+  const cached = memoryCache.get<any>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const where: any = { role: UserRole.WORKER };
 
   if (reqUser?.role === UserRole.WORKER) {
@@ -293,21 +405,47 @@ export async function getWorkers(reqUser?: { id: number; role: string }) {
     } else {
       where.id = reqUser.id;
     }
+  } else if (reqUser?.role === UserRole.ADMIN) {
+    // Admin only sees workers under agents assigned to this Admin!
+    const adminAgents = await prisma.user.findMany({
+      where: { role: UserRole.AGENT, assignedAdminId: reqUser.id },
+      select: { id: true },
+    });
+    const agentIds = adminAgents.map((a) => a.id);
+    where.assignedAgentId = { in: agentIds };
   }
 
-  return prisma.user.findMany({
+  const result = await prisma.user.findMany({
     where,
     orderBy: { createdAt: "desc" },
     select: userSelect,
   });
+
+  memoryCache.set(cacheKey, result, 15);
+  return result;
 }
 
 /*
- * Get all agents along with their assigned workers list
+ * Get agents along with their assigned workers list
+ * - SUPER_AGENT: sees all agents
+ * - ADMIN: strictly sees only agents assigned to them or created under their administration
  */
-export async function getAgents() {
-  return prisma.user.findMany({
-    where: { role: UserRole.AGENT },
+export async function getAgents(reqUser?: { id: number; role: string }) {
+  const cacheKey = `users_agents_${reqUser?.id || 'all'}_${reqUser?.role || 'all'}`;
+  const cached = memoryCache.get<any>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const where: any = { role: UserRole.AGENT };
+
+  // Strict tenant boundary: Admins ONLY see agents created by or assigned under them!
+  if (reqUser?.role === UserRole.ADMIN) {
+    where.assignedAdminId = reqUser.id;
+  }
+
+  const result = await prisma.user.findMany({
+    where,
     orderBy: { createdAt: "desc" },
     select: {
       ...userSelect,
@@ -326,4 +464,7 @@ export async function getAgents() {
       },
     },
   });
+
+  memoryCache.set(cacheKey, result, 15);
+  return result;
 }

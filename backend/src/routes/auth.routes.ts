@@ -10,7 +10,8 @@ import {
   checkApprovalStatus,
   approveLoginToken,
   sendVerificationCode,
-  verifyCode
+  verifyCode,
+  changeFirstTimePassword
 } from "../controllers/auth.controller";
 import { authenticate } from "../middleware/auth.middleware";
 
@@ -49,6 +50,12 @@ router.get(
 router.post(
   "/approve-login-token",
   approveLoginToken
+);
+
+router.post(
+  "/change-first-time-password",
+  authenticate,
+  changeFirstTimePassword
 );
 
 export default router;

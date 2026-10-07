@@ -1,4 +1,4 @@
-export type UserRole = 'SUPER_AGENT' | 'AGENT' | 'WORKER' | 'CUSTOMER_SUPPORT';
+export type UserRole = 'SUPER_AGENT' | 'ADMIN' | 'AGENT' | 'WORKER' | 'CUSTOMER_SUPPORT';
 
 export interface User {
   id: string;
@@ -12,6 +12,9 @@ export interface User {
   profileImage?: string;
   siteId?: string;
   assignedAgentId?: string;
+  assignedAgentName?: string;
+  assignedAdminId?: string;
+  assignedAdminName?: string;
   bankAccountNo?: string;
   bankAccountNumber?: string;
   ifscCode?: string;
@@ -19,6 +22,7 @@ export interface User {
   address?: string;
   salary?: number;
   joiningDate?: string;
+  mustChangePassword?: boolean;
 }
 
 export interface MetricData {
@@ -120,6 +124,20 @@ export interface SiteItem {
   assignedAgents: number;
   totalWorkers: number;
   status: 'IN_PROGRESS' | 'COMPLETED' | 'ON_HOLD' | 'ACTIVE' | 'INACTIVE' | string;
+  createdById?: number | string;
+  adminId?: number | string;
+  adminName?: string;
+  adminCode?: string;
+  adminRole?: string;
+  createdBy?: {
+    id: number;
+    name: string;
+    email?: string;
+    role?: string;
+    employeeCode?: string;
+    designation?: string;
+    phone?: string;
+  };
 }
 
 export interface AgentItem {
@@ -138,6 +156,7 @@ export interface AgentItem {
   joiningDate?: string;
   createdAt?: string;
   profileImage?: string;
+  assignedAdminId?: string | number;
 
   aadhaarNumber?: string;
   panNumber?: string;
@@ -284,4 +303,92 @@ export interface AttendanceRecordWithPhoto {
   overtimeHours?: number;
   remarks?: string;
 }
+
+export interface AdminAgentSummary {
+  id: string | number;
+  name: string;
+  employeeCode: string;
+  email?: string;
+  phone?: string;
+  active?: boolean;
+  siteName?: string;
+  siteCode?: string;
+  location?: string;
+  workersCount: number;
+}
+
+export interface AdminItem {
+  id: string | number;
+  name: string;
+  email: string;
+  phone?: string;
+  role: UserRole;
+  status: string;
+  active: boolean;
+  employeeCode: string;
+  designation: string;
+  address?: string;
+  profileImage?: string;
+  createdAt?: string;
+  totalAgents: number;
+  totalWorkers: number;
+  totalSites: number;
+  agents?: AdminAgentSummary[];
+}
+
+export interface AdminWorkerItem {
+  id: string | number;
+  name: string;
+  employeeCode: string;
+  email?: string;
+  phone?: string;
+  designation: string;
+  salary?: number;
+  active: boolean;
+  status: string;
+  profileImage?: string;
+  siteName?: string;
+  siteCode?: string;
+  todayAttendance: string;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
+}
+
+export interface AdminAgentDetailItem {
+  id: string | number;
+  name: string;
+  employeeCode: string;
+  email?: string;
+  phone?: string;
+  active?: boolean;
+  designation?: string;
+  salary?: number;
+  profileImage?: string;
+  siteId?: number;
+  siteName?: string;
+  siteCode?: string;
+  siteLocation?: string;
+  siteAddress?: string;
+  workersCount: number;
+  workers: AdminWorkerItem[];
+}
+
+export interface AdminDetailData extends Omit<AdminItem, 'agents'> {
+  presentWorkersToday: number;
+  attendanceRate: number;
+  agents: AdminAgentDetailItem[];
+  sites: Array<{
+    id: number;
+    siteCode: string;
+    siteName: string;
+    companyName: string;
+    address: string;
+    city: string;
+    state: string;
+    status: string;
+    active: boolean;
+    createdAt?: string;
+  }>;
+}
+
 

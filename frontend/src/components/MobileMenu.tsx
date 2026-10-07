@@ -43,19 +43,20 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
   };
 
   const navItems = [
-    { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['SUPER_AGENT', 'AGENT', 'WORKER', 'CUSTOMER_SUPPORT'] },
-    { key: 'sites', label: 'Working Sites', icon: Building2, roles: ['SUPER_AGENT', 'AGENT'] },
-    { key: 'agents', label: 'Field Agents', icon: Users, roles: ['SUPER_AGENT', 'CUSTOMER_SUPPORT'] },
-    { key: 'workers', label: 'Workers Roster', icon: HardHat, roles: ['SUPER_AGENT', 'AGENT'] },
-    { key: 'attendance', label: 'Daily Attendance', icon: CalendarCheck, roles: ['SUPER_AGENT', 'AGENT', 'WORKER'] },
-    { key: 'leaves', label: 'Leave Requests', icon: FileText, roles: ['SUPER_AGENT', 'AGENT', 'WORKER', 'CUSTOMER_SUPPORT'] },
-    { key: 'payroll', label: 'Payroll & Wages', icon: FileSpreadsheet, roles: ['SUPER_AGENT', 'AGENT'] },
+    { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['SUPER_AGENT', 'ADMIN', 'AGENT', 'WORKER', 'CUSTOMER_SUPPORT'] },
+    { key: 'sites', label: 'Working Sites', icon: Building2, roles: ['SUPER_AGENT', 'ADMIN', 'AGENT'] },
+    { key: 'admins', label: role === 'ADMIN' ? 'Admin Portal' : 'Admins', icon: Shield, roles: ['SUPER_AGENT', 'ADMIN'] },
+    { key: 'agents', label: 'Field Agents', icon: Users, roles: ['SUPER_AGENT', 'ADMIN', 'CUSTOMER_SUPPORT'] },
+    { key: 'workers', label: 'Workers Roster', icon: HardHat, roles: ['SUPER_AGENT', 'ADMIN', 'AGENT'] },
+    { key: 'attendance', label: 'Daily Attendance', icon: CalendarCheck, roles: ['SUPER_AGENT', 'ADMIN', 'AGENT', 'WORKER'] },
+    { key: 'leaves', label: 'Leave Requests', icon: FileText, roles: ['SUPER_AGENT', 'ADMIN', 'AGENT', 'WORKER', 'CUSTOMER_SUPPORT'] },
+    { key: 'payroll', label: 'Payroll & Wages', icon: FileSpreadsheet, roles: ['SUPER_AGENT', 'ADMIN', 'AGENT'] },
     { key: 'wallet', label: 'Worker Wallet', icon: Wallet, roles: ['SUPER_AGENT', 'AGENT', 'WORKER'] },
     { key: 'insurance', label: 'Insurance & Claims', icon: Shield, roles: ['SUPER_AGENT', 'AGENT', 'WORKER'] },
     { key: 'salary', label: 'Agent Salaries', icon: CreditCard, roles: ['SUPER_AGENT'] },
     { key: 'support', label: 'Customer Support', icon: Headphones, roles: ['SUPER_AGENT', 'AGENT', 'CUSTOMER_SUPPORT'] },
-    { key: 'reports', label: 'Reports & Audits', icon: FileText, roles: ['SUPER_AGENT', 'CUSTOMER_SUPPORT'] },
-    { key: 'settings', label: 'System Settings', icon: Settings, roles: ['SUPER_AGENT'] },
+    { key: 'reports', label: 'Reports & Audits', icon: FileText, roles: ['SUPER_AGENT', 'ADMIN', 'CUSTOMER_SUPPORT'] },
+    { key: 'settings', label: 'System Settings', icon: Settings, roles: ['SUPER_AGENT', 'ADMIN'] },
   ];
 
   const allowedItems = navItems.filter(item => !role || item.roles.includes(role));

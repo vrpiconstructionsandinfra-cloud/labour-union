@@ -25,42 +25,42 @@ router.use(authenticate);
 // Get all users
 router.get(
   "/",
-  authorize(UserRole.SUPER_AGENT, UserRole.AGENT),
+  authorize(UserRole.SUPER_AGENT, UserRole.ADMIN, UserRole.AGENT),
   findAll
 );
 
 // Get all workers
 router.get(
   "/workers",
-  authorize(UserRole.SUPER_AGENT, UserRole.AGENT, UserRole.WORKER),
+  authorize(UserRole.SUPER_AGENT, UserRole.ADMIN, UserRole.AGENT, UserRole.WORKER),
   workers
 );
 
 // Get all agents
 router.get(
   "/agents",
-  authorize(UserRole.SUPER_AGENT, UserRole.AGENT),
+  authorize(UserRole.SUPER_AGENT, UserRole.ADMIN, UserRole.AGENT),
   agents
 );
 
 // Get user by ID
 router.get(
   "/:id",
-  authorize(UserRole.SUPER_AGENT, UserRole.AGENT),
+  authorize(UserRole.SUPER_AGENT, UserRole.ADMIN, UserRole.AGENT),
   findOne
 );
 
 // Update user
 router.put(
   "/:id",
-  authorize(UserRole.SUPER_AGENT, UserRole.AGENT, UserRole.WORKER),
+  authorize(UserRole.SUPER_AGENT, UserRole.ADMIN, UserRole.AGENT, UserRole.WORKER),
   update
 );
 
 // Delete user
 router.delete(
   "/:id",
-  authorize(UserRole.SUPER_AGENT, UserRole.AGENT, UserRole.CUSTOMER_SUPPORT),
+  authorize(UserRole.SUPER_AGENT, UserRole.ADMIN, UserRole.AGENT, UserRole.CUSTOMER_SUPPORT),
   remove
 );
 

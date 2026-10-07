@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.invalidateUserCache = invalidateUserCache;
 exports.getAllUsers = getAllUsers;
 exports.getUserById = getUserById;
 exports.updateUser = updateUser;
@@ -13,6 +14,11 @@ const prisma_1 = __importDefault(require("../config/prisma"));
 const client_1 = require("@prisma/client");
 const hash_1 = require("../utils/hash");
 const notification_service_1 = require("./notification.service");
+const cache_1 = require("../utils/cache");
+function invalidateUserCache() {
+    cache_1.memoryCache.delPrefix("users_");
+    cache_1.memoryCache.delPrefix("dashboard_");
+}
 const userSelect = {
     id: true,
     name: true,
@@ -29,6 +35,14 @@ const userSelect = {
     },
     assignedAgentId: true,
     assignedAgent: {
+        select: {
+            id: true,
+            name: true,
+            employeeCode: true,
+        },
+    },
+    assignedAdminId: true,
+    assignedAdmin: {
         select: {
             id: true,
             name: true,
@@ -55,16 +69,48 @@ const userSelect = {
 /*
  * Get all users with optional role filter
  */
-async function getAllUsers(role) {
+async function getAllUsers(role, reqUser) {
+    const cacheKey = `users_all_${role || 'all'}_${reqUser?.id || 'all'}_${reqUser?.role || 'all'}`;
+    const cached = cache_1.memoryCache.get(cacheKey);
+    if (cached) {
+        return cached;
+    }
     const where = {};
     if (role) {
         where.role = role;
     }
-    return prisma_1.default.user.findMany({
+    if (reqUser?.role === client_1.UserRole.ADMIN) {
+        if (role === client_1.UserRole.AGENT) {
+            where.assignedAdminId = reqUser.id;
+        }
+        else if (role === client_1.UserRole.WORKER) {
+            const adminAgents = await prisma_1.default.user.findMany({
+                where: { role: client_1.UserRole.AGENT, assignedAdminId: reqUser.id },
+                select: { id: true },
+            });
+            const agentIds = adminAgents.map((a) => a.id);
+            where.assignedAgentId = { in: agentIds };
+        }
+        else if (!role) {
+            const adminAgents = await prisma_1.default.user.findMany({
+                where: { role: client_1.UserRole.AGENT, assignedAdminId: reqUser.id },
+                select: { id: true },
+            });
+            const agentIds = adminAgents.map((a) => a.id);
+            where.OR = [
+                { id: reqUser.id },
+                { assignedAdminId: reqUser.id },
+                { assignedAgentId: { in: agentIds } }
+            ];
+        }
+    }
+    const result = await prisma_1.default.user.findMany({
         where,
         orderBy: { createdAt: "desc" },
         select: userSelect,
     });
+    cache_1.memoryCache.set(cacheKey, result, 15);
+    return result;
 }
 /*
  * Get user by ID
@@ -93,8 +139,29 @@ async function updateUser(id, data, reqUser) {
         if (reqUser.role === client_1.UserRole.WORKER) {
             throw new Error("Workers can only update their own profile and password");
         }
+        if (reqUser.role === client_1.UserRole.ADMIN) {
+            if (user.role === client_1.UserRole.SUPER_AGENT || user.role === client_1.UserRole.ADMIN) {
+                throw new Error("Forbidden: Admins cannot modify other administrative accounts");
+            }
+            if (user.role === client_1.UserRole.AGENT) {
+                const targetAgent = await prisma_1.default.user.findUnique({
+                    where: { id },
+                    select: { assignedAdminId: true },
+                });
+                if (!targetAgent || targetAgent.assignedAdminId !== reqUser.id) {
+                    throw new Error("Forbidden: You can only modify agents assigned under your supervision");
+                }
+            }
+        }
     }
     const updatePayload = { ...data };
+    if (reqUser && reqUser.role === client_1.UserRole.ADMIN) {
+        // Prevent Admin self-privilege-escalation on financial or status fields
+        delete updatePayload.salary;
+        delete updatePayload.active;
+        delete updatePayload.status;
+        delete updatePayload.role;
+    }
     if (updatePayload.avatar) {
         updatePayload.profileImage = updatePayload.avatar;
         delete updatePayload.avatar;
@@ -143,11 +210,13 @@ async function updateUser(id, data, reqUser) {
             }
         }).catch(() => { });
     }
-    return prisma_1.default.user.update({
+    const updated = await prisma_1.default.user.update({
         where: { id },
         data: updatePayload,
         select: userSelect,
     });
+    invalidateUserCache();
+    return updated;
 }
 /*
  * Delete user
@@ -160,7 +229,32 @@ async function deleteUser(id, reqUser) {
     if (user.role === client_1.UserRole.SUPER_AGENT) {
         throw new Error("Super Agent account cannot be deleted.");
     }
-    return prisma_1.default.$transaction(async (tx) => {
+    // Hierarchical authorization check
+    if (reqUser && reqUser.role === client_1.UserRole.ADMIN) {
+        if (user.role === client_1.UserRole.ADMIN) {
+            throw new Error("Forbidden: Admins cannot delete administrative accounts");
+        }
+        if (user.role === client_1.UserRole.AGENT) {
+            if (user.assignedAdminId !== reqUser.id) {
+                throw new Error("Forbidden: You can only delete agents assigned under your supervision");
+            }
+        }
+        else if (user.role === client_1.UserRole.WORKER) {
+            if (user.assignedAgentId) {
+                const agent = await prisma_1.default.user.findUnique({
+                    where: { id: user.assignedAgentId },
+                    select: { assignedAdminId: true },
+                });
+                if (!agent || agent.assignedAdminId !== reqUser.id) {
+                    throw new Error("Forbidden: You can only delete workers under your assigned agents");
+                }
+            }
+        }
+        else {
+            throw new Error("Forbidden: You do not have permission to delete this user");
+        }
+    }
+    const result = await prisma_1.default.$transaction(async (tx) => {
         // 1. Parallelize all independent cascade cleanups
         await Promise.all([
             // Unassign tickets handled by this agent
@@ -172,6 +266,11 @@ async function deleteUser(id, reqUser) {
             tx.user.updateMany({
                 where: { assignedAgentId: id },
                 data: { assignedAgentId: null },
+            }).catch(() => { }),
+            // Unassign agents under this admin (if an admin is deleted)
+            tx.user.updateMany({
+                where: { assignedAdminId: id },
+                data: { assignedAdminId: null },
             }).catch(() => { }),
             // Unassign agents managed by this support agent
             tx.user.updateMany({
@@ -251,13 +350,21 @@ async function deleteUser(id, reqUser) {
         maxWait: 10000,
         timeout: 30000,
     });
+    invalidateUserCache();
+    return result;
 }
 /*
  * Get workers filtered by requesting user role:
  * - AGENT & SUPER_AGENT: sees all workers across the system
+ * - ADMIN: strictly sees only workers under their assigned agents
  * - WORKER: sees own profile / co-workers under same agent
  */
 async function getWorkers(reqUser) {
+    const cacheKey = `users_workers_${reqUser?.id || 'all'}_${reqUser?.role || 'all'}`;
+    const cached = cache_1.memoryCache.get(cacheKey);
+    if (cached) {
+        return cached;
+    }
     const where = { role: client_1.UserRole.WORKER };
     if (reqUser?.role === client_1.UserRole.WORKER) {
         const currentUser = await prisma_1.default.user.findUnique({
@@ -274,18 +381,41 @@ async function getWorkers(reqUser) {
             where.id = reqUser.id;
         }
     }
-    return prisma_1.default.user.findMany({
+    else if (reqUser?.role === client_1.UserRole.ADMIN) {
+        // Admin only sees workers under agents assigned to this Admin!
+        const adminAgents = await prisma_1.default.user.findMany({
+            where: { role: client_1.UserRole.AGENT, assignedAdminId: reqUser.id },
+            select: { id: true },
+        });
+        const agentIds = adminAgents.map((a) => a.id);
+        where.assignedAgentId = { in: agentIds };
+    }
+    const result = await prisma_1.default.user.findMany({
         where,
         orderBy: { createdAt: "desc" },
         select: userSelect,
     });
+    cache_1.memoryCache.set(cacheKey, result, 15);
+    return result;
 }
 /*
- * Get all agents along with their assigned workers list
+ * Get agents along with their assigned workers list
+ * - SUPER_AGENT: sees all agents
+ * - ADMIN: strictly sees only agents assigned to them or created under their administration
  */
-async function getAgents() {
-    return prisma_1.default.user.findMany({
-        where: { role: client_1.UserRole.AGENT },
+async function getAgents(reqUser) {
+    const cacheKey = `users_agents_${reqUser?.id || 'all'}_${reqUser?.role || 'all'}`;
+    const cached = cache_1.memoryCache.get(cacheKey);
+    if (cached) {
+        return cached;
+    }
+    const where = { role: client_1.UserRole.AGENT };
+    // Strict tenant boundary: Admins ONLY see agents created by or assigned under them!
+    if (reqUser?.role === client_1.UserRole.ADMIN) {
+        where.assignedAdminId = reqUser.id;
+    }
+    const result = await prisma_1.default.user.findMany({
+        where,
         orderBy: { createdAt: "desc" },
         select: {
             ...userSelect,
@@ -304,4 +434,6 @@ async function getAgents() {
             },
         },
     });
+    cache_1.memoryCache.set(cacheKey, result, 15);
+    return result;
 }

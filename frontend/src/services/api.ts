@@ -10,7 +10,10 @@ import type {
   ActivityItem,
   NotificationItem,
   WorkerDocumentItem,
-  WorkerSiteScheduleItem
+  WorkerSiteScheduleItem,
+  AdminItem,
+  AdminDetailData,
+  AdminWorkerItem
 } from '../types';
 
 export interface LoginResponseData {
@@ -74,13 +77,22 @@ export const getApiUrl = (endpoint: string): string => {
     return endpoint;
   }
   let rawBase = ((import.meta as any).env?.VITE_API_URL || '').trim();
-  if (!rawBase && typeof window !== 'undefined') {
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname.toLowerCase();
     const isLocalhost =
-      window.location.hostname === 'localhost' ||
-      window.location.hostname === '127.0.0.1' ||
-      window.location.hostname === '0.0.0.0';
-    if (!isLocalhost) {
-      rawBase = DEFAULT_PROD_API_URL;
+      hostname === 'localhost' ||
+      hostname.endsWith('.localhost') ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0';
+
+    if (isLocalhost) {
+      if (!rawBase || rawBase.includes('onrender.com')) {
+        rawBase = 'http://localhost:5000';
+      }
+    } else {
+      if (!rawBase) {
+        rawBase = DEFAULT_PROD_API_URL;
+      }
     }
   }
   if (!rawBase) {
@@ -95,46 +107,67 @@ export const getApiUrl = (endpoint: string): string => {
   return `${cleanBase}${cleanEndpoint}`;
 };
 
+// In-flight GET request deduplication map to prevent redundant concurrent roundtrips
+const inFlightGetRequests = new Map<string, Promise<any>>();
+
 // Helper for authenticated backend requests
 const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-  const token = sessionStorage.getItem('token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...options.headers
-  };
+  const method = (options.method || 'GET').toUpperCase();
+  const isGet = method === 'GET';
 
-  let response: Response;
-  try {
-    response = await fetch(getApiUrl(url), { ...options, headers });
-  } catch {
-    throw new Error('Unable to connect to server. Please check backend connection.');
+  if (isGet && inFlightGetRequests.has(url)) {
+    return inFlightGetRequests.get(url)!;
   }
 
-  // If token is rejected mid-session, fire a global event so AuthContext can react
-  if (response.status === 401) {
-    window.dispatchEvent(new CustomEvent('session-expired'));
-  }
+  const requestPromise = (async () => {
+    const token = sessionStorage.getItem('token');
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers
+    };
 
-  const result = await safeParseJson(response);
-
-  if (!response.ok || !result || !result.success) {
-    let errorMsg = result?.message || (
-      response.status === 401 ? 'Unauthorized / Invalid session' :
-      response.status === 502 ? 'Backend Server Unavailable (502 Bad Gateway)' :
-      `API Error (${response.status})`
-    );
-    if (typeof errorMsg === 'string' && errorMsg.startsWith('[')) {
-      try {
-        const parsed = JSON.parse(errorMsg);
-        if (Array.isArray(parsed)) {
-          errorMsg = parsed.map((e: any) => `${e.path?.join('.') || 'field'}: ${e.message}`).join(', ');
-        }
-      } catch {}
+    let response: Response;
+    try {
+      response = await fetch(getApiUrl(url), { ...options, headers });
+    } catch {
+      throw new Error('Unable to connect to server. Please check backend connection.');
     }
-    throw new Error(errorMsg);
+
+    // If token is rejected mid-session, fire a global event so AuthContext can react
+    if (response.status === 401) {
+      window.dispatchEvent(new CustomEvent('session-expired'));
+    }
+
+    const result = await safeParseJson(response);
+
+    if (!response.ok || !result || !result.success) {
+      let errorMsg = result?.message || (
+        response.status === 401 ? 'Unauthorized / Invalid session' :
+        response.status === 502 ? 'Backend Server Unavailable (502 Bad Gateway)' :
+        `API Error (${response.status})`
+      );
+      if (typeof errorMsg === 'string' && errorMsg.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(errorMsg);
+          if (Array.isArray(parsed)) {
+            errorMsg = parsed.map((e: any) => `${e.path?.join('.') || 'field'}: ${e.message}`).join(', ');
+          }
+        } catch {}
+      }
+      throw new Error(errorMsg);
+    }
+    return result;
+  })();
+
+  if (isGet) {
+    inFlightGetRequests.set(url, requestPromise);
+    requestPromise.finally(() => {
+      inFlightGetRequests.delete(url);
+    });
   }
-  return result;
+
+  return requestPromise;
 };
 
 
@@ -144,7 +177,7 @@ export const fetchMeApi = async (): Promise<User> => {
   return res.data;
 };
 
-export const loginApi = async (email: string, password: string, portal?: 'MAIN' | 'SUPPORT'): Promise<LoginResponseData> => {
+export const loginApi = async (email: string, password: string, portal?: 'MAIN' | 'SUPPORT' | 'ADMIN'): Promise<LoginResponseData> => {
   const validationErrors = validateLoginForm(email, password);
   if (Object.keys(validationErrors).length > 0) {
     const firstError = validationErrors.email || validationErrors.password;
@@ -180,6 +213,24 @@ export const loginApi = async (email: string, password: string, portal?: 'MAIN' 
   }
 
   return result.data;
+};
+
+export const changeFirstTimePasswordApi = async (newPassword: string, token?: string): Promise<{ success: boolean; message: string; user: User }> => {
+  const authToken = token || localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+  const response = await fetch(getApiUrl('/api/auth/change-first-time-password'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${authToken}`
+    },
+    body: JSON.stringify({ newPassword })
+  });
+
+  const result = await safeParseJson(response);
+  if (!response.ok || !result || !result.success) {
+    throw new Error(result?.message || 'Failed to update password');
+  }
+  return result;
 };
 
 export const sendEmailVerificationCodeApi = async (email: string, name?: string) => {
@@ -276,6 +327,9 @@ export const fetchSitesApi = async (): Promise<SiteItem[]> => {
     const allUsers = site.users || site.workers || [];
     const workersCount = allUsers.filter((u: any) => u.role === 'WORKER').length || (site.workers ? site.workers.length : 0);
     const agentsCount = allUsers.filter((u: any) => u.role === 'AGENT' || u.role === 'SUPER_AGENT').length || (site.agents ? site.agents.length : 0);
+    const createdBy = site.createdBy;
+    const isAssignedAdmin = Boolean(createdBy && createdBy.role === 'ADMIN');
+
     return {
       id: String(site.id),
       siteCode: site.siteCode || `SITE-${site.id}`,
@@ -283,11 +337,29 @@ export const fetchSitesApi = async (): Promise<SiteItem[]> => {
       companyName: site.companyName || 'Labor Union Org',
       city: site.city || 'Mumbai',
       state: site.state || 'Maharashtra',
+      address: site.address,
+      pincode: site.pincode,
+      contactPerson: site.contactPerson,
+      contactNumber: site.contactNumber,
       assignedAgents: agentsCount,
       totalWorkers: workersCount,
-      status: site.status || 'ACTIVE'
+      status: site.status || 'ACTIVE',
+      createdById: site.createdById,
+      adminId: isAssignedAdmin ? String(createdBy.id) : (site.createdById ? String(site.createdById) : undefined),
+      adminName: isAssignedAdmin ? createdBy.name : undefined,
+      adminCode: isAssignedAdmin ? (createdBy.employeeCode || `ADM-${createdBy.id}`) : undefined,
+      adminRole: createdBy?.role,
+      createdBy: createdBy
     };
   });
+};
+
+export const assignSiteToAdminApi = async (siteId: string | number, adminId: string | number) => {
+  const res = await fetchWithAuth(`/api/sites/${siteId}/assign-admin`, {
+    method: 'POST',
+    body: JSON.stringify({ adminId: Number(adminId) })
+  });
+  return res.data;
 };
 
 // 5.5. Users Endpoint (Fetch all users from backend)
@@ -328,7 +400,8 @@ export const fetchAgentsApi = async (): Promise<AgentItem[]> => {
       })),
       avatar: agent.profileImage || agent.avatar || '',
       status: agent.status || (agent.active ? 'ACTIVE' : 'INACTIVE'),
-      siteId: agent.siteId
+      siteId: agent.siteId,
+      assignedAdminId: agent.assignedAdminId ? String(agent.assignedAdminId) : undefined
     };
   });
 };
@@ -672,7 +745,7 @@ export const registerUserApi = async (userData: {
   name: string;
   email?: string;
   password: string;
-  role: 'SUPER_AGENT' | 'AGENT' | 'WORKER';
+  role: 'SUPER_AGENT' | 'ADMIN' | 'AGENT' | 'WORKER' | 'CUSTOMER_SUPPORT';
   phone?: string;
   designation?: string;
   employeeCode?: string;
@@ -688,6 +761,7 @@ export const registerUserApi = async (userData: {
   razorpayOrderId?: string;
   upiTransactionId?: string;
   assignedAgentId?: number;
+  assignedAdminId?: number;
 }) => {
   const res = await fetchWithAuth('/api/auth/register', {
     method: 'POST',
@@ -1653,3 +1727,141 @@ export const verifyCodeApi = async (email: string, code: string): Promise<{ succ
   }
   return data;
 };
+
+// ─── Super Admin -> Admins & Admin Portal APIs ────────────────────────────────
+
+export const fetchAdminsApi = async (): Promise<AdminItem[]> => {
+  const res = await fetchWithAuth('/api/admins');
+  return res.data || [];
+};
+
+export const fetchAdminDetailApi = async (adminId: string | number): Promise<AdminDetailData> => {
+  const res = await fetchWithAuth(`/api/admins/${adminId}`);
+  return res.data;
+};
+
+export const createAdminApi = async (data: {
+  name: string;
+  email: string;
+  password: string;
+  phone?: string;
+  employeeCode?: string;
+  designation?: string;
+  address?: string;
+  salary?: number;
+  profileImage?: string;
+  agentIds?: (number | string)[];
+  registrationAmount?: number;
+  paymentMethod?: string;
+  razorpayPaymentId?: string;
+  razorpayOrderId?: string;
+}): Promise<AdminItem> => {
+  const res = await fetchWithAuth('/api/admins', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!res.success) {
+    throw new Error(res.message || 'Failed to create administrator');
+  }
+  return res.data;
+};
+
+export const updateAdminApi = async (
+  adminId: string | number,
+  data: Partial<AdminItem> & { password?: string }
+): Promise<AdminItem> => {
+  const res = await fetchWithAuth(`/api/admins/${adminId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+  if (!res.success) {
+    throw new Error(res.message || 'Failed to update administrator');
+  }
+  return res.data;
+};
+
+export const deleteAdminApi = async (adminId: string | number): Promise<void> => {
+  const res = await fetchWithAuth(`/api/admins/${adminId}`, {
+    method: 'DELETE',
+  });
+  if (!res.success) {
+    throw new Error(res.message || 'Failed to delete administrator');
+  }
+};
+
+export const assignAgentsToAdminApi = async (
+  adminId: string | number,
+  agentIds: (string | number)[]
+): Promise<void> => {
+  const res = await fetchWithAuth(`/api/admins/${adminId}/assign-agents`, {
+    method: 'POST',
+    body: JSON.stringify({ agentIds: agentIds.map(Number) }),
+  });
+  if (!res.success) {
+    throw new Error(res.message || 'Failed to assign agents');
+  }
+};
+
+export const removeAgentFromAdminApi = async (
+  adminId: string | number,
+  agentId: string | number
+): Promise<void> => {
+  const res = await fetchWithAuth(`/api/admins/${adminId}/agents/${agentId}`, {
+    method: 'DELETE',
+  });
+  if (!res.success) {
+    throw new Error(res.message || 'Failed to remove agent');
+  }
+};
+
+export const fetchAdminPortalDashboardApi = async (
+  adminId?: string | number
+): Promise<AdminDetailData> => {
+  const query = adminId ? `?adminId=${adminId}` : '';
+  const res = await fetchWithAuth(`/api/admins/portal/dashboard${query}`);
+  return res.data;
+};
+
+export const adminCreateAgentApi = async (data: {
+  adminId?: number | string;
+  name: string;
+  email?: string;
+  password?: string;
+  phone?: string;
+  designation?: string;
+  siteId?: number;
+  employeeCode?: string;
+  salary?: number;
+  profileImage?: string;
+  address?: string;
+  registrationAmount?: number;
+  paymentMethod?: string;
+  razorpayPaymentId?: string;
+  razorpayOrderId?: string;
+}): Promise<any> => {
+  const res = await fetchWithAuth('/api/admins/portal/create-agent', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!res.success) {
+    throw new Error(res.message || 'Failed to create field agent');
+  }
+  return res.data;
+};
+
+export const adminDeleteAgentApi = async (agentId: string | number): Promise<void> => {
+  const res = await fetchWithAuth(`/api/admins/portal/agents/${agentId}`, {
+    method: 'DELETE',
+  });
+  if (!res.success) {
+    throw new Error(res.message || 'Failed to delete field agent');
+  }
+};
+
+export const fetchAgentWorkersUnderAdminApi = async (
+  agentId: string | number
+): Promise<AdminWorkerItem[]> => {
+  const res = await fetchWithAuth(`/api/admins/portal/agent/${agentId}/workers`);
+  return res.data || [];
+};
+

@@ -19,7 +19,8 @@ import {
   X,
   Settings,
   Coins,
-  Banknote
+  Banknote,
+  Shield
 } from 'lucide-react';
 import { UserAvatar } from './UserAvatar';
 import './Sidebar.css';
@@ -44,6 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const allManagementNav = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, isDashboard: true },
     { id: 'sites', label: 'Sites', icon: Building2 },
+    { id: 'admins', label: role === 'ADMIN' ? 'Admin Portal' : 'Admins', icon: Shield },
     { id: 'agents', label: 'Agents', icon: Users },
     { id: 'workers', label: 'Workers', icon: UserCheck },
     { id: 'agent_incentives', label: 'Agent Incentives', icon: Coins },
@@ -119,7 +121,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               const Icon = item.icon;
               const isCustomerSupport = item.id === 'tickets';
               const isChildActive = ['tickets', 'support_agents', 'ticket_calendar', 'support_reports'].includes(activeTab);
-              const isActive = activeTab === item.id || (isCustomerSupport && isChildActive);
+              const isAdminItem = item.id === 'admins';
+              const isAdminChildActive = ['admins', 'create_admin', 'add_admin'].includes(activeTab);
+              const isActive = activeTab === item.id || (isCustomerSupport && isChildActive) || (isAdminItem && isAdminChildActive);
 
               return (
                 <li key={item.id}>

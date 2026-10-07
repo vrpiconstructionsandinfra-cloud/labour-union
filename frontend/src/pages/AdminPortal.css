@@ -1,0 +1,566 @@
+/* Admin Portal & Super Admin Admins Management Styling */
+
+.admin-portal-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Header Banner */
+.admin-hero-banner {
+  background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+  color: #FFFFFF;
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 6px 18px -4px rgba(15, 23, 42, 0.2);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-hero-banner::after {
+  content: '';
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.25) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.admin-hero-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-hero-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #60A5FA;
+  flex-shrink: 0;
+}
+
+.admin-hero-text h1 {
+  font-size: 16.5px;
+  font-weight: 700;
+  margin: 0;
+  color: #FFFFFF;
+  letter-spacing: -0.01em;
+}
+
+.admin-hero-text p {
+  font-size: 12px;
+  color: #94A3B8;
+  margin: 3px 0 0 0;
+}
+
+.admin-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1;
+}
+
+/* Metric Stats Grid */
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.admin-stat-card {
+  background: var(--bg-card, #FFFFFF);
+  border: 1px solid var(--border-color, #E2E8F0);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.04));
+}
+
+.admin-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px -3px rgba(0, 0, 0, 0.07);
+  border-color: #CBD5E1;
+}
+
+.admin-stat-icon-wrap {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.admin-stat-icon-wrap.blue { background: #EFF6FF; color: #2563EB; }
+.admin-stat-icon-wrap.emerald { background: #ECFDF5; color: #059669; }
+.admin-stat-icon-wrap.amber { background: #FFFBEB; color: #D97706; }
+.admin-stat-icon-wrap.purple { background: #FAF5FF; color: #7C3AED; }
+
+.admin-stat-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-stat-label {
+  font-size: 11px;
+  color: var(--text-secondary, #64748B);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.admin-stat-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary, #0F172A);
+  margin-top: 2px;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.admin-stat-subtext {
+  font-size: 10.5px;
+  color: #10B981;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+/* Hierarchy Path Indicator */
+.hierarchy-breadcrumbs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-main, #F8FAFC);
+  border: 1px solid var(--border-color, #E2E8F0);
+  border-radius: 9999px;
+  padding: 4px 12px;
+  font-size: 11.5px;
+  color: var(--text-secondary, #64748B);
+  font-weight: 500;
+}
+
+.hierarchy-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  font-size: 11.5px;
+}
+
+.hierarchy-node.active {
+  color: #2563EB;
+}
+
+/* Admins Table / Card List */
+.admins-list-container {
+  background: var(--bg-card, #FFFFFF);
+  border: 1px solid var(--border-color, #E2E8F0);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.05));
+}
+
+.admin-portal-container .filter-bar {
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+.admin-portal-container .search-input-wrap {
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+
+.admin-portal-container .search-input-wrap input {
+  font-size: 12px;
+}
+
+.admins-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.admins-table th {
+  background: var(--bg-main, #F8FAFC);
+  padding: 10px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary, #64748B);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border-color, #E2E8F0);
+}
+
+.admins-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color, #E2E8F0);
+  font-size: 12.5px;
+  color: var(--text-primary, #1E293B);
+  vertical-align: middle;
+}
+
+.admins-table tr:hover td {
+  background-color: var(--bg-main, #F8FAFC);
+}
+
+.admins-table tr.clickable-row {
+  cursor: pointer;
+}
+
+/* Count Pills */
+.badge-count-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.badge-count-pill.blue {
+  background: #EFF6FF;
+  color: #1D4ED8;
+  border: 1px solid #DBEAFE;
+}
+
+.badge-count-pill.amber {
+  background: #FEF3C7;
+  color: #B45309;
+  border: 1px solid #FDE68A;
+}
+
+.badge-count-pill.emerald {
+  background: #ECFDF5;
+  color: #047857;
+  border: 1px solid #A7F3D0;
+}
+
+/* Admin Detail & Monitoring Panel */
+.admin-inspector-card {
+  background: var(--bg-card, #FFFFFF);
+  border: 1px solid var(--border-color, #E2E8F0);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.inspector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border-color, #E2E8F0);
+}
+
+.inspector-profile-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.inspector-info h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary, #0F172A);
+  margin: 0;
+}
+
+.inspector-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-secondary, #64748B);
+}
+
+/* Agent cards grid under Admin */
+.supervised-agents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+.agent-monitor-card {
+  background: var(--bg-card, #FFFFFF);
+  border: 1px solid var(--border-color, #E2E8F0);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.agent-monitor-card:hover {
+  border-color: #3B82F6;
+  box-shadow: 0 8px 20px -4px rgba(59, 130, 246, 0.12);
+}
+
+.agent-monitor-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.agent-monitor-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.agent-monitor-name {
+  font-weight: 700;
+  font-size: 14.5px;
+  color: var(--text-primary, #0F172A);
+}
+
+.agent-monitor-code {
+  font-size: 12px;
+  color: var(--text-secondary, #64748B);
+  font-family: monospace;
+}
+
+.agent-monitor-site {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: #475569;
+  background: #F1F5F9;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+
+.agent-monitor-stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: #F8FAFC;
+  border-radius: 10px;
+  border: 1px solid #E2E8F0;
+}
+
+.agent-monitor-workers-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1E40AF;
+}
+
+.agent-monitor-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* Worker Roster Drawer / Modal */
+.worker-roster-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.worker-roster-table th {
+  background: var(--bg-main, #F8FAFC);
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #64748B);
+  border-bottom: 1px solid var(--border-color, #E2E8F0);
+}
+
+.worker-roster-table td {
+  padding: 12px 14px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border-color, #E2E8F0);
+  vertical-align: middle;
+}
+
+/* Attendance Status Badge */
+.attendance-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.attendance-pill.present {
+  background: #DCFCE7;
+  color: #166534;
+}
+
+.attendance-pill.absent {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+.attendance-pill.unmarked {
+  background: #F1F5F9;
+  color: #64748B;
+}
+
+/* Buttons */
+.btn-primary-admin {
+  background: #2563EB;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-primary-admin:hover {
+  background: #1D4ED8;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.btn-secondary-admin {
+  background: var(--bg-card, #FFFFFF);
+  color: var(--text-primary, #0F172A);
+  border: 1px solid var(--border-color, #CBD5E1);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary-admin:hover {
+  background: var(--bg-main, #F8FAFC);
+  border-color: #94A3B8;
+}
+
+.btn-danger-outline {
+  background: transparent;
+  color: #DC2626;
+  border: 1px solid #FCA5A5;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-danger-outline:hover {
+  background: #FEF2F2;
+  border-color: #EF4444;
+}
+
+/* Dark mode adjustments */
+body.dark-mode .admin-hero-banner {
+  background: linear-gradient(135deg, #0F172A 0%, #020617 100%);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+body.dark-mode .admin-stat-card,
+body.dark-mode .admins-list-container,
+body.dark-mode .admin-inspector-card,
+body.dark-mode .agent-monitor-card {
+  background: #1E293B;
+  border-color: #334155;
+}
+
+body.dark-mode .admins-table th,
+body.dark-mode .worker-roster-table th,
+body.dark-mode .agent-monitor-stats {
+  background: #0F172A;
+  border-color: #334155;
+}
+
+body.dark-mode .agent-monitor-site {
+  background: #0F172A;
+  color: #94A3B8;
+}
+
+body.dark-mode .badge-count-pill.blue {
+  background: rgba(37, 99, 235, 0.2);
+  color: #93C5FD;
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+body.dark-mode .badge-count-pill.amber {
+  background: rgba(217, 119, 6, 0.2);
+  color: #FCD34D;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+body.dark-mode .btn-secondary-admin {
+  background: #1E293B;
+  color: #F8FAFC;
+  border-color: #475569;
+}
+
+body.dark-mode .btn-secondary-admin:hover {
+  background: #334155;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .admin-hero-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 20px;
+  }
+  .admin-hero-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+  .admin-hero-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+  .supervised-agents-grid {
+    grid-template-columns: 1fr;
+  }
+}

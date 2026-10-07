@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.remove = exports.update = exports.findOne = exports.findAll = exports.create = void 0;
+exports.remove = exports.assignAdmin = exports.update = exports.findOne = exports.findAll = exports.create = void 0;
 const siteService = __importStar(require("../services/site.service"));
 const site_validator_1 = require("../validators/site.validator");
 const create = async (req, res) => {
@@ -114,6 +114,33 @@ const update = async (req, res) => {
     }
 };
 exports.update = update;
+const assignAdmin = async (req, res) => {
+    try {
+        const siteId = Number(req.params.id);
+        const { adminId } = req.body;
+        if (adminId === undefined || adminId === null) {
+            return res.status(400).json({
+                success: false,
+                message: "Admin ID is required to assign site"
+            });
+        }
+        const site = await siteService.updateSite(siteId, {
+            adminId: Number(adminId)
+        });
+        res.json({
+            success: true,
+            message: "Site assigned to Area Administrator successfully",
+            data: site
+        });
+    }
+    catch (error) {
+        res.status(400).json({
+            success: false,
+            message: error.message || "Failed to assign site to admin"
+        });
+    }
+};
+exports.assignAdmin = assignAdmin;
 const remove = async (req, res) => {
     try {
         await siteService.deleteSite(Number(req.params.id));

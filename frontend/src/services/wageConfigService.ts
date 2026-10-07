@@ -11,8 +11,10 @@ export interface TradeWageItem {
 export interface WageConfigData {
   registrationFee: number;
   agentRegistrationFee?: number;
+  adminRegistrationFee?: number;
   isRegistrationFeeMandatory: boolean;
   isAgentRegistrationFeeMandatory?: boolean;
+  isAdminRegistrationFeeMandatory?: boolean;
   lockAgentWages: boolean;
   tradeWages: TradeWageItem[];
   updatedAt: string;
@@ -25,13 +27,22 @@ const DEFAULT_PROD_API_URL = 'https://labour-union.onrender.com';
 
 const getApiBase = () => {
   let envUrl = ((import.meta as any).env?.VITE_API_URL || '').trim();
-  if (!envUrl && typeof window !== 'undefined') {
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname.toLowerCase();
     const isLocalhost =
-      window.location.hostname === 'localhost' ||
-      window.location.hostname === '127.0.0.1' ||
-      window.location.hostname === '0.0.0.0';
-    if (!isLocalhost) {
-      envUrl = DEFAULT_PROD_API_URL;
+      hostname === 'localhost' ||
+      hostname.endsWith('.localhost') ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0';
+
+    if (isLocalhost) {
+      if (!envUrl || envUrl.includes('onrender.com')) {
+        envUrl = 'http://localhost:5000';
+      }
+    } else {
+      if (!envUrl) {
+        envUrl = DEFAULT_PROD_API_URL;
+      }
     }
   }
   if (!envUrl) return '/api';
@@ -43,8 +54,10 @@ const API_BASE_URL = getApiBase();
 export const DEFAULT_WAGE_CONFIG: WageConfigData = {
   registrationFee: 500,
   agentRegistrationFee: 1000,
+  adminRegistrationFee: 2500,
   isRegistrationFeeMandatory: true,
   isAgentRegistrationFeeMandatory: true,
+  isAdminRegistrationFeeMandatory: true,
   lockAgentWages: false,
   tradeWages: [
     { id: '1', name: 'General Helper / Helper', dailyWage: 600, monthlyWage: 18000, category: 'Unskilled / Semi-skilled', description: 'General site support, material handling & cleaning' },
@@ -198,6 +211,11 @@ export const getRegistrationFee = (): number => {
 export const getAgentRegistrationFee = (): number => {
   const config = getWageConfig();
   return typeof config.agentRegistrationFee === 'number' ? config.agentRegistrationFee : 1000;
+};
+
+export const getAdminRegistrationFee = (): number => {
+  const config = getWageConfig();
+  return typeof config.adminRegistrationFee === 'number' ? config.adminRegistrationFee : 2500;
 };
 
 export const subscribeWageConfig = (callback: (config: WageConfigData) => void): (() => void) => {

@@ -1,11 +1,18 @@
 import prisma from "../config/prisma";
 import { UserRole } from "@prisma/client";
+import { memoryCache } from "../utils/cache";
 
 export async function getDashboardStats(
   reqUser?: { id: number; role: string },
   startDate?: string,
   endDate?: string
 ) {
+  const cacheKey = `dashboard_${reqUser?.id || 'all'}_${reqUser?.role || 'all'}_${startDate || ''}_${endDate || ''}`;
+  const cached = memoryCache.get<any>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const workerWhere: any = { role: UserRole.WORKER };
   
   const start = startDate ? new Date(startDate) : new Date(new Date().setHours(0, 0, 0, 0));
@@ -21,12 +28,23 @@ export async function getDashboardStats(
     },
   };
 
+  const agentWhere: any = { role: UserRole.AGENT };
+
   if (reqUser?.role === "AGENT") {
     workerWhere.assignedAgentId = reqUser.id;
     attendanceWhere.worker = { assignedAgentId: reqUser.id };
   } else if (reqUser?.role === "WORKER") {
     workerWhere.id = reqUser.id;
     attendanceWhere.workerId = reqUser.id;
+  } else if (reqUser?.role === "ADMIN") {
+    agentWhere.assignedAdminId = reqUser.id;
+    const adminAgents = await prisma.user.findMany({
+      where: { role: UserRole.AGENT, assignedAdminId: reqUser.id },
+      select: { id: true },
+    });
+    const agentIds = adminAgents.map((a) => a.id);
+    workerWhere.assignedAgentId = { in: agentIds };
+    attendanceWhere.worker = { assignedAgentId: { in: agentIds } };
   }
 
   const [
@@ -46,9 +64,7 @@ export async function getDashboardStats(
     }),
 
     prisma.user.count({
-      where: {
-        role: UserRole.AGENT,
-      },
+      where: agentWhere,
     }),
 
     prisma.site.count(),
@@ -69,6 +85,7 @@ export async function getDashboardStats(
         status: "PENDING",
         ...(reqUser?.role === "AGENT" ? { worker: { assignedAgentId: reqUser.id } } : {}),
         ...(reqUser?.role === "WORKER" ? { workerId: reqUser.id } : {}),
+        ...(reqUser?.role === "ADMIN" ? { worker: workerWhere } : {}),
       },
     }),
 
@@ -77,6 +94,7 @@ export async function getDashboardStats(
         status: "PENDING",
         ...(reqUser?.role === "AGENT" ? { worker: { assignedAgentId: reqUser.id } } : {}),
         ...(reqUser?.role === "WORKER" ? { workerId: reqUser.id } : {}),
+        ...(reqUser?.role === "ADMIN" ? { worker: workerWhere } : {}),
       },
     }),
 
@@ -91,13 +109,12 @@ export async function getDashboardStats(
         status: "ACTIVE",
         ...(reqUser?.role === "AGENT" ? { worker: { assignedAgentId: reqUser.id } } : {}),
         ...(reqUser?.role === "WORKER" ? { workerId: reqUser.id } : {}),
+        ...(reqUser?.role === "ADMIN" ? { worker: workerWhere } : {}),
       },
     }),
 
     prisma.user.findMany({
-      where: {
-        role: UserRole.AGENT,
-      },
+      where: agentWhere,
       select: {
         id: true,
         name: true,
@@ -169,7 +186,7 @@ export async function getDashboardStats(
     },
   ];
 
-  return {
+  const result = {
     cards,
     stats: {
       totalWorkers,
@@ -243,4 +260,13 @@ export async function getDashboardStats(
       },
     ],
   };
+
+  // Cache dashboard result for 20 seconds to dramatically speed up subsequent views & tab switches
+  memoryCache.set(cacheKey, result, 20);
+
+  return result;
+}
+
+export function invalidateDashboardCache(): void {
+  memoryCache.delPrefix("dashboard_");
 }

@@ -5,6 +5,7 @@ import { hashPassword, comparePassword } from "../utils/hash";
 import { generateToken } from "../utils/jwt";
 import { sendResetPasswordEmail, sendMobileLoginApprovalEmail } from "./mail.service";
 import { emitIncentiveUpdate, emitWorkerRegistration } from "../socket/socket";
+import { memoryCache } from "../utils/cache";
 
 /*
  * Register User (SUPER_AGENT, AGENT, WORKER)
@@ -13,7 +14,7 @@ export const registerUser = async (
   name: string,
   email: string | undefined,
   password: string,
-  role: "SUPER_AGENT" | "AGENT" | "WORKER",
+  role: "SUPER_AGENT" | "ADMIN" | "AGENT" | "WORKER",
   phone?: string,
   designation?: string,
   employeeCode?: string,
@@ -30,6 +31,7 @@ export const registerUser = async (
     razorpayOrderId?: string;
     upiTransactionId?: string;
     assignedAgentId?: number;
+    assignedAdminId?: number;
     creatorRole?: string;
     creatorId?: number;
   }
@@ -49,7 +51,7 @@ export const registerUser = async (
   }
 
   // Ensure unique employee code to prevent Prisma unique constraint errors
-  const prefix = role === "WORKER" ? "WRK" : role === "AGENT" ? "AGT" : "SUP";
+  const prefix = role === "WORKER" ? "WRK" : role === "AGENT" ? "AGT" : role === "ADMIN" ? "ADM" : "SUP";
   let finalCode = employeeCode?.trim();
 
   if (!finalCode) {
@@ -82,6 +84,16 @@ export const registerUser = async (
     ? Number(extraDetails.assignedAgentId)
     : registeringAgentId;
 
+  // Determine if this agent registration was performed by an authenticated ADMIN
+  const isAdminAgentCreation =
+    targetRole === 'AGENT' &&
+    extraDetails?.creatorRole === 'ADMIN' &&
+    Boolean(extraDetails?.creatorId);
+
+  const effectiveAssignedAdminId = extraDetails?.assignedAdminId
+    ? Number(extraDetails.assignedAdminId)
+    : (isAdminAgentCreation ? Number(extraDetails?.creatorId) : undefined);
+
   let user: any;
   let incentiveRecord: any = null;
 
@@ -100,11 +112,14 @@ export const registerUser = async (
               ? 'Mason / Carpenter'
               : targetRole === 'CUSTOMER_SUPPORT'
               ? 'Customer Support Agent'
+              : targetRole === 'ADMIN'
+              ? 'Regional Administrator'
               : 'Field Supervisor'),
           employeeCode: finalCode,
-          salary: salary || (targetRole === 'WORKER' ? 25500 : 45000),
+          salary: salary || (targetRole === 'WORKER' ? 25500 : targetRole === 'ADMIN' ? 65000 : 45000),
           siteId: siteId || undefined,
           assignedAgentId: effectiveAssignedAgentId || undefined,
+          assignedAdminId: effectiveAssignedAdminId || undefined,
           profileImage: avatar || undefined,
           bankAccountNo: extraDetails?.bankAccountNo || undefined,
           ifscCode: extraDetails?.ifscCode || undefined,
@@ -116,6 +131,7 @@ export const registerUser = async (
           razorpayPaymentId: extraDetails?.razorpayPaymentId || undefined,
           razorpayOrderId: extraDetails?.razorpayOrderId || undefined,
           upiTransactionId: extraDetails?.upiTransactionId || undefined,
+          mustChangePassword: targetRole === 'AGENT' || targetRole === 'ADMIN',
         },
       });
 
@@ -250,6 +266,10 @@ export const registerUser = async (
     timestamp: Date.now(),
   });
 
+  memoryCache.delPrefix("users_");
+  memoryCache.delPrefix("dashboard_");
+  memoryCache.delPrefix("admins_");
+
   return user;
 };
 
@@ -259,7 +279,7 @@ export const registerUser = async (
 export const loginUser = async (
   email: string,
   password: string,
-  portal?: 'MAIN' | 'SUPPORT'
+  portal?: 'MAIN' | 'SUPPORT' | 'ADMIN'
 ) => {
   const cleanEmail = email.trim().toLowerCase();
   let user;
@@ -284,12 +304,23 @@ export const loginUser = async (
         phone: true,
       },
     },
+    assignedAdminId: true,
+    assignedAdmin: {
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        employeeCode: true,
+        phone: true,
+      },
+    },
     employeeCode: true,
     designation: true,
     joiningDate: true,
     salary: true,
     profileImage: true,
     active: true,
+    mustChangePassword: true,
     resetToken: true,
     resetTokenExpiry: true,
     createdAt: true,
@@ -297,25 +328,39 @@ export const loginUser = async (
   };
 
   let lastErr: any = null;
+  const isTransientDbError = (msg?: string) => {
+    if (!msg) return false;
+    const lower = msg.toLowerCase();
+    return (
+      lower.includes("connection terminated") ||
+      lower.includes("closed") ||
+      lower.includes("econnreset") ||
+      lower.includes("etimedout") ||
+      lower.includes("connection") ||
+      lower.includes("reach database server") ||
+      lower.includes("timed out") ||
+      lower.includes("timeout")
+    );
+  };
+
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      user = await prisma.user.findUnique({
-        where: { email: cleanEmail },
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: cleanEmail },
+            { employeeCode: { equals: email.trim(), mode: "insensitive" } },
+          ],
+        },
         select: loginSelect,
       });
       lastErr = null;
       break;
     } catch (err: any) {
       lastErr = err;
-      if (
-        attempt < 3 &&
-        (err.message?.includes("Connection terminated") ||
-         err.message?.includes("closed") ||
-         err.message?.includes("ECONNRESET") ||
-         err.message?.includes("connection"))
-      ) {
-        console.warn(`Transient pool disconnect on login attempt ${attempt}. Retrying in ${attempt * 300}ms...`);
-        await new Promise((r) => setTimeout(r, attempt * 300));
+      if (attempt < 3 && isTransientDbError(err.message)) {
+        console.warn(`Transient database disconnect on login attempt ${attempt}. Retrying in ${attempt * 500}ms...`);
+        await new Promise((r) => setTimeout(r, attempt * 500));
       } else {
         break;
       }
@@ -323,12 +368,7 @@ export const loginUser = async (
   }
 
   if (lastErr && !user) {
-    if (
-      lastErr.message?.includes("Connection terminated") ||
-      lastErr.message?.includes("closed") ||
-      lastErr.message?.includes("ECONNRESET") ||
-      lastErr.message?.includes("connection")
-    ) {
+    if (isTransientDbError(lastErr.message)) {
       throw new Error("Database server is currently busy or resuming. Please try signing in again.");
     }
     throw lastErr;
@@ -358,7 +398,11 @@ export const loginUser = async (
   }
 
   if (portal === 'SUPPORT' && !isSupportUser) {
-    throw new Error("Access Denied: Super Agents, Field Agents, and Workers must log in via the Main System Login page.");
+    throw new Error("Access Denied: Super Agents, Area Admins, Field Agents, and Workers must log in via the Main System Login page.");
+  }
+
+  if (portal === 'ADMIN' && roleStr !== 'ADMIN') {
+    throw new Error("Access Denied: Only Area Administrators can log into the Admin Portal. Super Agents, Field Agents, and Workers must log in via the Main Portal.");
   }
 
   const token = generateToken(
@@ -373,6 +417,7 @@ export const loginUser = async (
     siteCode: user.site?.siteCode || null,
     siteAddress: user.site?.address || null,
     assignedAgentName: user.assignedAgent?.name || null,
+    assignedAdminName: user.assignedAdmin?.name || null,
   };
 
   return {
@@ -501,6 +546,7 @@ export const getUserProfile = async (userId: number) => {
       salary: true,
       profileImage: true,
       active: true,
+      mustChangePassword: true,
       bankAccountNo: true,
       ifscCode: true,
       address: true,
@@ -634,5 +680,53 @@ export const approveLoginToken = async (token: string) => {
     message: "Login approved successfully!",
     token: jwtToken,
     user: userWithoutPassword
+  };
+};
+
+/*
+ * Change Password on First-Time Login
+ */
+export const changeFirstTimePassword = async (
+  userId: number,
+  newPassword: string
+) => {
+  if (!newPassword || newPassword.trim().length < 6) {
+    throw new Error("New password must be at least 6 characters long");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, name: true, role: true, mustChangePassword: true },
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const hashedPassword = await hashPassword(newPassword.trim());
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      password: hashedPassword,
+      mustChangePassword: false,
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      employeeCode: true,
+      designation: true,
+      mustChangePassword: true,
+    },
+  });
+
+  memoryCache.delPrefix("users_");
+  memoryCache.delPrefix("admins_");
+
+  return {
+    message: "Password changed successfully. Your account is now fully secured.",
+    user: updatedUser,
   };
 };

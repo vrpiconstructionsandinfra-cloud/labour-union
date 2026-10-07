@@ -17,17 +17,17 @@ const router = Router();
 router.use(authenticate);
 
 /*
- * Super Agent
+ * Super Agent, Admin & Customer Support
  */
 router.post(
   "/",
-  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT"),
+  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT", "ADMIN"),
   createInsurance
 );
 
 router.get(
   "/",
-  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT", "AGENT", "WORKER"),
+  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT", "ADMIN", "AGENT", "WORKER"),
   getAllInsurance
 );
 
@@ -45,19 +45,19 @@ router.get(
  */
 router.get(
   "/:workerId",
-  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT"),
+  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT", "ADMIN"),
   getWorkerInsurance
 );
 
 router.patch(
   "/:id",
-  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT"),
+  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT", "ADMIN"),
   updateInsurance
 );
 
 router.delete(
   "/:id",
-  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT"),
+  authorize("SUPER_AGENT", "CUSTOMER_SUPPORT", "ADMIN"),
   deleteInsurance
 );
 

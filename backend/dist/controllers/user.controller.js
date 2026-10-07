@@ -17,7 +17,9 @@ const user_service_1 = require("../services/user.service");
  */
 async function findAll(req, res) {
     try {
-        const users = await (0, user_service_1.getAllUsers)();
+        const reqUser = req.user ? { id: req.user.id, role: req.user.role } : undefined;
+        const role = req.query.role ? String(req.query.role) : undefined;
+        const users = await (0, user_service_1.getAllUsers)(role, reqUser);
         res.json({
             success: true,
             data: users,
@@ -161,7 +163,8 @@ async function workers(req, res) {
  */
 async function agents(req, res) {
     try {
-        const users = await (0, user_service_1.getAgents)();
+        const reqUser = req.user ? { id: req.user.id, role: req.user.role } : undefined;
+        const users = await (0, user_service_1.getAgents)(reqUser);
         res.json({
             success: true,
             data: users,

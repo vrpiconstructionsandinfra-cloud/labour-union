@@ -14,6 +14,7 @@ import { ActionModal } from './components/ActionModal';
 import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { useRealtimeSync } from './hooks/useRealtimeSync';
+import { Shield } from 'lucide-react';
 import './styles/responsive.css';
 
 // Lazy Loaded Sub-module Pages & Heavy Views for Code Splitting & Performance
@@ -41,6 +42,11 @@ const SitePaymentsView = lazy(() => import('./components/SitePaymentsView').then
 const RegisterWorkerPage = lazy(() => import('./pages/RegisterWorkerPage').then(m => ({ default: m.RegisterWorkerPage })));
 const AgentIncentivesPage = lazy(() => import('./pages/AgentIncentivesPage').then(m => ({ default: m.AgentIncentivesPage })));
 const SalaryManagementPage = lazy(() => import('./pages/SalaryManagementPage').then(m => ({ default: m.SalaryManagementPage })));
+const AdminsPage = lazy(() => import('./pages/AdminsPage').then(m => ({ default: m.AdminsPage })));
+const AdminPortalPage = lazy(() => import('./pages/AdminPortalPage').then(m => ({ default: m.AdminPortalPage })));
+const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage').then(m => ({ default: m.AdminLoginPage })));
+const CreateAdminPage = lazy(() => import('./pages/CreateAdminPage').then(m => ({ default: m.CreateAdminPage })));
+const AdminCreateAgentPage = lazy(() => import('./pages/AdminCreateAgentPage').then(m => ({ default: m.AdminCreateAgentPage })));
 
 function PageFallback() {
   return (
@@ -115,7 +121,38 @@ function MainAppContent() {
   }
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    const host = window.location.hostname.toLowerCase();
+    const isAdminSub = host.startsWith('admin.') || host === 'admin.localhost';
+    const hash = window.location.hash.replace('#', '');
+    const path = window.location.pathname;
+    if (isAdminSub) return 'admin_portal';
+    if (path === '/admins' || hash === 'admins') return 'admins';
+    if (path === '/admin-portal' || path === '/admin/portal' || hash === 'admin_portal') return 'admin_portal';
+    if (hash && hash !== 'dashboard') return hash;
+    return 'dashboard';
+  });
+
+  // Keep URL hash synchronized with activeTab so browser refresh and bookmarks retain page context
+  useEffect(() => {
+    if (activeTab) {
+      const currentHash = window.location.hash.replace('#', '');
+      if (currentHash !== activeTab) {
+        window.history.replaceState(null, '', `#${activeTab}`);
+      }
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash && hash !== activeTab) {
+        setActiveTab(hash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [activeTab]);
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     return localStorage.getItem('theme') === 'dark';
   });
@@ -126,6 +163,7 @@ function MainAppContent() {
   const [targetTicket, setTargetTicket] = useState<any>(null);
   const [targetInsurance, setTargetInsurance] = useState<any>(null);
   const [refreshCounter, setRefreshCounter] = useState<number>(0);
+  const [inspectedAdminId, setInspectedAdminId] = useState<string | number | null>(null);
 
   // QR Scanner State & Scanned Attendance Trigger State
   const [isQrScannerOpen, setIsQrScannerOpen] = useState<boolean>(false);
@@ -274,6 +312,11 @@ function MainAppContent() {
 
   if (currentPath === '/support/login' || currentPath === '/support-login') {
     if (isAuthenticated) {
+      if (role !== 'CUSTOMER_SUPPORT') {
+        window.history.replaceState({}, '', '/');
+        window.dispatchEvent(new Event('popstate'));
+        return null;
+      }
       return (
         <Suspense fallback={<PageFallback />}>
           <SupportDashboardPage />
@@ -310,6 +353,87 @@ function MainAppContent() {
         <SupportDashboardPage />
       </Suspense>
     );
+  }
+
+  // ── Admin Subdomain & Dedicated Admin Login Routing ──────────────────────
+  const hostname = window.location.hostname.toLowerCase();
+  const isAdminSubdomain = hostname.startsWith('admin.') || hostname === 'admin.localhost';
+  const isAdminLoginPath = currentPath === '/admin/login' || currentPath === '/admin-login' || currentPath === '/admin';
+  const isAdminPortalRoute = isAdminSubdomain || isAdminLoginPath;
+
+  if (isAdminPortalRoute) {
+    if (!isAuthenticated) {
+      return (
+        <Suspense fallback={<PageFallback />}>
+          <AdminLoginPage
+            onSuccessNavigate={() => {
+              if (isAdminSubdomain) {
+                window.location.hash = '#admin_portal';
+                window.dispatchEvent(new Event('hashchange'));
+              } else {
+                window.history.pushState({}, '', '/admin/portal');
+                window.dispatchEvent(new Event('popstate'));
+              }
+            }}
+            onNavigateToMain={() => {
+              if (isAdminSubdomain) {
+                const baseHost = hostname.replace(/^admin\./, '');
+                const port = window.location.port ? `:${window.location.port}` : '';
+                window.location.href = `${window.location.protocol}//${baseHost}${port}/`;
+              } else {
+                window.history.pushState({}, '', '/');
+                window.dispatchEvent(new Event('popstate'));
+              }
+            }}
+          />
+        </Suspense>
+      );
+    }
+
+    if (role !== 'ADMIN') {
+      // If user is already authenticated (e.g. as SUPER_AGENT) on the main domain (localhost or my-dailywork.com),
+      // pressing the browser Back button into /admin/login should automatically bounce back to main portal!
+      if (!isAdminSubdomain) {
+        window.history.replaceState({}, '', '/');
+        window.dispatchEvent(new Event('popstate'));
+        return null;
+      }
+
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#0F172A', color: '#FFFFFF', padding: '24px', textAlign: 'center' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '20px', background: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
+            <Shield size={32} color="#EF4444" />
+          </div>
+          <h2 style={{ margin: '0 0 10px 0', fontSize: '24px', fontWeight: 800 }}>Restricted Administrative Access</h2>
+          <p style={{ margin: '0 0 24px 0', fontSize: '14.5px', color: '#94A3B8', maxWidth: '460px', lineHeight: 1.5 }}>
+            You are signed in as <strong>{user?.name}</strong> ({role}). This portal and subdomain are reserved exclusively for Area Administrators. Super Agents must use the Main Portal.
+          </p>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button
+              onClick={() => {
+                if (isAdminSubdomain) {
+                  const baseHost = hostname.replace(/^admin\./, '');
+                  const port = window.location.port ? `:${window.location.port}` : '';
+                  window.location.href = `${window.location.protocol}//${baseHost}${port}/`;
+                } else {
+                  window.history.pushState({}, '', '/');
+                  window.dispatchEvent(new Event('popstate'));
+                }
+              }}
+              style={{ padding: '10px 20px', background: '#2563EB', color: '#FFFFFF', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Go to Main Portal
+            </button>
+            <button
+              onClick={logout}
+              style={{ padding: '10px 20px', background: 'rgba(255, 255, 255, 0.1)', color: '#FFFFFF', border: '1px solid rgba(255, 255, 255, 0.2)', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Sign Out & Switch Account
+            </button>
+          </div>
+        </div>
+      );
+    }
   }
 
   // ── Show loading spinner while backend token validation is running ──────────
@@ -355,7 +479,7 @@ function MainAppContent() {
   // Render Page Content based on Active Navigation Tab & Role
   const renderTabContent = () => {
     // ── Role Guard: block tabs the user's role has no permission for ────────
-    const guardedTabs = ['sites', 'agents', 'workers', 'agent_incentives', 'my_incentives', 'enquiries', 'attendance', 'leaves', 'my_leaves', 'payroll', 'wallet', 'insurance', 'tickets', 'reports', 'settings'];
+    const guardedTabs = ['admins', 'admin_portal', 'sites', 'agents', 'workers', 'agent_incentives', 'my_incentives', 'enquiries', 'attendance', 'leaves', 'my_leaves', 'payroll', 'wallet', 'insurance', 'tickets', 'reports', 'settings'];
     if (guardedTabs.includes(activeTab) && !hasPermission(activeTab)) {
       return (
         <AccessDeniedScreen
@@ -368,6 +492,69 @@ function MainAppContent() {
     }
 
     switch (activeTab) {
+      case 'admins':
+        if (role === 'ADMIN') {
+          return (
+            <AdminPortalPage
+              onNavigateTab={(tab) => setActiveTab(tab)}
+            />
+          );
+        }
+        return (
+          <AdminsPage
+            onNavigateTab={(tab) => setActiveTab(tab)}
+            onOpenAdminPortal={(adminId) => {
+              setInspectedAdminId(adminId);
+              setActiveTab('admin_portal');
+            }}
+          />
+        );
+      case 'admin_portal':
+        return (
+          <AdminPortalPage
+            adminIdOverride={inspectedAdminId || undefined}
+            onExitOverride={() => {
+              setInspectedAdminId(null);
+              setActiveTab('admins');
+            }}
+            onNavigateTab={(tab) => setActiveTab(tab)}
+          />
+        );
+      case 'create_admin':
+      case 'add_admin':
+        return (
+          <CreateAdminPage
+            onNavigateTab={(tab) => setActiveTab(tab)}
+            onOpenAdminPortal={(adminId) => {
+              setInspectedAdminId(adminId);
+              setActiveTab('admin_portal');
+            }}
+            onSuccess={() => {
+              setActiveTab('admins');
+              setRefreshCounter((p) => p + 1);
+            }}
+          />
+        );
+      case 'create_agent':
+      case 'add_agent':
+      case 'admin_create_agent':
+        return (
+          <AdminCreateAgentPage
+            adminId={inspectedAdminId || (role === 'ADMIN' ? user?.id : undefined)}
+            adminName={role === 'ADMIN' ? user?.name : undefined}
+            onBack={() => {
+              if (role === 'ADMIN') setActiveTab('admin_portal');
+              else if (inspectedAdminId) setActiveTab('admin_portal');
+              else setActiveTab('agents');
+            }}
+            onSuccess={() => {
+              if (role === 'ADMIN') setActiveTab('admin_portal');
+              else if (inspectedAdminId) setActiveTab('admin_portal');
+              else setActiveTab('agents');
+              setRefreshCounter((p) => p + 1);
+            }}
+          />
+        );
       case 'sites':
         return (
           <SitesPage
@@ -490,6 +677,14 @@ function MainAppContent() {
             <WorkerDashboardView
               user={user}
               onOpenModal={(modal) => setActiveModal(modal)}
+              onNavigateTab={(tab) => setActiveTab(tab)}
+            />
+          );
+        }
+
+        if (role === 'ADMIN') {
+          return (
+            <AdminPortalPage
               onNavigateTab={(tab) => setActiveTab(tab)}
             />
           );

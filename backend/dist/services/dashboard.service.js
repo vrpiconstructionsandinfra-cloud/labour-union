@@ -4,9 +4,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getDashboardStats = getDashboardStats;
+exports.invalidateDashboardCache = invalidateDashboardCache;
 const prisma_1 = __importDefault(require("../config/prisma"));
 const client_1 = require("@prisma/client");
+const cache_1 = require("../utils/cache");
 async function getDashboardStats(reqUser, startDate, endDate) {
+    const cacheKey = `dashboard_${reqUser?.id || 'all'}_${reqUser?.role || 'all'}_${startDate || ''}_${endDate || ''}`;
+    const cached = cache_1.memoryCache.get(cacheKey);
+    if (cached) {
+        return cached;
+    }
     const workerWhere = { role: client_1.UserRole.WORKER };
     const start = startDate ? new Date(startDate) : new Date(new Date().setHours(0, 0, 0, 0));
     start.setHours(0, 0, 0, 0);
@@ -18,6 +25,7 @@ async function getDashboardStats(reqUser, startDate, endDate) {
             lte: end,
         },
     };
+    const agentWhere = { role: client_1.UserRole.AGENT };
     if (reqUser?.role === "AGENT") {
         workerWhere.assignedAgentId = reqUser.id;
         attendanceWhere.worker = { assignedAgentId: reqUser.id };
@@ -26,14 +34,22 @@ async function getDashboardStats(reqUser, startDate, endDate) {
         workerWhere.id = reqUser.id;
         attendanceWhere.workerId = reqUser.id;
     }
+    else if (reqUser?.role === "ADMIN") {
+        agentWhere.assignedAdminId = reqUser.id;
+        const adminAgents = await prisma_1.default.user.findMany({
+            where: { role: client_1.UserRole.AGENT, assignedAdminId: reqUser.id },
+            select: { id: true },
+        });
+        const agentIds = adminAgents.map((a) => a.id);
+        workerWhere.assignedAgentId = { in: agentIds };
+        attendanceWhere.worker = { assignedAgentId: { in: agentIds } };
+    }
     const [totalWorkers, totalAgents, totalSites, activeWorkers, todayAttendance, pendingLeaves, pendingPayments, walletAggregate, insurancePolicies, agentsList,] = await Promise.all([
         prisma_1.default.user.count({
             where: workerWhere,
         }),
         prisma_1.default.user.count({
-            where: {
-                role: client_1.UserRole.AGENT,
-            },
+            where: agentWhere,
         }),
         prisma_1.default.site.count(),
         prisma_1.default.user.count({
@@ -50,6 +66,7 @@ async function getDashboardStats(reqUser, startDate, endDate) {
                 status: "PENDING",
                 ...(reqUser?.role === "AGENT" ? { worker: { assignedAgentId: reqUser.id } } : {}),
                 ...(reqUser?.role === "WORKER" ? { workerId: reqUser.id } : {}),
+                ...(reqUser?.role === "ADMIN" ? { worker: workerWhere } : {}),
             },
         }),
         prisma_1.default.payment.count({
@@ -57,6 +74,7 @@ async function getDashboardStats(reqUser, startDate, endDate) {
                 status: "PENDING",
                 ...(reqUser?.role === "AGENT" ? { worker: { assignedAgentId: reqUser.id } } : {}),
                 ...(reqUser?.role === "WORKER" ? { workerId: reqUser.id } : {}),
+                ...(reqUser?.role === "ADMIN" ? { worker: workerWhere } : {}),
             },
         }),
         prisma_1.default.wallet.aggregate({
@@ -69,12 +87,11 @@ async function getDashboardStats(reqUser, startDate, endDate) {
                 status: "ACTIVE",
                 ...(reqUser?.role === "AGENT" ? { worker: { assignedAgentId: reqUser.id } } : {}),
                 ...(reqUser?.role === "WORKER" ? { workerId: reqUser.id } : {}),
+                ...(reqUser?.role === "ADMIN" ? { worker: workerWhere } : {}),
             },
         }),
         prisma_1.default.user.findMany({
-            where: {
-                role: client_1.UserRole.AGENT,
-            },
+            where: agentWhere,
             select: {
                 id: true,
                 name: true,
@@ -144,7 +161,7 @@ async function getDashboardStats(reqUser, startDate, endDate) {
             comparisonPeriod: "from yesterday",
         },
     ];
-    return {
+    const result = {
         cards,
         stats: {
             totalWorkers,
@@ -213,4 +230,10 @@ async function getDashboardStats(reqUser, startDate, endDate) {
             },
         ],
     };
+    // Cache dashboard result for 20 seconds to dramatically speed up subsequent views & tab switches
+    cache_1.memoryCache.set(cacheKey, result, 20);
+    return result;
+}
+function invalidateDashboardCache() {
+    cache_1.memoryCache.delPrefix("dashboard_");
 }

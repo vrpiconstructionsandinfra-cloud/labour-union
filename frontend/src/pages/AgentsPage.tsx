@@ -35,6 +35,7 @@ import {
   ListEmptyState,
   ListLoadingState
 } from '../components/common';
+import { useAuth } from '../context/AuthContext';
 import './Pages.css';
 
 interface AgentsPageProps {
@@ -53,6 +54,7 @@ export const AgentsPage: React.FC<AgentsPageProps> = ({
   onOpenModal,
   refreshTrigger
 }) => {
+  const { user, role } = useAuth();
   // Core Data States
   const [agents, setAgents] = useState<AgentItem[]>([]);
   const [workers, setWorkers] = useState<WorkerItem[]>([]);
@@ -104,15 +106,23 @@ export const AgentsPage: React.FC<AgentsPageProps> = ({
       ]);
 
       // Strictly only Field Agents (exclude Customer Support Agents with CSA- or support designation)
-      const fieldAgentsOnly = (agentsData || []).filter((a: any) => {
+      let fieldAgentsOnly = (agentsData || []).filter((a: any) => {
         const code = String(a.employeeCode || '').toUpperCase();
-        const role = String(a.role || '').toUpperCase();
+        const aRole = String(a.role || '').toUpperCase();
         const des = String(a.designation || '').toLowerCase();
-        if (code.startsWith('CSA') || role === 'CUSTOMER_SUPPORT' || role === 'SUPPORT_AGENT' || des.includes('support')) {
+        if (code.startsWith('CSA') || aRole === 'CUSTOMER_SUPPORT' || aRole === 'SUPPORT_AGENT' || des.includes('support')) {
           return false;
         }
         return true;
       });
+
+      // When logged in as an Area Administrator (ADMIN), ONLY show agents assigned to this Admin
+      // (agents created by this admin or assigned under this admin by Super Admin)
+      if (role === 'ADMIN' && user?.id) {
+        fieldAgentsOnly = fieldAgentsOnly.filter((a: any) => {
+          return String(a.assignedAdminId) === String(user.id);
+        });
+      }
 
       setAgents(fieldAgentsOnly);
       setWorkers(workersData || []);

@@ -8,14 +8,23 @@ const getSocketUrl = (): string => {
     return customSocketUrl.trim().replace(/\/+$/, '');
   }
 
-  let apiUrl = (import.meta as any).env?.VITE_API_URL;
-  if (!apiUrl && typeof window !== 'undefined') {
+  let apiUrl = ((import.meta as any).env?.VITE_API_URL || '').trim();
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname.toLowerCase();
     const isLocalhost =
-      window.location.hostname === 'localhost' ||
-      window.location.hostname === '127.0.0.1' ||
-      window.location.hostname === '0.0.0.0';
-    if (!isLocalhost) {
-      apiUrl = DEFAULT_PROD_SOCKET_URL;
+      hostname === 'localhost' ||
+      hostname.endsWith('.localhost') ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0';
+
+    if (isLocalhost) {
+      if (!apiUrl || apiUrl.includes('onrender.com')) {
+        return 'http://localhost:5000';
+      }
+    } else {
+      if (!apiUrl) {
+        apiUrl = DEFAULT_PROD_SOCKET_URL;
+      }
     }
   }
 

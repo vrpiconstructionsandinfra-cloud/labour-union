@@ -6,6 +6,7 @@ exports.sendWorkerEmailVerificationOtp = sendWorkerEmailVerificationOtp;
 exports.sendWorkerWelcomeCredentialsEmail = sendWorkerWelcomeCredentialsEmail;
 exports.sendVerificationCodeEmail = sendVerificationCodeEmail;
 exports.sendAgentCredentialsEmail = sendAgentCredentialsEmail;
+exports.sendAdminCredentialsEmail = sendAdminCredentialsEmail;
 const mail_1 = require("../config/mail");
 const network_util_1 = require("../utils/network.util");
 /*
@@ -301,6 +302,66 @@ async function sendAgentCredentialsEmail(email, name, employeeCode, password) {
           🚀 Click Here to Log In
         </a>
       </div>
+      <hr style="border: 0; border-top: 1px solid #E2E8F0; margin: 24px 0 16px 0;" />
+      <p style="font-size: 11px; color: #94A3B8; text-align: center;">
+        © 2025 my-dailywork.com | Labor Union Management System. All rights reserved.
+      </p>
+    </div>
+  `;
+    return sendResendEmail({ to: email, subject, html, text });
+}
+/*
+ * 7. Add Area Admin - Welcome Credentials Email with First-Time Password Change Notice
+ */
+async function sendAdminCredentialsEmail(email, name, employeeCode, tempPassword) {
+    const frontendUrl = (0, network_util_1.getLocalIpAddress)();
+    const loginUrl = `${frontendUrl}/admin-login`;
+    console.log(`✉️ Sending Area Admin Credentials via Resend API to: ${email}`);
+    const subject = `🛡️ Welcome to Labor Union System - Your Area Administrator Credentials (my-dailywork.com)`;
+    const text = `Hello ${name},\n\nYou have been assigned as an Area Administrator in the Labor Union Management System.\n\nAdmin / Employee ID: ${employeeCode}\nLogin Email: ${email}\nTemporary Password: ${tempPassword}\n\nLogin here: ${loginUrl}\n\nPlease note: You will be required to change this temporary password upon your first login.`;
+    const html = `
+    <div style="font-family: Arial, sans-serif; padding: 24px; max-width: 550px; margin: 0 auto; border: 1px solid #E2E8F0; border-radius: 12px; background-color: #FFFFFF;">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h2 style="color: #2563EB; margin: 0;">my-dailywork.com</h2>
+        <p style="color: #64748B; font-size: 13px; margin-top: 4px;">Area Administrator Portal Access</p>
+      </div>
+      <hr style="border: 0; border-top: 1px solid #E2E8F0; margin-bottom: 20px;" />
+      <h3 style="color: #0F172A;">Welcome, ${name}! 🛡️</h3>
+      <p style="font-size: 14.5px; color: #334155; line-height: 1.6;">
+        You have been registered as an <strong>Area Administrator</strong> in the Labor Union Management System. Below are your temporary login credentials:
+      </p>
+      <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 20px; margin: 20px 0;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+          <tr>
+            <td style="padding: 8px 0; color: #64748B; font-weight: 700; width: 140px;">Admin / Emp ID:</td>
+            <td style="padding: 8px 0; color: #2563EB; font-weight: 800;">${employeeCode}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #64748B; font-weight: 700;">Login Email:</td>
+            <td style="padding: 8px 0; color: #0F172A; font-weight: 700;">${email}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #64748B; font-weight: 700;">Temp Password:</td>
+            <td style="padding: 8px 0; color: #D97706; font-weight: 800; font-family: monospace; font-size: 16px;">${tempPassword}</td>
+          </tr>
+        </table>
+      </div>
+      <div style="background-color: #FEF3C7; border: 1px solid #FCD34D; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;">
+        <p style="font-size: 13px; color: #92400E; margin: 0; line-height: 1.5;">
+          ⚠️ <strong>Security Notice:</strong> This is a temporary password. You will be required to change your password immediately upon your first login.
+        </p>
+      </div>
+      <div style="margin: 28px 0; text-align: center;">
+        <a
+          href="${loginUrl}"
+          style="background-color: #2563EB; color: #FFFFFF; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 800; display: inline-block; font-size: 15px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);"
+        >
+          🔐 Log In to Admin Portal
+        </a>
+      </div>
+      <p style="font-size: 12.5px; color: #64748B; text-align: center;">
+        Portal Link: <a href="${loginUrl}" style="color: #2563EB;">${loginUrl}</a>
+      </p>
       <hr style="border: 0; border-top: 1px solid #E2E8F0; margin: 24px 0 16px 0;" />
       <p style="font-size: 11px; color: #94A3B8; text-align: center;">
         © 2025 my-dailywork.com | Labor Union Management System. All rights reserved.

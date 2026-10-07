@@ -599,3 +599,49 @@ body.dark-mode .notif-desc {
 body.dark-mode .notif-time {
   color: #94A3B8 !important;
 }
+
+/* Action Modal Extensions for Admin / Specialized Modals */
+.action-modal-card {
+  background-color: var(--bg-card, #FFFFFF);
+  border-radius: 16px;
+  border: 1px solid var(--border-color, #E2E8F0);
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.action-modal-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border-color, #E2E8F0);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--bg-card, #FFFFFF);
+  gap: 16px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.action-modal-close-btn {
+  background: var(--bg-main, #F1F5F9);
+  border: 1px solid var(--border-color, #E2E8F0);
+  color: var(--text-muted, #64748B);
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.action-modal-close-btn:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+}

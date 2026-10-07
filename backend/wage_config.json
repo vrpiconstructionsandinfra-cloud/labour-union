@@ -1,8 +1,10 @@
 {
   "registrationFee": 500,
   "agentRegistrationFee": 1000,
+  "adminRegistrationFee": 0,
   "isRegistrationFeeMandatory": true,
   "isAgentRegistrationFeeMandatory": true,
+  "isAdminRegistrationFeeMandatory": true,
   "lockAgentWages": false,
   "tradeWages": [
     {
@@ -62,6 +64,6 @@
       "description": "Site machinery, heavy equipment operation & quality checks"
     }
   ],
-  "updatedAt": "2026-09-29T05:13:57.475Z",
+  "updatedAt": "2026-10-07T10:05:16.838Z",
   "updatedBy": "Super Admin"
 }

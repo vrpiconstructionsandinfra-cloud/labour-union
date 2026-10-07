@@ -1088,6 +1088,7 @@ export const ActionModal: React.FC<ActionModalProps> = ({
           paymentMethod: regFeeNum > 0 ? 'RAZORPAY' : 'WAIVED',
           razorpayPaymentId: razorpayPaymentId,
           razorpayOrderId: razorpayOrderId,
+          assignedAdminId: (role === 'ADMIN' && user?.id) ? Number(user.id) : undefined,
         });
 
         setIsLoading(false);
@@ -2075,6 +2076,60 @@ export const ActionModal: React.FC<ActionModalProps> = ({
                       </span>
                     ) : (
                       'Assign Worker'
+                    )}
+                  </button>
+                </div>
+              </>
+            ) : type === 'assign_agent' ? (
+              <>
+                {targetSiteName ? (
+                  <div className="form-group">
+                    <label>Target Working Site</label>
+                    <input type="text" disabled value={targetSiteName} style={{ backgroundColor: '#F1F5F9' }} />
+                  </div>
+                ) : (
+                  <div className="form-group">
+                    <label>Select Target Working Site *</label>
+                    <select
+                      value={selectedSiteId}
+                      onChange={(e) => setSelectedSiteId(e.target.value)}
+                    >
+                      <option value="">-- Select Working Site --</option>
+                      {sitesList.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.siteName} ({s.siteCode || `SITE-${s.id}`})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="form-group">
+                  <label>Select Field Agent to Assign *</label>
+                  <select
+                    value={selectedAgentId}
+                    onChange={(e) => setSelectedAgentId(e.target.value)}
+                  >
+                    <option value="">-- Select Field Agent --</option>
+                    {agentsList.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name} ({a.employeeCode}) {a.assignedSite ? `[Current: ${a.assignedSite}]` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="modal-footer mt-12">
+                  <button type="button" className="btn-cancel" onClick={onClose} disabled={isLoading}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn-submit" disabled={isLoading}>
+                    {isLoading ? (
+                      <span className="btn-loading-content">
+                        <Loader2 size={16} className="spinner" /> Assigning Agent...
+                      </span>
+                    ) : (
+                      'Assign Agent to Site'
                     )}
                   </button>
                 </div>
