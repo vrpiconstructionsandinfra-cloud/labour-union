@@ -92,13 +92,25 @@ export const ScanWorkerQrModal: React.FC<ScanWorkerQrModalProps> = ({
     scanAnimationFrameRef.current = requestAnimationFrame(scanCameraLoop);
   };
 
-  const startCamera = async () => {
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+
+  const startCamera = async (facingOverride?: 'environment' | 'user' | any) => {
     setCameraError(null);
     setErrorMessage(null);
+    const facing = (facingOverride === 'environment' || facingOverride === 'user') ? facingOverride : facingMode;
+    if (facingOverride === 'environment' || facingOverride === 'user') {
+      setFacingMode(facingOverride);
+    }
+    stopCamera();
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'environment' },
-      });
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: { ideal: facing } },
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -110,6 +122,12 @@ export const ScanWorkerQrModal: React.FC<ScanWorkerQrModalProps> = ({
       setCameraError('Webcam feed not accessible. Use QR image upload or worker selector below.');
       setIsCameraActive(false);
     }
+  };
+
+  const toggleCamera = () => {
+    const next = facingMode === 'environment' ? 'user' : 'environment';
+    setFacingMode(next);
+    startCamera(next);
   };
 
   const stopCamera = () => {
@@ -311,8 +329,33 @@ export const ScanWorkerQrModal: React.FC<ScanWorkerQrModalProps> = ({
                 </div>
                 <div className="qr-live-pill">
                   <span className="qr-live-dot" />
-                  <span>LIVE SCANNER READY</span>
+                  <span>{facingMode === 'environment' ? 'BACK CAMERA' : 'FRONT CAMERA'}</span>
                 </div>
+                <button
+                  type="button"
+                  onClick={toggleCamera}
+                  style={{
+                    position: 'absolute',
+                    top: '12px',
+                    right: '12px',
+                    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                    color: '#FFFFFF',
+                    border: '1px solid rgba(255, 255, 255, 0.25)',
+                    borderRadius: '8px',
+                    padding: '6px 12px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    zIndex: 10
+                  }}
+                  title="Switch between front and back camera"
+                >
+                  <RefreshCw size={12} />
+                  <span>{facingMode === 'environment' ? 'Switch to Front' : 'Switch to Back'}</span>
+                </button>
               </>
             ) : (
               <div className="qr-camera-placeholder">

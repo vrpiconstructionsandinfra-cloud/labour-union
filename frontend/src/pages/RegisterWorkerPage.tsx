@@ -132,6 +132,11 @@ export const RegisterWorkerPage: React.FC<RegisterWorkerPageProps> = ({
         setSelectedSiteId(String(sites[0].id));
       }
 
+      // If logged in as Field Agent, automatically assign worker under this agent
+      if (user?.role === 'AGENT' && user?.id) {
+        setSelectedAgentId(String(user.id));
+      }
+
       // Auto compute fresh employee code
       const existingNums = (workers || [])
         .map((w: any) => Number(String(w.employeeCode || w.id).replace(/\D/g, '')))
@@ -167,21 +172,49 @@ export const RegisterWorkerPage: React.FC<RegisterWorkerPageProps> = ({
   };
 
   // Camera Handlers
-  const startCamera = async () => {
+  const [cameraFacingMode, setCameraFacingMode] = useState<'user' | 'environment'>('user');
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setIsCameraActive(false);
+  };
+
+  const startCamera = async (facingOverride?: 'user' | 'environment' | any) => {
     try {
       setIsCameraActive(true);
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
-        audio: false
-      });
+      const facing = (facingOverride === 'user' || facingOverride === 'environment') ? facingOverride : cameraFacingMode;
+      if (facingOverride === 'user' || facingOverride === 'environment') {
+        setCameraFacingMode(facingOverride);
+      }
+      stopCamera();
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: { ideal: facing } },
+          audio: false
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      }
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
       }
+      setIsCameraActive(true);
     } catch (err: any) {
       setIsCameraActive(false);
       setErrorMsg('Unable to access camera. Please allow camera permissions or upload photo.');
     }
+  };
+
+  const toggleCamera = () => {
+    const nextFacing = cameraFacingMode === 'user' ? 'environment' : 'user';
+    setCameraFacingMode(nextFacing);
+    startCamera(nextFacing);
   };
 
   const capturePhoto = () => {
@@ -196,14 +229,6 @@ export const RegisterWorkerPage: React.FC<RegisterWorkerPageProps> = ({
       setWorkerAvatar(dataUrl);
     }
     stopCamera();
-  };
-
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    setIsCameraActive(false);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -299,7 +324,9 @@ export const RegisterWorkerPage: React.FC<RegisterWorkerPageProps> = ({
         employeeCode: employeeCode.trim(),
         salary: salaryVal,
         siteId: selectedSiteId ? Number(selectedSiteId) : undefined,
-        assignedAgentId: selectedAgentId ? Number(selectedAgentId) : undefined,
+        assignedAgentId: (user?.role === 'AGENT' && user?.id)
+          ? Number(user.id)
+          : (selectedAgentId ? Number(selectedAgentId) : undefined),
         avatar: workerAvatar || undefined,
         bankAccountNo: bankAccountNo.trim() || undefined,
         ifscCode: ifscCode.trim() || undefined,
@@ -521,19 +548,40 @@ export const RegisterWorkerPage: React.FC<RegisterWorkerPageProps> = ({
 
               {isCameraActive && (
                 <div style={{ background: '#0F172A', padding: '14px', borderRadius: '14px', marginBottom: '18px', textAlign: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', padding: '0 4px', flexWrap: 'wrap', gap: '6px' }}>
+                    <span style={{ color: '#94A3B8', fontSize: '11px', fontWeight: 600 }}>
+                      Mode: {cameraFacingMode === 'environment' ? '📷 Back Camera (Rear)' : '👤 Front Camera'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={toggleCamera}
+                      style={{ backgroundColor: '#1E293B', color: '#38BDF8', border: '1px solid #334155', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      <RefreshCw size={11} />
+                      <span>{cameraFacingMode === 'user' ? 'Switch to Back Camera' : 'Switch to Front Camera'}</span>
+                    </button>
+                  </div>
                   <video
                     ref={videoRef}
                     autoPlay
                     playsInline
                     style={{ width: '100%', maxHeight: '240px', borderRadius: '10px', objectFit: 'cover' }}
                   />
-                  <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'center', gap: '10px' }}>
+                  <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
                     <button
                       type="button"
                       onClick={capturePhoto}
                       style={{ background: '#16A34A', color: '#FFF', border: 'none', padding: '8px 18px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}
                     >
                       Capture Snapshot
+                    </button>
+                    <button
+                      type="button"
+                      onClick={toggleCamera}
+                      style={{ background: '#2563EB', color: '#FFF', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                    >
+                      <RefreshCw size={13} />
+                      <span>{cameraFacingMode === 'user' ? 'Back Camera' : 'Front Camera'}</span>
                     </button>
                     <button
                       type="button"
@@ -681,17 +729,35 @@ export const RegisterWorkerPage: React.FC<RegisterWorkerPageProps> = ({
 
                 <div className="reg-field-group">
                   <label>Managing Field Agent</label>
-                  <select
-                    value={selectedAgentId}
-                    onChange={(e) => setSelectedAgentId(e.target.value)}
-                  >
-                    <option value="">-- Direct HQ Oversight (Unassigned) --</option>
-                    {agentsList.map((ag) => (
-                      <option key={ag.id} value={ag.id}>
-                        {ag.name} ({ag.employeeCode || `AGT-${ag.id}`})
-                      </option>
-                    ))}
-                  </select>
+                  {user?.role === 'AGENT' ? (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '10px 14px',
+                      backgroundColor: '#F1F5F9',
+                      borderRadius: '8px',
+                      border: '1.5px solid #CBD5E1',
+                      fontWeight: 700,
+                      color: '#0F172A',
+                      fontSize: '13.5px'
+                    }}>
+                      <UserCheck size={16} color="#2563EB" />
+                      <span>{user.name} ({user.employeeCode || `AGT-${user.id}`}) — Your Account</span>
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedAgentId}
+                      onChange={(e) => setSelectedAgentId(e.target.value)}
+                    >
+                      <option value="">-- Direct HQ Oversight (Unassigned) --</option>
+                      {agentsList.map((ag) => (
+                        <option key={ag.id} value={ag.id}>
+                          {ag.name} ({ag.employeeCode || `AGT-${ag.id}`})
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
             </div>

@@ -8,11 +8,11 @@ const router = Router();
 // Get wage configuration (Available to all authenticated roles or public fallback)
 router.get("/wage-config", getWageConfig);
 
-// Update wage configuration (Super Admin ONLY)
+// Update wage configuration (Super Agent and Area Admin)
 router.put(
   "/wage-config",
   authenticate,
-  authorize("SUPER_AGENT"),
+  authorize("SUPER_AGENT", "ADMIN"),
   updateWageConfig
 );
 
@@ -20,7 +20,7 @@ router.put(
 router.post(
   "/wage-config",
   authenticate,
-  authorize("SUPER_AGENT"),
+  authorize("SUPER_AGENT", "ADMIN"),
   updateWageConfig
 );
 

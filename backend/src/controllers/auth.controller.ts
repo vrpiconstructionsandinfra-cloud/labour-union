@@ -33,7 +33,7 @@ export const register = async (
     } = req.body;
 
     const isAgentUser = (req as any).user?.role === 'AGENT';
-    const effectiveAgentId = assignedAgentId ? Number(assignedAgentId) : (isAgentUser ? (req as any).user?.id : undefined);
+    const effectiveAgentId = isAgentUser ? Number((req as any).user?.id) : (assignedAgentId ? Number(assignedAgentId) : undefined);
 
     const isAdminUser = (req as any).user?.role === 'ADMIN';
     const effectiveAdminId = assignedAdminId ? Number(assignedAdminId) : (isAdminUser ? (req as any).user?.id : undefined);

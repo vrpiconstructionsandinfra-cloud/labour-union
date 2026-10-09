@@ -45,7 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const allManagementNav = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, isDashboard: true },
     { id: 'sites', label: 'Sites', icon: Building2 },
-    { id: 'admins', label: role === 'ADMIN' ? 'Admin Portal' : 'Admins', icon: Shield },
+    { id: 'admins', label: role === 'ADMIN' ? 'Super Admin Portal' : 'Super Admin', icon: Shield },
     { id: 'agents', label: 'Agents', icon: Users },
     { id: 'workers', label: 'Workers', icon: UserCheck },
     { id: 'agent_incentives', label: 'Agent Incentives', icon: Coins },

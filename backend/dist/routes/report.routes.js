@@ -7,7 +7,7 @@ const client_1 = require("@prisma/client");
 const report_service_1 = require("../services/report.service");
 const router = (0, express_1.Router)();
 // GET /api/reports/saturday-weekly-status
-router.get('/saturday-weekly-status', auth_middleware_1.authenticate, (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT), (req, res) => {
+router.get('/saturday-weekly-status', auth_middleware_1.authenticate, (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.ADMIN), (req, res) => {
     try {
         const demo = req.query.demo === 'true';
         const status = (0, report_service_1.checkSaturdayWindowStatus)();
@@ -22,7 +22,7 @@ router.get('/saturday-weekly-status', auth_middleware_1.authenticate, (0, role_m
     }
 });
 // GET /api/reports/saturday-weekly-data
-router.get('/saturday-weekly-data', auth_middleware_1.authenticate, (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT), async (req, res) => {
+router.get('/saturday-weekly-data', auth_middleware_1.authenticate, (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.ADMIN), async (req, res) => {
     try {
         const reportData = await (0, report_service_1.generateSaturdayWeeklyReportData)();
         return res.json({
@@ -39,7 +39,7 @@ router.get('/saturday-weekly-data', auth_middleware_1.authenticate, (0, role_mid
     }
 });
 // GET /api/reports/saturday-weekly-excel (Download Multi-sheet XLSX / CSV)
-router.get('/saturday-weekly-excel', auth_middleware_1.authenticate, (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT), async (req, res) => {
+router.get('/saturday-weekly-excel', auth_middleware_1.authenticate, (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.ADMIN), async (req, res) => {
     try {
         const demo = req.query.demo === 'true';
         const format = req.query.format?.toLowerCase();
@@ -69,7 +69,7 @@ router.get('/saturday-weekly-excel', auth_middleware_1.authenticate, (0, role_mi
     }
 });
 // POST /api/reports/send-saturday-email
-router.post('/send-saturday-email', auth_middleware_1.authenticate, (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT), async (req, res) => {
+router.post('/send-saturday-email', auth_middleware_1.authenticate, (0, role_middleware_1.authorize)(client_1.UserRole.SUPER_AGENT, client_1.UserRole.ADMIN), async (req, res) => {
     try {
         const reqUser = req.user;
         const targetEmail = req.body.email || reqUser?.email || 'superagent@laborunion.com';

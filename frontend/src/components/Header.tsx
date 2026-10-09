@@ -339,6 +339,9 @@ export const Header: React.FC<HeaderProps> = ({
     switch (activeTab) {
       case 'dashboard': return 'Dashboard Overview';
       case 'sites': return 'Sites Directory';
+      case 'admins': return 'Super Admin Management';
+      case 'admin_portal': return 'Super Admin Portal';
+      case 'create_admin': return 'Create Super Admin';
       case 'agents': return 'Agent Roster';
       case 'support_agents': return 'Customer Support > Support Agents';
       case 'workers': return 'Worker Directory';
@@ -570,8 +573,16 @@ export const Header: React.FC<HeaderProps> = ({
                 size={38}
               />
               <div className="user-details">
-                <span className="user-name">{user?.name || 'Super Agent'}</span>
-                <span className="user-role">{user?.role || 'SUPER_AGENT'}</span>
+                <span className="user-name">{user?.name || (role === 'SUPER_AGENT' || role === 'ADMIN' ? 'Super Admin' : 'User')}</span>
+                <span className="user-role">
+                  {role === 'SUPER_AGENT' || role === 'ADMIN'
+                    ? 'SUPER ADMIN'
+                    : role === 'AGENT'
+                    ? 'FIELD AGENT'
+                    : role === 'CUSTOMER_SUPPORT'
+                    ? 'SUPPORT AGENT'
+                    : role || 'SUPER ADMIN'}
+                </span>
               </div>
               <ChevronDown size={14} className="profile-chevron" />
             </div>

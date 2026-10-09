@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, Download, FileText, PieChart, Loader2, ShieldCheck } from 'lucide-react';
+import { BarChart3, Download, FileText, PieChart, Loader2, ShieldCheck, Banknote } from 'lucide-react';
 import { fetchDashboardStatsApi } from '../services/api';
+import { getWageConfig } from '../services/wageConfigService';
 import './Pages.css';
 
 export const ReportsPage: React.FC = () => {
@@ -17,10 +18,25 @@ export const ReportsPage: React.FC = () => {
   }, []);
 
   const handleDownloadReport = (title: string, dataSummary: string) => {
-    const csvContent = `data:text/csv;charset=utf-8,Report Title,Value,Exported Date\n"${title}","${dataSummary}","${new Date().toLocaleDateString()}"\n`;
-    const encodedUri = encodeURI(csvContent);
+    let csvContent = '';
+    if (title === 'Salary & Wage Management Report') {
+      const config = getWageConfig();
+      const rows = [
+        ['Trade Role', 'Category', 'Daily Wage (INR)', 'Monthly Salary (INR)', 'Custom Role'].join(','),
+        ...config.tradeWages.map(t =>
+          `"${t.name}","${t.category}","${t.dailyWage}","${t.monthlyWage || t.dailyWage * 30}","${t.isCustom ? 'YES' : 'NO'}"`
+        ),
+        [],
+        ['Registration Fee (Worker)', String(config.registrationFee)],
+        ['Registration Fee (Agent)', String(config.agentRegistrationFee || 1000)]
+      ].join('\n');
+      csvContent = `data:text/csv;charset=utf-8,${encodeURIComponent(rows)}`;
+    } else {
+      csvContent = encodeURI(`data:text/csv;charset=utf-8,Report Title,Value,Exported Date\n"${title}","${dataSummary}","${new Date().toLocaleDateString()}"\n`);
+    }
+
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.setAttribute('href', csvContent);
     link.setAttribute('download', `${title.toLowerCase().replace(/\s+/g, '_')}_report.csv`);
     document.body.appendChild(link);
     link.click();
@@ -28,6 +44,13 @@ export const ReportsPage: React.FC = () => {
   };
 
   const reportsList = [
+    {
+      title: 'Salary & Wage Management Report',
+      desc: 'Master trade wage schedule, standard daily rates, monthly basic salaries, and registration fee audit.',
+      icon: Banknote,
+      value: 'Salary Master Audit',
+      statKey: 'salaryReport'
+    },
     {
       title: 'Worker Attendance Summary Report',
       desc: `Live backend summary: ${metrics?.todayAttendance ?? 0} worker(s) present out of ${metrics?.totalWorkers ?? 0} total workers.`,

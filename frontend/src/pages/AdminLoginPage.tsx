@@ -160,11 +160,11 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
             </div>
             <div className="admin-badge-pill">
               <Shield size={12} />
-              <span>Admin Jurisdiction Access</span>
+              <span>Super Admin Jurisdiction Access</span>
             </div>
-            <h1 className="admin-brand-title">Administrator Portal</h1>
+            <h1 className="admin-brand-title">Super Admin Portal</h1>
             <p className="admin-brand-subtitle">
-              Secure operational console for Area Administrators to supervise field agents, monitor labor crews, and inspect working sites.
+              Secure operational console for Super Admins to supervise field agents, monitor labor crews, and inspect working sites.
             </p>
           </div>
 
@@ -214,9 +214,9 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
       <div className="admin-login-right">
         <div className="admin-form-wrapper">
           <div className="admin-form-header">
-            <h2 className="admin-form-title">Administrator Sign In</h2>
+            <h2 className="admin-form-title">Super Admin Sign In</h2>
             <p className="admin-form-subtitle">
-              Enter your authorized admin credentials to access your jurisdictional dashboard.
+              Enter your authorized super admin credentials to access your jurisdictional dashboard.
             </p>
           </div>
 
@@ -236,7 +236,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
 
           <form onSubmit={handleSubmit}>
             <div className="admin-form-group">
-              <label className="admin-form-label">Administrator Email / User ID</label>
+              <label className="admin-form-label">Super Admin Email / User ID</label>
               <div className="admin-input-wrapper">
                 <Mail size={18} className="admin-input-icon" />
                 <input

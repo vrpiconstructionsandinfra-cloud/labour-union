@@ -603,9 +603,9 @@ export const AdminsPage: React.FC<AdminsPageProps> = ({
             <Shield size={20} />
           </div>
           <div className="admin-hero-text">
-            <h1>Area Administrators Management</h1>
+            <h1>Super Admin Management</h1>
             <p>
-              Super Admin Control • Super Admin → Admin → Agents → Workers Hierarchy
+              Super Admin Control • Super Admin → Agents → Workers Master Hierarchy
             </p>
           </div>
         </div>
@@ -616,7 +616,7 @@ export const AdminsPage: React.FC<AdminsPageProps> = ({
             style={{ background: '#3B82F6', boxShadow: '0 4px 14px rgba(59, 130, 246, 0.3)' }}
           >
             <Plus size={15} />
-            <span>Create New Administrator</span>
+            <span>Create New Super Admin</span>
           </button>
         </div>
       </div>
@@ -629,7 +629,7 @@ export const AdminsPage: React.FC<AdminsPageProps> = ({
           </span>
           <ChevronRight size={12} color="#94A3B8" />
           <span className="hierarchy-node">
-            <Shield size={12} /> {totalAdminsCount} Administrators
+            <Shield size={12} /> {totalAdminsCount} Super Admins
           </span>
           <ChevronRight size={12} color="#94A3B8" />
           <span className="hierarchy-node">
@@ -642,7 +642,7 @@ export const AdminsPage: React.FC<AdminsPageProps> = ({
         </div>
 
         <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>
-          Click any Administrator below to inspect their supervised agents and workers
+          Click any Super Admin below to inspect their supervised agents and workers
         </span>
       </div>
 
@@ -653,9 +653,9 @@ export const AdminsPage: React.FC<AdminsPageProps> = ({
             <Shield size={18} />
           </div>
           <div className="admin-stat-content">
-            <span className="admin-stat-label">Area Administrators</span>
+            <span className="admin-stat-label">Super Admins</span>
             <span className="admin-stat-value">{totalAdminsCount}</span>
-            <span className="admin-stat-subtext">Active Regional Heads</span>
+            <span className="admin-stat-subtext">Active Regional Super Admins</span>
           </div>
         </div>
 
@@ -664,7 +664,7 @@ export const AdminsPage: React.FC<AdminsPageProps> = ({
             <Users size={18} />
           </div>
           <div className="admin-stat-content">
-            <span className="admin-stat-label">Agents Under Admins</span>
+            <span className="admin-stat-label">Agents Under Super Admins</span>
             <span className="admin-stat-value">{totalAgentsUnderAdmins}</span>
             <span className="admin-stat-subtext">Field Supervisors</span>
           </div>
@@ -688,7 +688,7 @@ export const AdminsPage: React.FC<AdminsPageProps> = ({
           <Search size={15} color="#94A3B8" />
           <input
             type="text"
-            placeholder="Search administrators by name, employee code, area, or contact..."
+            placeholder="Search super admins by name, employee code, area, or contact..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -700,14 +700,14 @@ export const AdminsPage: React.FC<AdminsPageProps> = ({
         {isLoading ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 0', gap: '10px' }}>
             <Loader2 size={26} className="animate-spin" color="#2563EB" />
-            <span style={{ fontSize: '12px', color: '#64748B' }}>Loading administrators...</span>
+            <span style={{ fontSize: '12px', color: '#64748B' }}>Loading super admins...</span>
           </div>
         ) : filteredAdmins.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '44px 20px', color: '#64748B' }}>
             <Shield size={34} style={{ margin: '0 auto 10px', opacity: 0.3 }} />
-            <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>No Administrators Found</h3>
+            <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>No Super Admins Found</h3>
             <p style={{ margin: '4px 0 14px', fontSize: '12px' }}>
-              Create an administrator to manage and monitor field agents in local areas.
+              Create a super admin to manage and monitor field agents in local areas.
             </p>
             <button
               className="btn-primary-admin"
@@ -715,14 +715,14 @@ export const AdminsPage: React.FC<AdminsPageProps> = ({
               onClick={() => onNavigateTab ? onNavigateTab('create_admin') : setIsCreateAdminOpen(true)}
             >
               <Plus size={14} />
-              <span>Create First Administrator</span>
+              <span>Create First Super Admin</span>
             </button>
           </div>
         ) : (
           <table className="admins-table">
             <thead>
               <tr>
-                <th>Administrator</th>
+                <th>Super Admin</th>
                 <th>Employee Code</th>
                 <th>Contact</th>
                 <th>Area Jurisdiction</th>

@@ -150,21 +150,41 @@ export const AdminCreateAgentPage: React.FC<AdminCreateAgentPageProps> = ({
     if (e.target) e.target.value = '';
   };
 
-  const startCamera = async () => {
+  const [cameraFacingMode, setCameraFacingMode] = useState<'user' | 'environment'>('user');
+
+  const startCamera = async (facingOverride?: 'user' | 'environment' | any) => {
     try {
       setIsCameraActive(true);
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
-        audio: false,
-      });
+      const facing = (facingOverride === 'user' || facingOverride === 'environment') ? facingOverride : cameraFacingMode;
+      if (facingOverride === 'user' || facingOverride === 'environment') {
+        setCameraFacingMode(facingOverride);
+      }
+      stopCamera();
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: { ideal: facing } },
+          audio: false,
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      }
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
       }
+      setIsCameraActive(true);
     } catch {
       setIsCameraActive(false);
       setErrorMessage('Unable to access camera. Please allow camera permissions or upload an image file.');
     }
+  };
+
+  const toggleCamera = () => {
+    const nextFacing = cameraFacingMode === 'user' ? 'environment' : 'user';
+    setCameraFacingMode(nextFacing);
+    startCamera(nextFacing);
   };
 
   const capturePhoto = () => {
@@ -539,7 +559,7 @@ export const AdminCreateAgentPage: React.FC<AdminCreateAgentPageProps> = ({
           onClick={onBack}
         >
           <ArrowLeft size={15} />
-          <span>Back to Admin Portal</span>
+          <span>Back to Super Admin Portal</span>
         </button>
 
         <div className="create-admin-header">
@@ -605,8 +625,21 @@ export const AdminCreateAgentPage: React.FC<AdminCreateAgentPageProps> = ({
             {/* Camera Box if active */}
             {isCameraActive && (
               <div className="admin-camera-box">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', padding: '0 4px', width: '100%' }}>
+                  <span style={{ color: '#94A3B8', fontSize: '11px', fontWeight: 600 }}>
+                    {cameraFacingMode === 'environment' ? '📷 Back Camera (Rear)' : '👤 Front Camera'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={toggleCamera}
+                    style={{ backgroundColor: '#1E293B', color: '#38BDF8', border: '1px solid #334155', borderRadius: '6px', padding: '3px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <RefreshCw size={11} />
+                    <span>Flip</span>
+                  </button>
+                </div>
                 <video ref={videoRef} autoPlay playsInline muted />
-                <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '6px', flexWrap: 'wrap', justifyContent: 'center' }}>
                   <button
                     type="button"
                     className="admin-photo-btn primary"
@@ -614,6 +647,15 @@ export const AdminCreateAgentPage: React.FC<AdminCreateAgentPageProps> = ({
                   >
                     <Check size={14} />
                     <span>Capture Photo</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-photo-btn"
+                    onClick={toggleCamera}
+                    style={{ backgroundColor: '#2563EB', color: '#FFF' }}
+                  >
+                    <RefreshCw size={12} />
+                    <span>{cameraFacingMode === 'user' ? 'Back Camera' : 'Front Camera'}</span>
                   </button>
                   <button
                     type="button"

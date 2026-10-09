@@ -479,7 +479,7 @@ function MainAppContent() {
   // Render Page Content based on Active Navigation Tab & Role
   const renderTabContent = () => {
     // ── Role Guard: block tabs the user's role has no permission for ────────
-    const guardedTabs = ['admins', 'admin_portal', 'sites', 'agents', 'workers', 'agent_incentives', 'my_incentives', 'enquiries', 'attendance', 'leaves', 'my_leaves', 'payroll', 'wallet', 'insurance', 'tickets', 'reports', 'settings'];
+    const guardedTabs = ['admins', 'admin_portal', 'sites', 'agents', 'workers', 'agent_incentives', 'my_incentives', 'enquiries', 'attendance', 'leaves', 'my_leaves', 'payroll', 'wallet', 'insurance', 'tickets', 'reports', 'settings', 'salary_management'];
     if (guardedTabs.includes(activeTab) && !hasPermission(activeTab)) {
       return (
         <AccessDeniedScreen

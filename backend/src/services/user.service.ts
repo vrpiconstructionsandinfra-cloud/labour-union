@@ -72,29 +72,12 @@ export async function getAllUsers(role?: string, reqUser?: { id: number; role: s
     where.role = role as UserRole;
   }
 
-  if (reqUser?.role === UserRole.ADMIN) {
-    if (role === UserRole.AGENT) {
-      where.assignedAdminId = reqUser.id;
-    } else if (role === UserRole.WORKER) {
-      const adminAgents = await prisma.user.findMany({
-        where: { role: UserRole.AGENT, assignedAdminId: reqUser.id },
-        select: { id: true },
-      });
-      const agentIds = adminAgents.map((a) => a.id);
-      where.assignedAgentId = { in: agentIds };
-    } else if (!role) {
-      const adminAgents = await prisma.user.findMany({
-        where: { role: UserRole.AGENT, assignedAdminId: reqUser.id },
-        select: { id: true },
-      });
-      const agentIds = adminAgents.map((a) => a.id);
-      where.OR = [
-        { id: reqUser.id },
-        { assignedAdminId: reqUser.id },
-        { assignedAgentId: { in: agentIds } }
-      ];
+  if (reqUser?.role === UserRole.AGENT) {
+    if (role === UserRole.WORKER) {
+      where.assignedAgentId = reqUser.id;
     }
   }
+  // Note: SUPER_AGENT and ADMIN see all users, workers and agents across the organization without restriction
 
   const result = await prisma.user.findMany({
     where,
@@ -122,7 +105,7 @@ export async function getUserById(id: number) {
 export async function updateUser(id: number, data: any, reqUser?: { id: number; role: string }) {
   const user = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, role: true, password: true, siteId: true },
+    select: { id: true, role: true, password: true, siteId: true, assignedAgentId: true },
   });
   if (!user) {
     throw new Error("User not found");
@@ -138,14 +121,11 @@ export async function updateUser(id: number, data: any, reqUser?: { id: number; 
       if (user.role === UserRole.SUPER_AGENT || user.role === UserRole.ADMIN) {
         throw new Error("Forbidden: Admins cannot modify other administrative accounts");
       }
-      if (user.role === UserRole.AGENT) {
-        const targetAgent = await prisma.user.findUnique({
-          where: { id },
-          select: { assignedAdminId: true },
-        });
-        if (!targetAgent || targetAgent.assignedAdminId !== reqUser.id) {
-          throw new Error("Forbidden: You can only modify agents assigned under your supervision");
-        }
+      // Admins are authorized to modify any field agent and worker
+    }
+    if (reqUser.role === UserRole.AGENT) {
+      if (user.role !== UserRole.WORKER || user.assignedAgentId !== reqUser.id) {
+        throw new Error("Forbidden: You can only modify workers assigned under your supervision");
       }
     }
   }
@@ -235,22 +215,11 @@ export async function deleteUser(id: number, reqUser?: { id: number; role: strin
     if (user.role === UserRole.ADMIN) {
       throw new Error("Forbidden: Admins cannot delete administrative accounts");
     }
-    if (user.role === UserRole.AGENT) {
-      if (user.assignedAdminId !== reqUser.id) {
-        throw new Error("Forbidden: You can only delete agents assigned under your supervision");
-      }
-    } else if (user.role === UserRole.WORKER) {
-      if (user.assignedAgentId) {
-        const agent = await prisma.user.findUnique({
-          where: { id: user.assignedAgentId },
-          select: { assignedAdminId: true },
-        });
-        if (!agent || agent.assignedAdminId !== reqUser.id) {
-          throw new Error("Forbidden: You can only delete workers under your assigned agents");
-        }
-      }
-    } else {
-      throw new Error("Forbidden: You do not have permission to delete this user");
+    // Admins are authorized to delete agents and workers across the system
+  }
+  if (reqUser && reqUser.role === UserRole.AGENT) {
+    if (user.role !== UserRole.WORKER || user.assignedAgentId !== reqUser.id) {
+      throw new Error("Forbidden: You can only delete workers assigned to your agent account");
     }
   }
 
@@ -378,9 +347,9 @@ export async function deleteUser(id: number, reqUser?: { id: number; role: strin
 
 /*
  * Get workers filtered by requesting user role:
- * - AGENT & SUPER_AGENT: sees all workers across the system
- * - ADMIN: strictly sees only workers under their assigned agents
+ * - AGENT: strictly sees only workers assigned to this agent (assignedAgentId == reqUser.id)
  * - WORKER: sees own profile / co-workers under same agent
+ * - ADMIN & SUPER_AGENT: sees all workers across the organization
  */
 export async function getWorkers(reqUser?: { id: number; role: string }) {
   const cacheKey = `users_workers_${reqUser?.id || 'all'}_${reqUser?.role || 'all'}`;
@@ -405,15 +374,11 @@ export async function getWorkers(reqUser?: { id: number; role: string }) {
     } else {
       where.id = reqUser.id;
     }
-  } else if (reqUser?.role === UserRole.ADMIN) {
-    // Admin only sees workers under agents assigned to this Admin!
-    const adminAgents = await prisma.user.findMany({
-      where: { role: UserRole.AGENT, assignedAdminId: reqUser.id },
-      select: { id: true },
-    });
-    const agentIds = adminAgents.map((a) => a.id);
-    where.assignedAgentId = { in: agentIds };
+  } else if (reqUser?.role === UserRole.AGENT) {
+    // AGENT strictly only sees workers assigned under their account! Never other agents' workers!
+    where.assignedAgentId = reqUser.id;
   }
+  // Note: SUPER_AGENT and ADMIN see all workers across the system!
 
   const result = await prisma.user.findMany({
     where,
@@ -427,8 +392,7 @@ export async function getWorkers(reqUser?: { id: number; role: string }) {
 
 /*
  * Get agents along with their assigned workers list
- * - SUPER_AGENT: sees all agents
- * - ADMIN: strictly sees only agents assigned to them or created under their administration
+ * - SUPER_AGENT & ADMIN: sees all agents across the organization
  */
 export async function getAgents(reqUser?: { id: number; role: string }) {
   const cacheKey = `users_agents_${reqUser?.id || 'all'}_${reqUser?.role || 'all'}`;
@@ -438,11 +402,7 @@ export async function getAgents(reqUser?: { id: number; role: string }) {
   }
 
   const where: any = { role: UserRole.AGENT };
-
-  // Strict tenant boundary: Admins ONLY see agents created by or assigned under them!
-  if (reqUser?.role === UserRole.ADMIN) {
-    where.assignedAdminId = reqUser.id;
-  }
+  // Both SUPER_AGENT and ADMIN see all agents across the organization
 
   const result = await prisma.user.findMany({
     where,

@@ -34,7 +34,7 @@ import './SalaryManagementPage.css';
 
 export const SalaryManagementPage: React.FC = () => {
   const { user, role } = useAuth();
-  const isSuperAdmin = role === 'SUPER_AGENT';
+  const isAuthorized = role === 'SUPER_AGENT' || role === 'ADMIN';
 
   // State
   const [config, setConfig] = useState<WageConfigData>(getWageConfig());
@@ -216,7 +216,7 @@ export const SalaryManagementPage: React.FC = () => {
       const payload: WageConfigData = {
         ...config,
         updatedAt: new Date().toISOString(),
-        updatedBy: user?.name ? `${user.name} (Super Admin)` : 'Super Admin'
+        updatedBy: user?.name ? `${user.name} (${role === 'ADMIN' ? 'Area Admin' : 'Super Admin'})` : 'Administrator'
       };
 
       const result = await saveWageConfigApi(payload);
@@ -269,16 +269,16 @@ export const SalaryManagementPage: React.FC = () => {
   const minDailyWage = config.tradeWages.length > 0 ? Math.min(...config.tradeWages.map((t) => t.dailyWage)) : 0;
   const maxDailyWage = config.tradeWages.length > 0 ? Math.max(...config.tradeWages.map((t) => t.dailyWage)) : 0;
 
-  if (!isSuperAdmin) {
+  if (!isAuthorized) {
     return (
       <div className="page-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
         <div style={{ textAlign: 'center', maxWidth: '440px', background: 'var(--bg-card)', padding: '32px 24px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
           <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#FEF2F2', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
             <ShieldAlert size={28} />
           </div>
-          <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>Super Admin Access Required</h2>
+          <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>Administrative Access Required</h2>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-            Only Super Administrators can configure fixed daily wages, monthly salaries, custom roles, and onboarding registration fees.
+            Only Super Administrators and Area Administrators can configure fixed daily wages, monthly salaries, custom roles, and onboarding registration fees.
           </p>
         </div>
       </div>
@@ -335,7 +335,7 @@ export const SalaryManagementPage: React.FC = () => {
           <div className="salary-mgmt-meta-left">
             <span className="salary-meta-chip">
               <ShieldCheck size={13} />
-              Super Admin Master Console
+              {role === 'ADMIN' ? 'Super Admin Console' : 'Super Admin Master Console'}
             </span>
             <span>Policy Version: Active Master Standard</span>
             {hasChanges && (
@@ -402,7 +402,7 @@ export const SalaryManagementPage: React.FC = () => {
             <Shield size={22} />
           </div>
           <div className="salary-stat-content">
-            <span className="salary-stat-label">Admin Reg. Fee</span>
+            <span className="salary-stat-label">Super Admin Reg. Fee</span>
             <span className="salary-stat-value">₹ {(config.adminRegistrationFee ?? 2500).toLocaleString('en-IN')}</span>
             <span className="salary-stat-hint">{config.isAdminRegistrationFeeMandatory !== false ? 'Mandatory for Onboarding' : 'Optional / Waived'}</span>
           </div>
@@ -543,10 +543,10 @@ export const SalaryManagementPage: React.FC = () => {
             <div className="fee-config-top">
               <div>
                 <span className="fee-config-title">
-                  <Shield size={18} color="#4F46E5" /> Admin Registration Fee
+                  <Shield size={18} color="#4F46E5" /> Super Admin Registration Fee
                 </span>
                 <p className="fee-config-desc">
-                  Set the onboarding fee charged when enrolling an Area Administrator into the union system.
+                  Set the onboarding fee charged when enrolling a Super Admin into the union system.
                 </p>
               </div>
             </div>

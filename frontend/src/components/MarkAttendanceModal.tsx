@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Camera, X, Clock, CheckCircle2, UploadCloud } from 'lucide-react';
+import { Camera, X, Clock, CheckCircle2, UploadCloud, RefreshCw } from 'lucide-react';
 import { markAttendanceApi, fetchSitesApi, fetchWorkerAttendanceApi, verifyFacePhotosApi } from '../services/api';
 import type { WorkerItem, SiteItem } from '../types';
 import { UserAvatar } from './UserAvatar';
@@ -43,6 +43,7 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
   // Camera stream states
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameraFacingMode, setCameraFacingMode] = useState<'user' | 'environment'>('user');
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -274,13 +275,31 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
   }, [isCameraActive, activePhotoTarget]);
 
   // Camera Management
-  const startCamera = async (target: 'CHECK_IN' | 'CHECK_OUT') => {
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setIsCameraActive(false);
+  };
+
+  const startCamera = async (target: 'CHECK_IN' | 'CHECK_OUT', facingOverride?: 'user' | 'environment') => {
     setActivePhotoTarget(target);
     setCameraError(null);
+    const facing = facingOverride || cameraFacingMode;
+    if (facingOverride) {
+      setCameraFacingMode(facingOverride);
+    }
+    stopCamera();
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
-      });
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: { ideal: facing } },
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
       streamRef.current = stream;
       setIsCameraActive(true);
       if (videoRef.current) {
@@ -294,12 +313,12 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
     }
   };
 
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
+  const toggleAttendanceCamera = () => {
+    const nextFacing = cameraFacingMode === 'user' ? 'environment' : 'user';
+    setCameraFacingMode(nextFacing);
+    if (activePhotoTarget) {
+      startCamera(activePhotoTarget, nextFacing);
     }
-    setIsCameraActive(false);
   };
 
   const captureSnapshot = () => {
@@ -713,19 +732,40 @@ export const MarkAttendanceModal: React.FC<MarkAttendanceModalProps> = ({
             {/* Live Viewfinder Card */}
             {isCameraActive && activePhotoTarget === activeTab && (
               <div style={{ marginTop: '14px', backgroundColor: '#0F172A', padding: '12px', borderRadius: '10px', textAlign: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', padding: '0 4px', flexWrap: 'wrap', gap: '6px' }}>
+                  <span style={{ color: '#94A3B8', fontSize: '11px', fontWeight: 600 }}>
+                    Mode: {cameraFacingMode === 'environment' ? '📷 Back Camera (Rear)' : '👤 Front Camera'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={toggleAttendanceCamera}
+                    style={{ backgroundColor: '#1E293B', color: '#38BDF8', border: '1px solid #334155', borderRadius: '6px', padding: '3px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <RefreshCw size={11} />
+                    <span>{cameraFacingMode === 'user' ? 'Switch to Back Camera' : 'Switch to Front Camera'}</span>
+                  </button>
+                </div>
                 <video
                   ref={videoRef}
                   autoPlay
                   playsInline
                   style={{ width: '100%', maxHeight: '200px', borderRadius: '8px', objectFit: 'cover', backgroundColor: '#000' }}
                 />
-                <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'center', gap: '10px' }}>
+                <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     style={{ backgroundColor: '#059669', color: '#FFF', fontSize: '12px', fontWeight: 800, padding: '7px 16px', borderRadius: '7px', border: 'none', cursor: 'pointer' }}
                     onClick={captureSnapshot}
                   >
                     🔴 Take Snapshot Now
+                  </button>
+                  <button
+                    type="button"
+                    style={{ backgroundColor: '#2563EB', color: '#FFF', fontSize: '12px', fontWeight: 700, padding: '7px 14px', borderRadius: '7px', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                    onClick={toggleAttendanceCamera}
+                  >
+                    <RefreshCw size={13} />
+                    <span>{cameraFacingMode === 'user' ? 'Back Camera' : 'Front Camera'}</span>
                   </button>
                   <button
                     type="button"

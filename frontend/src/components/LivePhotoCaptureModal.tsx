@@ -27,6 +27,7 @@ export const LivePhotoCaptureModal: React.FC<LivePhotoCaptureModalProps> = ({
   const [remarks, setRemarks] = useState('');
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -50,16 +51,34 @@ export const LivePhotoCaptureModal: React.FC<LivePhotoCaptureModalProps> = ({
     }
   }, [isCameraActive]);
 
-  const startCamera = async () => {
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setIsCameraActive(false);
+  };
+
+  const startCamera = async (facingOverride?: 'user' | 'environment') => {
     setCameraError(null);
+    const facing = facingOverride || facingMode;
+    if (facingOverride) {
+      setFacingMode(facingOverride);
+    }
+    stopCamera();
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
-      });
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: { ideal: facing } },
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        videoRef.current.play().catch(() => {});
       }
       setIsCameraActive(true);
     } catch (err: any) {
@@ -69,12 +88,10 @@ export const LivePhotoCaptureModal: React.FC<LivePhotoCaptureModalProps> = ({
     }
   };
 
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    setIsCameraActive(false);
+  const toggleCamera = () => {
+    const next = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(next);
+    startCamera(next);
   };
 
   const captureSnapshot = () => {
@@ -181,25 +198,46 @@ export const LivePhotoCaptureModal: React.FC<LivePhotoCaptureModalProps> = ({
             </div>
           )}
 
-          {/* Live Camera Badge */}
+          {/* Live Camera Badge & Flip Button */}
           {isCameraActive && !photoDataUrl && (
-            <div className="absolute top-3 left-3 bg-red-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center space-x-1.5 shadow-md">
-              <span className="w-2 h-2 rounded-full bg-white animate-ping"></span>
-              <span>LIVE CAMERA</span>
-            </div>
+            <>
+              <div className="absolute top-3 left-3 bg-red-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center space-x-1.5 shadow-md">
+                <span className="w-2 h-2 rounded-full bg-white animate-ping"></span>
+                <span>{facingMode === 'environment' ? 'BACK CAMERA' : 'FRONT CAMERA'}</span>
+              </div>
+              <button
+                type="button"
+                onClick={toggleCamera}
+                className="absolute top-3 right-3 bg-slate-900/80 hover:bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 shadow-md backdrop-blur border border-slate-700 transition cursor-pointer"
+                title="Switch Camera"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>{facingMode === 'user' ? 'Switch to Back' : 'Switch to Front'}</span>
+              </button>
+            </>
           )}
         </div>
 
         {/* Action Controls for Photo Capture */}
-        <div className="flex items-center justify-center space-x-3 mb-5">
+        <div className="flex items-center justify-center space-x-3 mb-5 flex-wrap gap-2">
           {!photoDataUrl && isCameraActive && (
-            <button
-              onClick={captureSnapshot}
-              className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2 rounded-xl transition shadow-sm hover:shadow"
-            >
-              <Camera className="w-4 h-4" />
-              <span>Capture Photo</span>
-            </button>
+            <>
+              <button
+                onClick={captureSnapshot}
+                className="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2 rounded-xl transition shadow-sm hover:shadow"
+              >
+                <Camera className="w-4 h-4" />
+                <span>Capture Photo</span>
+              </button>
+              <button
+                type="button"
+                onClick={toggleCamera}
+                className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-3.5 py-2 rounded-xl transition shadow-sm hover:shadow"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>{facingMode === 'user' ? 'Back Camera' : 'Front Camera'}</span>
+              </button>
+            </>
           )}
 
           {photoDataUrl && (

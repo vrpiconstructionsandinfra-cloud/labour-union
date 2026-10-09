@@ -14,7 +14,8 @@ import {
   RefreshCw,
   LogOut,
   X,
-  AlertCircle
+  AlertCircle,
+  Banknote
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -40,7 +41,7 @@ interface AdminPortalPageProps {
 export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
   adminIdOverride,
   onExitOverride,
-  onNavigateTab: _onNavigateTab,
+  onNavigateTab,
 }) => {
   const { user, logout } = useAuth();
   const effectiveAdminId = adminIdOverride || user?.id;
@@ -160,7 +161,7 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '380px', gap: '12px' }}>
           <Loader2 size={36} className="animate-spin" color="#2563EB" />
           <span style={{ fontSize: '14px', color: '#64748B', fontWeight: 500 }}>
-            Loading Area Administrator Portal...
+            Loading Super Admin Portal...
           </span>
         </div>
       </div>
@@ -175,7 +176,7 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
             <AlertCircle size={32} />
           </div>
           <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#1E293B' }}>
-            Unable to Load Administrator Portal
+            Unable to Load Super Admin Portal
           </h3>
           <p style={{ margin: 0, fontSize: '14px', color: '#64748B', maxWidth: '440px', lineHeight: 1.5 }}>
             {loadError}
@@ -249,13 +250,13 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
           </div>
           <div className="admin-hero-text">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h1>Administrator Portal</h1>
+              <h1>Super Admin Portal</h1>
               <span style={{ background: '#2563EB', color: '#FFFFFF', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px' }}>
-                ADMIN JURISDICTION
+                SUPER ADMIN JURISDICTION
               </span>
             </div>
             <p>
-              Welcome back, <strong>{adminName}</strong> • {dashboardData?.designation || 'Regional Administrator'} • {dashboardData?.address || 'Local Office'}
+              Welcome back, <strong>{adminName}</strong> • {dashboardData?.designation || 'Regional Super Admin'} • {dashboardData?.address || 'Local Office'}
             </p>
           </div>
         </div>
@@ -272,6 +273,22 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
             <Building2 size={15} />
             <span>Add Local Site</span>
           </button>
+          {onNavigateTab && (
+            <>
+              <button className="btn-secondary-admin" onClick={() => onNavigateTab('workers')} title="View All Workers">
+                <HardHat size={15} />
+                <span>All Workers</span>
+              </button>
+              <button className="btn-secondary-admin" onClick={() => onNavigateTab('agents')} title="View All Agents">
+                <Users size={15} />
+                <span>All Agents</span>
+              </button>
+              <button className="btn-secondary-admin" onClick={() => onNavigateTab('salary_management')} title="Salary & Wage Management Report">
+                <Banknote size={15} />
+                <span>Salary Management</span>
+              </button>
+            </>
+          )}
           {!adminIdOverride && (
             <button
               className="btn-secondary-admin"
@@ -293,7 +310,7 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
         </span>
         <span style={{ color: '#94A3B8' }}>→</span>
         <span className="hierarchy-node active">
-          <Shield size={13} color="#2563EB" /> Admin: {adminName}
+          <Shield size={13} color="#2563EB" /> Super Admin: {adminName}
         </span>
         <span style={{ color: '#94A3B8' }}>→</span>
         <span className="hierarchy-node">
@@ -307,7 +324,12 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
 
       {/* Primary Metrics Grid */}
       <div className="admin-stats-grid">
-        <div className="admin-stat-card">
+        <div
+          className="admin-stat-card"
+          onClick={() => onNavigateTab?.('agents')}
+          style={{ cursor: onNavigateTab ? 'pointer' : 'default' }}
+          title="Click to view all agents"
+        >
           <div className="admin-stat-icon-wrap blue">
             <Users size={24} />
           </div>
@@ -318,7 +340,12 @@ export const AdminPortalPage: React.FC<AdminPortalPageProps> = ({
           </div>
         </div>
 
-        <div className="admin-stat-card">
+        <div
+          className="admin-stat-card"
+          onClick={() => onNavigateTab?.('workers')}
+          style={{ cursor: onNavigateTab ? 'pointer' : 'default' }}
+          title="Click to view all workers"
+        >
           <div className="admin-stat-icon-wrap amber">
             <HardHat size={24} />
           </div>

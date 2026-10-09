@@ -82,18 +82,7 @@ export const SupportAgentModal: React.FC<SupportAgentModalProps> = ({
     }
   }, [isOpen, agentToEdit]);
 
-  const startCamera = async () => {
-    setIsCameraActive(true);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 300, height: 300 } });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-    } catch (err) {
-      alert('Failed to access webcam camera. Please upload a photo file instead.');
-      setIsCameraActive(false);
-    }
-  };
+  const [cameraFacingMode, setCameraFacingMode] = useState<'user' | 'environment'>('user');
 
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
@@ -102,6 +91,39 @@ export const SupportAgentModal: React.FC<SupportAgentModalProps> = ({
       videoRef.current.srcObject = null;
     }
     setIsCameraActive(false);
+  };
+
+  const startCamera = async (facingOverride?: 'user' | 'environment' | any) => {
+    setIsCameraActive(true);
+    const facing = (facingOverride === 'user' || facingOverride === 'environment') ? facingOverride : cameraFacingMode;
+    if (facingOverride === 'user' || facingOverride === 'environment') {
+      setCameraFacingMode(facingOverride);
+    }
+    stopCamera();
+    try {
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: facing }, width: { ideal: 640 }, height: { ideal: 480 } }
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
+      }
+      setIsCameraActive(true);
+    } catch (err) {
+      alert('Failed to access webcam camera. Please upload a photo file instead.');
+      setIsCameraActive(false);
+    }
+  };
+
+  const toggleCamera = () => {
+    const nextFacing = cameraFacingMode === 'user' ? 'environment' : 'user';
+    setCameraFacingMode(nextFacing);
+    startCamera(nextFacing);
   };
 
   const captureSnapshot = () => {
@@ -285,10 +307,28 @@ export const SupportAgentModal: React.FC<SupportAgentModalProps> = ({
 
               {isCameraActive && (
                 <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', backgroundColor: '#0F172A', padding: '12px', borderRadius: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', maxWidth: '240px', padding: '0 4px' }}>
+                    <span style={{ color: '#94A3B8', fontSize: '11px', fontWeight: 600 }}>
+                      {cameraFacingMode === 'environment' ? '📷 Back Camera' : '👤 Front Camera'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={toggleCamera}
+                      style={{ backgroundColor: '#1E293B', color: '#38BDF8', border: '1px solid #334155', borderRadius: '6px', padding: '3px 8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      <RefreshCw size={11} />
+                      <span>Flip</span>
+                    </button>
+                  </div>
                   <video ref={videoRef} autoPlay playsInline style={{ width: '100%', maxWidth: '240px', height: '180px', borderRadius: '8px', objectFit: 'cover' }} />
-                  <button type="button" onClick={captureSnapshot} style={{ backgroundColor: '#2563EB', color: '#FFFFFF', border: 'none', padding: '8px 18px', borderRadius: '20px', fontSize: '12px', fontWeight: 800, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                    <Camera size={14} /> Capture Snapshot
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <button type="button" onClick={captureSnapshot} style={{ backgroundColor: '#2563EB', color: '#FFFFFF', border: 'none', padding: '8px 18px', borderRadius: '20px', fontSize: '12px', fontWeight: 800, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <Camera size={14} /> Capture Snapshot
+                    </button>
+                    <button type="button" onClick={toggleCamera} style={{ backgroundColor: '#334155', color: '#FFFFFF', border: 'none', padding: '8px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                      <RefreshCw size={12} /> {cameraFacingMode === 'user' ? 'Back Camera' : 'Front Camera'}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

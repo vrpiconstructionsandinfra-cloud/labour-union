@@ -125,6 +125,14 @@ export const WorkersPage: React.FC<WorkersPageProps> = ({
   };
 
   const filtered = workers.filter((w) => {
+    // Strict Field Agent Isolation: Agent can ONLY see workers assigned to their account! Never other agents' workers!
+    if (role === 'AGENT') {
+      const isAssigned =
+        String(w.assignedAgentId) === String(user?.id) ||
+        (user?.name && w.agentName === user.name);
+      if (!isAssigned) return false;
+    }
+
     const term = searchTerm.toLowerCase();
     const matchesSearch =
       w.name.toLowerCase().includes(term) ||
@@ -147,13 +155,13 @@ export const WorkersPage: React.FC<WorkersPageProps> = ({
   const paginatedWorkers = filtered.slice(startIndex, endIndex);
 
   const getPageTitle = () => {
-    if (role === 'AGENT') return 'Workers Directory';
+    if (role === 'AGENT') return 'My Assigned Workers';
     if (role === 'WORKER') return 'My Team Workers';
     return 'All Union Workers Directory';
   };
 
   const getPageSubtitle = () => {
-    if (role === 'AGENT') return 'Directory of registered labor union workers under your direct field agent supervision.';
+    if (role === 'AGENT') return 'Directory of registered labor union workers assigned exclusively under your field agent supervision.';
     if (role === 'WORKER') return 'Directory of labor union workers assigned to your site supervisor.';
     return 'Enterprise roster of registered union workforce, assigned field agents, and site allocations.';
   };

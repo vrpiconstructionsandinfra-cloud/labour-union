@@ -41,7 +41,7 @@ const register = async (req, res) => {
     try {
         const { name, email, password, role, phone, designation, employeeCode, salary, siteId, avatar, bankAccountNo, ifscCode, address, registrationAmount, paymentMethod, razorpayPaymentId, razorpayOrderId, upiTransactionId, assignedAgentId, assignedAdminId } = req.body;
         const isAgentUser = req.user?.role === 'AGENT';
-        const effectiveAgentId = assignedAgentId ? Number(assignedAgentId) : (isAgentUser ? req.user?.id : undefined);
+        const effectiveAgentId = isAgentUser ? Number(req.user?.id) : (assignedAgentId ? Number(assignedAgentId) : undefined);
         const isAdminUser = req.user?.role === 'ADMIN';
         const effectiveAdminId = assignedAdminId ? Number(assignedAdminId) : (isAdminUser ? req.user?.id : undefined);
         const user = await authService.registerUser(name, email, password, role || "WORKER", phone, designation, employeeCode, salary ? Number(salary) : undefined, siteId ? Number(siteId) : undefined, avatar, {

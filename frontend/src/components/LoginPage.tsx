@@ -642,14 +642,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                   </div>
 
                   <div className="auth-support-footer-row" style={{ marginTop: '6px' }}>
-                    <span>Area Administrator? </span>
+                    <span>Super Admin? </span>
                     <button
                       type="button"
                       className="auth-link-orange"
                       style={{ color: '#2563EB', fontWeight: 600 }}
                       onClick={handleNavigateToAdminLogin}
                     >
-                      Admin Portal Login
+                      Super Admin Portal Login
                     </button>
                   </div>
                 </>
@@ -905,14 +905,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                 </div>
 
                 <div className="auth-support-footer-row mobile-footer-support" style={{ marginTop: '6px' }}>
-                  <span>Area Administrator? </span>
+                  <span>Super Admin? </span>
                   <button
                     type="button"
                     className="auth-link-orange"
                     style={{ color: '#2563EB', fontWeight: 600 }}
                     onClick={handleNavigateToAdminLogin}
                   >
-                    Admin Portal Login
+                    Super Admin Portal Login
                   </button>
                 </div>
               </>

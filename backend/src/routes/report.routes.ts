@@ -13,7 +13,7 @@ import {
 const router = Router();
 
 // GET /api/reports/saturday-weekly-status
-router.get('/saturday-weekly-status', authenticate, authorize(UserRole.SUPER_AGENT), (req: Request, res: Response) => {
+router.get('/saturday-weekly-status', authenticate, authorize(UserRole.SUPER_AGENT, UserRole.ADMIN), (req: Request, res: Response) => {
   try {
     const demo = req.query.demo === 'true';
     const status = checkSaturdayWindowStatus();
@@ -28,7 +28,7 @@ router.get('/saturday-weekly-status', authenticate, authorize(UserRole.SUPER_AGE
 });
 
 // GET /api/reports/saturday-weekly-data
-router.get('/saturday-weekly-data', authenticate, authorize(UserRole.SUPER_AGENT), async (req: Request, res: Response) => {
+router.get('/saturday-weekly-data', authenticate, authorize(UserRole.SUPER_AGENT, UserRole.ADMIN), async (req: Request, res: Response) => {
   try {
     const reportData = await generateSaturdayWeeklyReportData();
     return res.json({
@@ -45,7 +45,7 @@ router.get('/saturday-weekly-data', authenticate, authorize(UserRole.SUPER_AGENT
 });
 
 // GET /api/reports/saturday-weekly-excel (Download Multi-sheet XLSX / CSV)
-router.get('/saturday-weekly-excel', authenticate, authorize(UserRole.SUPER_AGENT), async (req: Request, res: Response) => {
+router.get('/saturday-weekly-excel', authenticate, authorize(UserRole.SUPER_AGENT, UserRole.ADMIN), async (req: Request, res: Response) => {
   try {
     const demo = req.query.demo === 'true';
     const format = (req.query.format as string)?.toLowerCase();
@@ -83,7 +83,7 @@ router.get('/saturday-weekly-excel', authenticate, authorize(UserRole.SUPER_AGEN
 });
 
 // POST /api/reports/send-saturday-email
-router.post('/send-saturday-email', authenticate, authorize(UserRole.SUPER_AGENT), async (req: Request, res: Response) => {
+router.post('/send-saturday-email', authenticate, authorize(UserRole.SUPER_AGENT, UserRole.ADMIN), async (req: Request, res: Response) => {
   try {
     const reqUser = (req as any).user;
     const targetEmail = req.body.email || reqUser?.email || 'superagent@laborunion.com';
